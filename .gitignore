@@ -1,0 +1,23 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+
+# Poetry files
+poetry.lock
+
+# SQLite database index
+index.db
+
+# VSCode settings
+.vscode/
+
+# System files
+.DS_Store
+Thumbs.db
