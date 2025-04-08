@@ -1,4 +1,6 @@
-# 🗂️ Universal Project Registry Manager
+# HoxCore
+
+**Universal Project Registry Manager**
 
 A simple, scalable, Git-like system for managing project metadata across programs, projects, missions, and actions. Designed to work with any kind of project — from software development to event planning and personal goals.
 
@@ -12,15 +14,14 @@ A simple, scalable, Git-like system for managing project metadata across program
 
 ## 📁 Registry Structure
 
-project-registry/ 
-├── .git/ 
-├── index.db 
-├── config.yml 
-├── programs/ 
-├── projects/ 
-├── missions/ 
-├── actions/
-
+    project-registry/ 
+    ├── .git/ 
+    ├── index.db 
+    ├── config.yml 
+    ├── programs/ 
+    ├── projects/ 
+    ├── missions/ 
+    ├── actions/
 
 ## 🛠️ Usage (planned)
 
