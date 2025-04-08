@@ -1,1 +1,0 @@
-# Initialize manager package
