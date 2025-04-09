@@ -6,10 +6,11 @@ import pathlib
 import shutil
 import sqlite3
 import pytest
-from unittest.mock import patch, Mock
+from unittest.mock import patch, Mock, MagicMock
 
 from hxc.cli import main
 from hxc.commands.init import InitCommand
+from hxc.core.config import Config
 
 
 @pytest.fixture
@@ -19,6 +20,19 @@ def temp_dir(tmp_path):
     # Clean up
     if tmp_path.exists():
         shutil.rmtree(tmp_path)
+
+
+@pytest.fixture
+def mock_config():
+    """Mock the Config class"""
+    # Need to patch the Config in both modules
+    with patch('hxc.commands.registry.Config') as registry_config, \
+         patch('hxc.commands.init.Config') as init_config:
+        # Create a single mock instance that both patches will return
+        mock_config = MagicMock()
+        registry_config.return_value = mock_config
+        init_config.return_value = mock_config
+        yield mock_config
 
 
 def test_init_command_registration():
@@ -44,10 +58,11 @@ def test_init_command_parser():
     assert "no_git" in actions
     assert "no_commit" in actions
     assert "remote" in actions
+    assert "no_set_default" in actions
 
 
 @patch("subprocess.run")
-def test_init_basic(mock_run, temp_dir):
+def test_init_basic(mock_run, temp_dir, mock_config):
     """Test basic initialization with default options"""
     # Change current working directory to the temp directory
     orig_dir = os.getcwd()
@@ -100,13 +115,19 @@ def test_init_basic(mock_run, temp_dir):
         # Check git commit was called
         args, kwargs = mock_run.call_args_list[2]
         assert args[0][0:2] == ["git", "commit"]
+        
+        # Verify config was updated with registry path
+        mock_config.set.assert_called_once_with(
+            InitCommand.CONFIG_KEY,
+            str(temp_dir.resolve())
+        )
     finally:
         # Restore original directory
         os.chdir(orig_dir)
 
 
 @patch("subprocess.run")
-def test_init_no_git(mock_run, temp_dir):
+def test_init_no_git(mock_run, temp_dir, mock_config):
     """Test initialization with --no-git option"""
     result = main(["init", str(temp_dir), "--no-git"])
     
@@ -119,10 +140,16 @@ def test_init_no_git(mock_run, temp_dir):
     
     # Check git commands were NOT called
     assert mock_run.call_count == 0
+    
+    # Verify config was updated with registry path
+    mock_config.set.assert_called_once_with(
+        InitCommand.CONFIG_KEY,
+        str(temp_dir.resolve())
+    )
 
 
 @patch("subprocess.run")
-def test_init_no_commit(mock_run, temp_dir):
+def test_init_no_commit(mock_run, temp_dir, mock_config):
     """Test initialization with --no-commit option"""
     result = main(["init", str(temp_dir), "--no-commit"])
     
@@ -135,10 +162,16 @@ def test_init_no_commit(mock_run, temp_dir):
     # Check the git init command
     args, kwargs = mock_run.call_args_list[0]
     assert args[0] == ["git", "init"]
+    
+    # Verify config was updated with registry path
+    mock_config.set.assert_called_once_with(
+        InitCommand.CONFIG_KEY,
+        str(temp_dir.resolve())
+    )
 
 
 @patch("subprocess.run")
-def test_init_with_remote(mock_run, temp_dir):
+def test_init_with_remote(mock_run, temp_dir, mock_config):
     """Test initialization with --remote option"""
     remote_url = "https://github.com/user/repo.git"
     result = main(["init", str(temp_dir), "--remote", remote_url])
@@ -168,6 +201,12 @@ def test_init_with_remote(mock_run, temp_dir):
     # Check git push was called
     args, kwargs = mock_run.call_args_list[4]
     assert args[0][0:2] == ["git", "push"]
+    
+    # Verify config was updated with registry path
+    mock_config.set.assert_called_once_with(
+        InitCommand.CONFIG_KEY,
+        str(temp_dir.resolve())
+    )
 
 
 @patch("builtins.print")
@@ -188,3 +227,41 @@ def test_init_non_empty_directory(mock_print, temp_dir):
     
     # Check that no directories were created
     assert not (temp_dir / "programs").exists()
+
+
+@patch("subprocess.run")
+def test_init_no_set_default(mock_run, temp_dir, mock_config):
+    """Test initialization with --no-set-default option"""
+    result = main(["init", str(temp_dir), "--no-set-default"])
+    
+    # Check the result is successful
+    assert result == 0
+    
+    # Verify config was NOT updated with registry path
+    mock_config.set.assert_not_called()
+
+
+@patch("subprocess.run")
+@patch("hxc.commands.init.InitCommand.initialize_registry", side_effect=Exception("Test error"))
+def test_init_error_handling(mock_init_registry, mock_run, temp_dir, mock_config):
+    """Test error handling during initialization"""
+    with patch("builtins.print") as mock_print:
+        result = main(["init", str(temp_dir)])
+        
+        # Check result indicates failure
+        assert result == 1
+        
+        # Verify error message was printed
+        mock_print.assert_called_with("❌ Error initializing registry: Test error")
+        
+        # Verify config was NOT updated
+        mock_config.set.assert_not_called()
+
+
+def test_registry_path_consistency():
+    """Test that registry path keys are consistent between Init and Registry commands"""
+    from hxc.commands.registry import RegistryCommand
+    
+    # Verify both commands use the same configuration key
+    assert InitCommand.CONFIG_KEY == RegistryCommand.CONFIG_KEY
+    assert InitCommand.CONFIG_KEY == "registry_path"
