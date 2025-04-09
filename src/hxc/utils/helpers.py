@@ -1,9 +1,9 @@
-# src/hxc/utils/helpers.py
 """
 Helper utilities for HXC
 """
 import os
 import logging
+from pathlib import Path
 from typing import Optional
 
 
@@ -42,17 +42,49 @@ def get_project_root(start_dir: Optional[str] = None) -> Optional[str]:
     Returns:
         Project root directory path or None if not found
     """
-    current_dir = os.path.abspath(start_dir or os.getcwd())
+    current_dir = Path(start_dir or os.getcwd()).resolve()
     
     # Look for .hxc directory as a marker
     marker = '.hxc'
     
+    # Also check for the registry structure
+    registry_markers = ["config.yml", "programs", "projects", "missions", "actions"]
+    
     while True:
-        if os.path.exists(os.path.join(current_dir, marker)):
-            return current_dir
+        # Check for .hxc directory marker
+        if (current_dir / marker).exists() and (current_dir / marker).is_dir():
+            return str(current_dir)
+            
+        # Check for the registry structure
+        if all((current_dir / rm).exists() for rm in registry_markers):
+            return str(current_dir)
         
-        parent_dir = os.path.dirname(current_dir)
+        parent_dir = current_dir.parent
         if parent_dir == current_dir:  # Reached filesystem root
             return None
             
         current_dir = parent_dir
+
+
+def is_valid_registry(path: str) -> bool:
+    """
+    Check if the given path is a valid HXC registry
+    
+    Args:
+        path: Path to check
+        
+    Returns:
+        True if path is a valid registry, False otherwise
+    """
+    registry_path = Path(path)
+    
+    # Check for required directories and files
+    required_paths = [
+        registry_path / "config.yml",
+        registry_path / "programs",
+        registry_path / "projects",
+        registry_path / "missions",
+        registry_path / "actions"
+    ]
+    
+    return all(p.exists() for p in required_paths)

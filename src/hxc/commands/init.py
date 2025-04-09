@@ -8,6 +8,7 @@ import subprocess
 import argparse
 from hxc.commands import register_command
 from hxc.commands.base import BaseCommand
+from hxc.core.config import Config
 
 
 @register_command
@@ -16,6 +17,9 @@ class InitCommand(BaseCommand):
     
     name = "init"
     help = "Initialize a new project registry"
+    
+    # Config key for storing registry path (same as in RegistryCommand)
+    CONFIG_KEY = "registry_path"
     
     @classmethod
     def register_subparser(cls, subparsers):
@@ -28,6 +32,8 @@ class InitCommand(BaseCommand):
                           help='Skip initial Git commit')
         parser.add_argument('--remote', metavar='URL',
                           help='Set Git remote repository URL')
+        parser.add_argument('--no-set-default', action='store_true',
+                          help='Do not set this registry as the default')
         return parser
     
     @classmethod
@@ -36,9 +42,17 @@ class InitCommand(BaseCommand):
         git = not args.no_git
         commit = not args.no_commit
         remote_url = args.remote if hasattr(args, 'remote') else None
+        set_default = not args.no_set_default if hasattr(args, 'no_set_default') else True
         
         try:
-            cls.initialize_registry(path, git, commit, remote_url)
+            registry_path = cls.initialize_registry(path, git, commit, remote_url)
+            
+            # Store the registry path in config if requested
+            if set_default and registry_path:
+                config = Config()
+                config.set(cls.CONFIG_KEY, str(registry_path))
+                print(f"✅ Registry set as default")
+                
             return 0
         except Exception as e:
             print(f"❌ Error initializing registry: {e}")
@@ -54,7 +68,7 @@ class InitCommand(BaseCommand):
         existing_files = [f for f in os.listdir(path) if not f.startswith('.')]
         if existing_files:
             print(f"⚠️  Warning: Directory is not empty. Registry initialization aborted.")
-            return
+            return None
             
         # Create required subfolders
         for folder in ["programs", "projects", "missions", "actions"]:
@@ -65,6 +79,10 @@ class InitCommand(BaseCommand):
         if not config_path.exists():
             config_path.write_text("# HoxCore Registry Configuration\n")
 
+        # Create .hxc directory as a marker for the registry root
+        hxc_dir = base / ".hxc"
+        hxc_dir.mkdir(exist_ok=True)
+        
         # Create .gitignore
         gitignore = base / ".gitignore"
         gitignore.write_text("index.db\n")
@@ -108,4 +126,6 @@ class InitCommand(BaseCommand):
                 if remote_url:
                     subprocess.run(["git", "push", "-u", "origin", "master"], cwd=base)
 
-        print(f"✅ Registry initialized at: {base.resolve()}")
+        absolute_path = base.resolve()
+        print(f"✅ Registry initialized at: {absolute_path}")
+        return str(absolute_path)
