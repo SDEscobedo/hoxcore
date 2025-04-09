@@ -1,0 +1,242 @@
+"""
+Tests for the delete command
+"""
+import os
+import yaml
+import pathlib
+import shutil
+import pytest
+from unittest.mock import patch, MagicMock
+
+from hxc.cli import main
+from hxc.commands.delete import DeleteCommand
+from hxc.commands.registry import RegistryCommand
+
+
+@pytest.fixture
+def temp_registry(tmp_path):
+    """Create a temporary registry for testing"""
+    # Create directory structure
+    registry_path = tmp_path / "test_registry"
+    registry_path.mkdir(parents=True)
+    
+    # Create marker files and directories
+    (registry_path / ".hxc").mkdir()
+    (registry_path / "config.yml").write_text("# Test config")
+    
+    # Create entity directories
+    (registry_path / "programs").mkdir()
+    (registry_path / "projects").mkdir()
+    (registry_path / "missions").mkdir()
+    (registry_path / "actions").mkdir()
+    
+    # Create test entity files
+    project_dir = registry_path / "projects"
+    
+    # Create a test project file
+    project_data = {
+        "type": "project",
+        "uid": "12345678",
+        "id": "P-001",
+        "title": "Test Project",
+        "status": "active",
+        "start_date": "2024-01-01"
+    }
+    
+    with open(project_dir / "proj-12345678.yml", 'w') as f:
+        yaml.dump(project_data, f)
+    
+    # Create a second project with only ID (no UID in filename)
+    project_data2 = {
+        "type": "project",
+        "uid": "87654321",
+        "id": "P-ID-ONLY",
+        "title": "ID Only Project",
+        "status": "active",
+        "start_date": "2024-01-01"
+    }
+    
+    with open(project_dir / "proj-87654321.yml", 'w') as f:
+        yaml.dump(project_data2, f)
+        
+    # Create test program file
+    program_dir = registry_path / "programs"
+    program_data = {
+        "type": "program",
+        "uid": "abcdef12",
+        "id": "PG-001",
+        "title": "Test Program",
+        "status": "active",
+        "start_date": "2024-01-01"
+    }
+    
+    with open(program_dir / "prog-abcdef12.yml", 'w') as f:
+        yaml.dump(program_data, f)
+    
+    yield registry_path
+    
+    # Clean up
+    if registry_path.exists():
+        shutil.rmtree(registry_path)
+
+
+def test_delete_command_registration():
+    """Test that the delete command is properly registered"""
+    from hxc.commands import get_available_commands
+    
+    available_commands = get_available_commands()
+    assert "delete" in available_commands
+
+
+def test_delete_command_parser():
+    """Test delete command parser registration"""
+    from argparse import ArgumentParser
+    
+    parser = ArgumentParser()
+    subparsers = parser.add_subparsers()
+    
+    cmd_parser = DeleteCommand.register_subparser(subparsers)
+    
+    # Verify parser has the expected arguments
+    actions = {action.dest for action in cmd_parser._actions}
+    assert "identifier" in actions
+    assert "type" in actions
+    assert "force" in actions
+    assert "registry" in actions
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_delete_by_uid_with_confirmation(mock_get_registry_path, temp_registry):
+    """Test deleting an entity by UID with confirmation"""
+    # Configure mock to return the temp registry
+    mock_get_registry_path.return_value = str(temp_registry)
+    
+    # Mock the input function to simulate user confirmation
+    with patch("builtins.input", return_value="y"):
+        result = main(["delete", "12345678"])
+        
+        # Check result
+        assert result == 0
+        
+        # Check that file was deleted
+        project_file = temp_registry / "projects" / "proj-12345678.yml"
+        assert not project_file.exists()
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_delete_by_uid_cancelled(mock_get_registry_path, temp_registry):
+    """Test cancelling deletion when user doesn't confirm"""
+    # Configure mock to return the temp registry
+    mock_get_registry_path.return_value = str(temp_registry)
+    
+    # Mock the input function to simulate user declining
+    with patch("builtins.input", return_value="n"):
+        result = main(["delete", "12345678"])
+        
+        # Check result indicates cancellation
+        assert result == 1
+        
+        # Check that file was not deleted
+        project_file = temp_registry / "projects" / "proj-12345678.yml"
+        assert project_file.exists()
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_delete_by_uid_force(mock_get_registry_path, temp_registry):
+    """Test deleting an entity with --force flag (no confirmation)"""
+    # Configure mock to return the temp registry
+    mock_get_registry_path.return_value = str(temp_registry)
+    
+    result = main(["delete", "12345678", "--force"])
+    
+    # Check result
+    assert result == 0
+    
+    # Check that file was deleted
+    project_file = temp_registry / "projects" / "proj-12345678.yml"
+    assert not project_file.exists()
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_delete_by_id(mock_get_registry_path, temp_registry):
+    """Test deleting an entity by ID"""
+    # Configure mock to return the temp registry
+    mock_get_registry_path.return_value = str(temp_registry)
+    
+    # Mock the input function to simulate user confirmation
+    with patch("builtins.input", return_value="y"):
+        result = main(["delete", "P-ID-ONLY"])
+        
+        # Check result
+        assert result == 0
+        
+        # Check that file was deleted
+        project_file = temp_registry / "projects" / "proj-87654321.yml"
+        assert not project_file.exists()
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_delete_with_type_filter(mock_get_registry_path, temp_registry):
+    """Test deleting an entity with type filter"""
+    # Configure mock to return the temp registry
+    mock_get_registry_path.return_value = str(temp_registry)
+    
+    # Mock the input function to simulate user confirmation
+    with patch("builtins.input", return_value="y"):
+        result = main(["delete", "12345678", "--type", "project"])
+        
+        # Check result
+        assert result == 0
+        
+        # Check that file was deleted
+        project_file = temp_registry / "projects" / "proj-12345678.yml"
+        assert not project_file.exists()
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_delete_entity_not_found(mock_get_registry_path, temp_registry):
+    """Test error when entity is not found"""
+    # Configure mock to return the temp registry
+    mock_get_registry_path.return_value = str(temp_registry)
+    
+    with patch("builtins.print") as mock_print:
+        result = main(["delete", "nonexistent"])
+        
+        # Check result indicates failure
+        assert result == 1
+        
+        # Check error message
+        mock_print.assert_called_with("❌ No entity found with identifier 'nonexistent'")
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path", return_value=None)
+@patch("hxc.commands.delete.DeleteCommand._get_registry_path", return_value=None)
+def test_delete_no_registry(mock_get_project_root, mock_get_registry_path):
+    """Test deleting when no registry is available"""
+    with patch("builtins.print") as mock_print:
+        result = main(["delete", "12345678"])
+        
+        # Check result indicates failure
+        assert result == 1
+        
+        # Check error message
+        mock_print.assert_called_with("❌ No registry found. Please specify with --registry or initialize one with 'hxc init'")
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_delete_error_handling(mock_get_registry_path, temp_registry):
+    """Test error handling during deletion"""
+    # Configure mock to return the temp registry
+    mock_get_registry_path.return_value = str(temp_registry)
+    
+    # Force an error by patching os.remove
+    with patch("os.remove", side_effect=Exception("Test error")):
+        with patch("builtins.input", return_value="y"):
+            with patch("builtins.print") as mock_print:
+                result = main(["delete", "12345678"])
+                
+                # Check result indicates failure
+                assert result == 1
+                
+                # Check error message
+                assert any("Error deleting entity" in call[0][0] for call in mock_print.call_args_list)
