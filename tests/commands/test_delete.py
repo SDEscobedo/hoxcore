@@ -2,6 +2,7 @@
 Tests for the delete command
 """
 import os
+import sys
 import yaml
 import pathlib
 import shutil
@@ -277,7 +278,7 @@ def test_delete_file_outside_registry_blocked(mock_get_registry_path, temp_regis
             with patch("builtins.print") as mock_print:
                 result = main(["delete", "external"])
                 
-                # Check result indicates failure
+                # Check result indicates failure due to security error
                 assert result == 1
                 
                 # Check that security error is raised
@@ -287,6 +288,7 @@ def test_delete_file_outside_registry_blocked(mock_get_registry_path, temp_regis
                 assert external_file.exists()
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="Symlinks require admin privileges on Windows")
 @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
 def test_delete_symlink_escape_blocked(mock_get_registry_path, temp_registry, tmp_path):
     """Test that symlinks pointing outside registry are blocked"""
@@ -367,11 +369,8 @@ def test_delete_with_relative_path_traversal(mock_get_registry_path, temp_regist
             # Check result indicates failure
             assert result == 1
             
-            # Verify no files outside registry were affected
-            assert not any(
-                "Security error" in call[0][0] or "No entity found" in call[0][0]
-                for call in mock_print.call_args_list
-            ) or any(
+            # Verify appropriate error message
+            assert any(
                 "Security error" in call[0][0] or "No entity found" in call[0][0]
                 for call in mock_print.call_args_list
             )

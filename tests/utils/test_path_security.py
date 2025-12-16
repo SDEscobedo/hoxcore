@@ -2,6 +2,7 @@
 Tests for path security utilities
 """
 import os
+import sys
 import pytest
 from pathlib import Path
 from hxc.utils.path_security import (
@@ -68,6 +69,7 @@ def test_resolve_safe_path_traversal_absolute(temp_registry):
     assert "outside the registry root" in str(exc_info.value)
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="Symlinks require admin privileges on Windows")
 def test_resolve_safe_path_symlink_escape(temp_registry, tmp_path):
     """Test that symlinks cannot escape the registry"""
     # Create a directory outside the registry

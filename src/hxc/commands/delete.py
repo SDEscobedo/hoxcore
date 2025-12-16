@@ -78,10 +78,17 @@ class DeleteCommand(BaseCommand):
             
             file_path, entity_type = files[0]
             
+            # Verify the file is within the registry before deletion
+            try:
+                secure_file_path = resolve_safe_path(registry_path, file_path)
+            except PathSecurityError as e:
+                print(f"❌ Security error: {e}")
+                return 1
+            
             # Ask for confirmation unless --force is used
             if not args.force:
-                entity_name = cls._get_entity_name(file_path)
-                print(f"⚠️  Warning: About to delete {entity_type} '{entity_name}' at {file_path}")
+                entity_name = cls._get_entity_name(str(secure_file_path))
+                print(f"⚠️  Warning: About to delete {entity_type} '{entity_name}' at {secure_file_path}")
                 confirmation = input("Are you sure? (y/N): ")
                 if confirmation.lower() != 'y':
                     print("❌ Deletion cancelled")
@@ -89,8 +96,8 @@ class DeleteCommand(BaseCommand):
             
             # Delete the file
             try:
-                os.remove(file_path)
-                print(f"✅ Deleted {entity_type} at {file_path}")
+                os.remove(str(secure_file_path))
+                print(f"✅ Deleted {entity_type} at {secure_file_path}")
                 return 0
             except Exception as e:
                 print(f"❌ Error deleting entity: {e}")
