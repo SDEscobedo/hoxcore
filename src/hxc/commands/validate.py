@@ -13,6 +13,7 @@ from hxc.commands.base import BaseCommand
 from hxc.commands.registry import RegistryCommand
 from hxc.utils.helpers import get_project_root
 from hxc.utils.path_security import resolve_safe_path, PathSecurityError
+from hxc.core.enums import EntityType, EntityStatus
 
 
 @register_command
@@ -22,19 +23,8 @@ class ValidateCommand(BaseCommand):
     name = "validate"
     help = "Validate registry integrity and consistency"
     
-    # Entity types and their directories
-    ENTITY_TYPES = {
-        "program": "programs",
-        "project": "projects",
-        "mission": "missions",
-        "action": "actions"
-    }
-    
     # Required fields for all entities
     REQUIRED_FIELDS = ["type", "uid", "title"]
-    
-    # Valid status values
-    VALID_STATUSES = ["active", "completed", "on-hold", "cancelled", "planned"]
     
     @classmethod
     def register_subparser(cls, subparsers) -> argparse.ArgumentParser:
@@ -155,7 +145,9 @@ class ValidateCommand(BaseCommand):
         if verbose:
             print("📂 Loading entities...")
         
-        for entity_type, folder_name in cls.ENTITY_TYPES.items():
+        for entity_type in EntityType:
+            folder_name = entity_type.get_folder_name()
+            
             try:
                 type_dir = resolve_safe_path(registry_path, folder_name)
             except PathSecurityError as e:
@@ -187,14 +179,14 @@ class ValidateCommand(BaseCommand):
                     entity_data['_file'] = {
                         'path': str(secure_file_path),
                         'name': secure_file_path.name,
-                        'type': entity_type
+                        'type': entity_type.value
                     }
                     
                     entities.append(entity_data)
                     
                     if verbose:
                         uid = entity_data.get('uid', 'NO_UID')
-                        print(f"  ✓ Loaded {entity_type}: {uid} ({file_path.name})")
+                        print(f"  ✓ Loaded {entity_type.value}: {uid} ({file_path.name})")
                         
                 except PathSecurityError as e:
                     errors.append(f"Security error with {file_path.name}: {e}")
@@ -350,17 +342,19 @@ class ValidateCommand(BaseCommand):
         entities: List[Dict[str, Any]], 
         verbose: bool
     ) -> List[str]:
-        """Validate status values"""
+        """Validate status values using EntityStatus enum"""
         errors = []
         
         if verbose:
             print("🔍 Checking status values...")
         
+        valid_statuses = EntityStatus.values()
+        
         for entity in entities:
             status = entity.get('status')
-            if status and status not in cls.VALID_STATUSES:
+            if status and status not in valid_statuses:
                 file_name = entity.get('_file', {}).get('name', 'unknown')
-                error = f"Invalid status '{status}' in {file_name}. Valid values: {', '.join(cls.VALID_STATUSES)}"
+                error = f"Invalid status '{status}' in {file_name}. Valid values: {', '.join(valid_statuses)}"
                 errors.append(error)
                 if verbose:
                     print(f"  ❌ {error}")
@@ -379,17 +373,27 @@ class ValidateCommand(BaseCommand):
         entities: List[Dict[str, Any]], 
         verbose: bool
     ) -> List[str]:
-        """Validate entity types match their directory"""
+        """Validate entity types match their directory using EntityType enum"""
         errors = []
         
         if verbose:
             print("🔍 Checking entity types...")
+        
+        valid_types = EntityType.values()
         
         for entity in entities:
             declared_type = entity.get('type')
             file_type = entity.get('_file', {}).get('type')
             file_name = entity.get('_file', {}).get('name', 'unknown')
             
+            # Check if declared type is valid
+            if declared_type and declared_type not in valid_types:
+                error = f"Invalid entity type '{declared_type}' in {file_name}. Valid types: {', '.join(valid_types)}"
+                errors.append(error)
+                if verbose:
+                    print(f"  ❌ {error}")
+            
+            # Check if type matches directory
             if declared_type and file_type and declared_type != file_type:
                 error = f"Type mismatch in {file_name}: declared as '{declared_type}' but in '{file_type}' directory"
                 errors.append(error)
