@@ -11,6 +11,7 @@ from unittest.mock import patch, MagicMock
 from hxc.cli import main
 from hxc.commands.create import CreateCommand
 from hxc.commands.registry import RegistryCommand
+from hxc.utils.path_security import PathSecurityError
 
 
 @pytest.fixture
@@ -249,3 +250,98 @@ def test_create_error_handling(mock_get_registry_path, temp_registry):
             
             # Check error message
             assert any("Error creating project" in call[0][0] for call in mock_print.call_args_list)
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_create_path_traversal_protection(mock_get_registry_path, temp_registry):
+    """Test that path traversal attempts are blocked during entity creation"""
+    # Configure mock to return the temp registry
+    mock_get_registry_path.return_value = str(temp_registry)
+    
+    # Mock get_safe_entity_path to raise PathSecurityError
+    with patch("hxc.commands.create.get_safe_entity_path", side_effect=PathSecurityError("Path traversal detected")):
+        with patch("builtins.print") as mock_print:
+            result = main(["create", "project", "Malicious Project"])
+            
+            # Check result indicates failure
+            assert result == 1
+            
+            # Check that security error message is displayed
+            assert any("Security error" in call[0][0] for call in mock_print.call_args_list)
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_create_invalid_entity_type_protection(mock_get_registry_path, temp_registry):
+    """Test that invalid entity types are rejected"""
+    # Configure mock to return the temp registry
+    mock_get_registry_path.return_value = str(temp_registry)
+    
+    # Mock get_safe_entity_path to raise ValueError for invalid type
+    with patch("hxc.commands.create.get_safe_entity_path", side_effect=ValueError("Invalid entity type")):
+        with patch("builtins.print") as mock_print:
+            result = main(["create", "project", "Test Project"])
+            
+            # Check result indicates failure
+            assert result == 1
+            
+            # Check that error message is displayed
+            assert any("Invalid entity type" in call[0][0] for call in mock_print.call_args_list)
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_create_entity_stays_within_registry(mock_get_registry_path, temp_registry):
+    """Test that created entities are always within the registry boundaries"""
+    # Configure mock to return the temp registry
+    mock_get_registry_path.return_value = str(temp_registry)
+    
+    # Fix uuid for predictable output
+    with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
+        result = main(["create", "project", "Test Project"])
+        
+        # Check result
+        assert result == 0
+        
+        # Check that file was created within registry
+        project_file = temp_registry / "projects" / "proj-12345678.yml"
+        assert project_file.exists()
+        
+        # Verify the file is within the registry root
+        assert str(temp_registry) in str(project_file.resolve())
+        
+        # Verify the file is in the correct subdirectory
+        assert project_file.parent == temp_registry / "projects"
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_create_all_entity_types_within_registry(mock_get_registry_path, temp_registry):
+    """Test that all entity types are created within their respective directories"""
+    # Configure mock to return the temp registry
+    mock_get_registry_path.return_value = str(temp_registry)
+    
+    entity_types = [
+        ("program", "programs", "prog"),
+        ("project", "projects", "proj"),
+        ("mission", "missions", "miss"),
+        ("action", "actions", "act")
+    ]
+    
+    for entity_type, folder, prefix in entity_types:
+        # Fix uuid for predictable output
+        with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
+            result = main(["create", entity_type, f"Test {entity_type.title()}"])
+            
+            # Check result
+            assert result == 0
+            
+            # Check that file was created in correct location
+            entity_file = temp_registry / folder / f"{prefix}-12345678.yml"
+            assert entity_file.exists()
+            
+            # Verify the file is within the registry root
+            assert str(temp_registry) in str(entity_file.resolve())
+            
+            # Verify the file is in the correct subdirectory
+            assert entity_file.parent == temp_registry / folder
+            
+            # Clean up for next iteration
+            entity_file.unlink()

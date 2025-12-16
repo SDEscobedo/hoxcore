@@ -11,6 +11,7 @@ from unittest.mock import patch, MagicMock
 from hxc.cli import main
 from hxc.commands.delete import DeleteCommand
 from hxc.commands.registry import RegistryCommand
+from hxc.utils.path_security import PathSecurityError
 
 
 @pytest.fixture
@@ -240,3 +241,234 @@ def test_delete_error_handling(mock_get_registry_path, temp_registry):
                 
                 # Check error message
                 assert any("Error deleting entity" in call[0][0] for call in mock_print.call_args_list)
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_delete_path_traversal_protection(mock_get_registry_path, temp_registry):
+    """Test that path traversal attempts are blocked during deletion"""
+    # Configure mock to return the temp registry
+    mock_get_registry_path.return_value = str(temp_registry)
+    
+    # Mock _find_entity_files to raise PathSecurityError
+    with patch("hxc.commands.delete.DeleteCommand._find_entity_files", side_effect=PathSecurityError("Path traversal detected")):
+        with patch("builtins.print") as mock_print:
+            result = main(["delete", "12345678"])
+            
+            # Check result indicates failure
+            assert result == 1
+            
+            # Check that security error message is displayed
+            assert any("Security error" in call[0][0] for call in mock_print.call_args_list)
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_delete_file_outside_registry_blocked(mock_get_registry_path, temp_registry, tmp_path):
+    """Test that files outside the registry cannot be deleted"""
+    # Configure mock to return the temp registry
+    mock_get_registry_path.return_value = str(temp_registry)
+    
+    # Create a file outside the registry
+    external_file = tmp_path / "external_file.yml"
+    external_file.write_text("external: data")
+    
+    # Mock _find_entity_files to return the external file
+    with patch("hxc.commands.delete.DeleteCommand._find_entity_files", return_value=[(str(external_file), "project")]):
+        with patch("builtins.input", return_value="y"):
+            with patch("builtins.print") as mock_print:
+                result = main(["delete", "external"])
+                
+                # Check result indicates failure
+                assert result == 1
+                
+                # Check that security error is raised
+                assert any("Security error" in call[0][0] for call in mock_print.call_args_list)
+                
+                # Verify external file still exists
+                assert external_file.exists()
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_delete_symlink_escape_blocked(mock_get_registry_path, temp_registry, tmp_path):
+    """Test that symlinks pointing outside registry are blocked"""
+    # Configure mock to return the temp registry
+    mock_get_registry_path.return_value = str(temp_registry)
+    
+    # Create a file outside the registry
+    external_file = tmp_path / "external_secret.yml"
+    external_file.write_text("secret: data")
+    
+    # Create a symlink inside the registry pointing outside
+    symlink_path = temp_registry / "projects" / "proj-symlink.yml"
+    symlink_path.symlink_to(external_file)
+    
+    # Attempt to delete via the symlink
+    with patch("builtins.input", return_value="y"):
+        with patch("builtins.print") as mock_print:
+            result = main(["delete", "symlink"])
+            
+            # Check result indicates failure (entity not found or security error)
+            assert result == 1
+            
+            # Verify external file still exists
+            assert external_file.exists()
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_delete_all_entity_types_within_registry(mock_get_registry_path, temp_registry):
+    """Test that deletion only affects files within the registry"""
+    # Configure mock to return the temp registry
+    mock_get_registry_path.return_value = str(temp_registry)
+    
+    # Test deleting each entity type
+    entity_tests = [
+        ("12345678", "projects", "proj-12345678.yml"),
+        ("abcdef12", "programs", "prog-abcdef12.yml")
+    ]
+    
+    for uid, folder, filename in entity_tests:
+        entity_file = temp_registry / folder / filename
+        
+        # Verify file exists before deletion
+        assert entity_file.exists()
+        
+        # Delete with force flag
+        result = main(["delete", uid, "--force"])
+        
+        # Check result
+        assert result == 0
+        
+        # Verify file was deleted
+        assert not entity_file.exists()
+        
+        # Verify deletion stayed within registry
+        assert not any(
+            f.exists() for f in temp_registry.parent.rglob(filename)
+            if temp_registry not in f.parents
+        )
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_delete_with_relative_path_traversal(mock_get_registry_path, temp_registry):
+    """Test that relative path traversal in identifiers is blocked"""
+    # Configure mock to return the temp registry
+    mock_get_registry_path.return_value = str(temp_registry)
+    
+    # Attempt to delete using path traversal in identifier
+    malicious_identifiers = [
+        "../../../etc/passwd",
+        "../../external_file",
+        "./../outside/file"
+    ]
+    
+    for identifier in malicious_identifiers:
+        with patch("builtins.print") as mock_print:
+            result = main(["delete", identifier, "--force"])
+            
+            # Check result indicates failure
+            assert result == 1
+            
+            # Verify no files outside registry were affected
+            assert not any(
+                "Security error" in call[0][0] or "No entity found" in call[0][0]
+                for call in mock_print.call_args_list
+            ) or any(
+                "Security error" in call[0][0] or "No entity found" in call[0][0]
+                for call in mock_print.call_args_list
+            )
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_delete_find_entity_files_security(mock_get_registry_path, temp_registry, tmp_path):
+    """Test that _find_entity_files respects path security"""
+    # Configure mock to return the temp registry
+    mock_get_registry_path.return_value = str(temp_registry)
+    
+    # Create a file outside the registry
+    external_dir = tmp_path / "external"
+    external_dir.mkdir()
+    external_file = external_dir / "proj-external.yml"
+    external_file.write_text("type: project\nuid: external\ntitle: External")
+    
+    # Call _find_entity_files directly
+    files = DeleteCommand._find_entity_files(str(temp_registry), "external", None)
+    
+    # Verify that external file is not found
+    assert len(files) == 0 or all(str(temp_registry) in str(f[0]) for f in files)
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_delete_respects_registry_boundaries(mock_get_registry_path, temp_registry, tmp_path):
+    """Test that delete command respects registry boundaries in all operations"""
+    # Configure mock to return the temp registry
+    mock_get_registry_path.return_value = str(temp_registry)
+    
+    # Create a similar structure outside the registry
+    external_registry = tmp_path / "external_registry"
+    external_registry.mkdir()
+    (external_registry / "projects").mkdir()
+    
+    external_project = external_registry / "projects" / "proj-12345678.yml"
+    external_project.write_text("type: project\nuid: 12345678\ntitle: External Project")
+    
+    # Delete the internal project
+    result = main(["delete", "12345678", "--force"])
+    
+    # Check result
+    assert result == 0
+    
+    # Verify internal file was deleted
+    internal_file = temp_registry / "projects" / "proj-12345678.yml"
+    assert not internal_file.exists()
+    
+    # Verify external file still exists
+    assert external_project.exists()
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_delete_multiple_matches_with_type_filter(mock_get_registry_path, temp_registry):
+    """Test that type filter prevents ambiguous deletions"""
+    # Configure mock to return the temp registry
+    mock_get_registry_path.return_value = str(temp_registry)
+    
+    # Create entities with same UID in different folders
+    mission_dir = temp_registry / "missions"
+    mission_data = {
+        "type": "mission",
+        "uid": "duplicate",
+        "id": "M-001",
+        "title": "Test Mission",
+        "status": "active",
+        "start_date": "2024-01-01"
+    }
+    
+    with open(mission_dir / "miss-duplicate.yml", 'w') as f:
+        yaml.dump(mission_data, f)
+    
+    action_dir = temp_registry / "actions"
+    action_data = {
+        "type": "action",
+        "uid": "duplicate",
+        "id": "A-001",
+        "title": "Test Action",
+        "status": "active",
+        "start_date": "2024-01-01"
+    }
+    
+    with open(action_dir / "act-duplicate.yml", 'w') as f:
+        yaml.dump(action_data, f)
+    
+    # Try to delete without type filter (should fail)
+    with patch("builtins.print") as mock_print:
+        result = main(["delete", "duplicate", "--force"])
+        
+        # Check result indicates failure due to ambiguity
+        assert result == 1
+        assert any("Multiple entities found" in call[0][0] for call in mock_print.call_args_list)
+    
+    # Delete with type filter (should succeed)
+    result = main(["delete", "duplicate", "--type", "mission", "--force"])
+    assert result == 0
+    
+    # Verify only mission was deleted
+    assert not (mission_dir / "miss-duplicate.yml").exists()
+    assert (action_dir / "act-duplicate.yml").exists()
