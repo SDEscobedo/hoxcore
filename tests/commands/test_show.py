@@ -11,6 +11,7 @@ from unittest.mock import patch, mock_open
 from hxc.cli import main
 from hxc.commands.show import ShowCommand
 from hxc.utils.path_security import resolve_safe_path
+from hxc.core.enums import EntityType, OutputFormat
 
 
 @pytest.fixture
@@ -74,7 +75,7 @@ def test_find_file_by_id(mock_registry_path, sample_project_content):
             
             with patch('builtins.open', mock_open(read_data=yml_content)):
                 with patch('hxc.commands.show.resolve_safe_path', return_value=file_path):
-                    result = ShowCommand.find_file(mock_registry_path, "P-001", "project")
+                    result = ShowCommand.find_file(mock_registry_path, "P-001", EntityType.PROJECT)
                     
                     # Compare resolved paths
                     assert result is not None
@@ -94,7 +95,7 @@ def test_find_file_by_uid(mock_registry_path, sample_project_content):
             
             with patch('builtins.open', mock_open(read_data=yml_content)):
                 with patch('hxc.commands.show.resolve_safe_path', return_value=file_path):
-                    result = ShowCommand.find_file(mock_registry_path, "proj-123", "project")
+                    result = ShowCommand.find_file(mock_registry_path, "proj-123", EntityType.PROJECT)
                     
                     # Compare resolved paths
                     assert result is not None
@@ -130,7 +131,7 @@ def test_display_file_yaml(sample_project_content):
     
     with patch('builtins.open', mock_open(read_data=yml_content)):
         with patch('builtins.print') as mock_print:
-            result = ShowCommand.display_file(file_path, "yaml", False)
+            result = ShowCommand.display_file(file_path, OutputFormat.YAML, False)
             
             assert result == 0
             # Check that print was called (with yaml content)
@@ -145,7 +146,7 @@ def test_display_file_json(sample_project_content):
     
     with patch('builtins.open', mock_open(read_data=yml_content)):
         with patch('builtins.print') as mock_print:
-            result = ShowCommand.display_file(file_path, "json", False)
+            result = ShowCommand.display_file(file_path, OutputFormat.JSON, False)
             
             assert result == 0
             # Check that print was called (with json content)
@@ -160,7 +161,7 @@ def test_display_file_pretty(sample_project_content):
     
     with patch('builtins.open', mock_open(read_data=yml_content)):
         with patch('hxc.commands.show.ShowCommand.display_pretty') as mock_display_pretty:
-            result = ShowCommand.display_file(file_path, "pretty", False)
+            result = ShowCommand.display_file(file_path, OutputFormat.PRETTY, False)
             
             assert result == 0
             # Check that the pretty display method was called
@@ -175,7 +176,7 @@ def test_display_file_raw(sample_project_content):
     
     with patch('builtins.open', mock_open(read_data=yml_content)):
         with patch('builtins.print') as mock_print:
-            result = ShowCommand.display_file(file_path, "yaml", True)
+            result = ShowCommand.display_file(file_path, OutputFormat.YAML, True)
             
             assert result == 0
             # Check that print was called with raw content
@@ -198,8 +199,8 @@ def test_show_command_main(mock_registry_path, sample_project_content):
                 
                 assert result == 0
                 mock_display.assert_called_once()
-                # Verify default format is "pretty"
-                assert mock_display.call_args[0][1] == "pretty"
+                # Verify default format is OutputFormat.PRETTY enum
+                assert mock_display.call_args[0][1] == OutputFormat.PRETTY
 
 
 def test_show_command_file_not_found(mock_registry_path):
@@ -242,7 +243,7 @@ def test_find_file_not_found(mock_registry_path):
         with patch('pathlib.Path.rglob') as mock_rglob:
             mock_rglob.return_value = []
             
-            result = ShowCommand.find_file(mock_registry_path, "nonexistent", "project")
+            result = ShowCommand.find_file(mock_registry_path, "nonexistent", EntityType.PROJECT)
             
             assert result is None
 
@@ -260,7 +261,7 @@ def test_find_file_security_error(mock_registry_path, sample_project_content):
             
             with patch('builtins.open', mock_open(read_data=yml_content)):
                 with patch('hxc.commands.show.resolve_safe_path', side_effect=PathSecurityError("Path traversal detected")):
-                    result = ShowCommand.find_file(mock_registry_path, "P-001", "project")
+                    result = ShowCommand.find_file(mock_registry_path, "P-001", EntityType.PROJECT)
                     
                     # Should return None when security error occurs
                     assert result is None
@@ -280,29 +281,33 @@ def test_show_command_with_type_filter(mock_registry_path, sample_project_conten
                 result = main(["show", "P-001", "--type", "project"])
                 
                 assert result == 0
-                # Verify find_file was called with the correct type
+                # Verify find_file was called with the correct type enum
                 mock_find.assert_called_once()
-                assert mock_find.call_args[0][2] == "project"
+                assert mock_find.call_args[0][2] == EntityType.PROJECT
 
 
 def test_show_command_with_format_options(mock_registry_path, sample_project_content):
     """Test show command with different format options"""
     file_path = Path("/mock/path/project.yml")
     
-    formats = ["yaml", "json", "pretty"]
+    formats = [
+        ("yaml", OutputFormat.YAML),
+        ("json", OutputFormat.JSON),
+        ("pretty", OutputFormat.PRETTY)
+    ]
     
-    for fmt in formats:
+    for fmt_str, fmt_enum in formats:
         with patch('hxc.commands.registry.RegistryCommand.get_registry_path', 
                    return_value=mock_registry_path):
             with patch('hxc.commands.show.ShowCommand.find_file', 
                       return_value=file_path):
                 with patch('hxc.commands.show.ShowCommand.display_file', 
                           return_value=0) as mock_display:
-                    result = main(["show", "P-001", "--format", fmt])
+                    result = main(["show", "P-001", "--format", fmt_str])
                     
                     assert result == 0
-                    # Verify display_file was called with the correct format
-                    assert mock_display.call_args[0][1] == fmt
+                    # Verify display_file was called with the correct format enum
+                    assert mock_display.call_args[0][1] == fmt_enum
 
 
 def test_show_command_with_raw_flag(mock_registry_path, sample_project_content):
@@ -342,7 +347,7 @@ def test_display_file_error_handling(sample_project_content):
     
     with patch('builtins.open', side_effect=Exception("Test error")):
         with patch('builtins.print') as mock_print:
-            result = ShowCommand.display_file(file_path, "yaml", False)
+            result = ShowCommand.display_file(file_path, OutputFormat.YAML, False)
             
             assert result == 1
             # Check that error message was printed

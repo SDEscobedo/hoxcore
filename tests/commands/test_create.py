@@ -263,21 +263,22 @@ def test_create_mission(mock_get_registry_path, temp_registry):
 def test_create_invalid_entity_type():
     """Test that invalid entity type is rejected by CLI parser"""
     with patch("builtins.print") as mock_print:
-        result = main(["create", "invalid_type", "Test Entity"])
+        with pytest.raises(SystemExit) as exc_info:
+            result = main(["create", "invalid_type", "Test Entity"])
         
-        # argparse will exit with code 2 for invalid choice, but main() catches it
-        # The error should be handled gracefully
-        assert result != 0
+        # argparse exits with code 2 for invalid choice
+        assert exc_info.value.code == 2
 
 
 def test_create_invalid_status():
     """Test that invalid status is rejected by CLI parser"""
     with patch("hxc.commands.registry.RegistryCommand.get_registry_path", return_value="/tmp/test"):
         with patch("builtins.print") as mock_print:
-            result = main(["create", "project", "Test Project", "--status", "invalid_status"])
+            with pytest.raises(SystemExit) as exc_info:
+                result = main(["create", "project", "Test Project", "--status", "invalid_status"])
             
-            # argparse will exit with code 2 for invalid choice
-            assert result != 0
+            # argparse exits with code 2 for invalid choice
+            assert exc_info.value.code == 2
 
 
 @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
