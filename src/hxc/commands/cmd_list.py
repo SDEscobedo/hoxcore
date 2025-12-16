@@ -14,6 +14,7 @@ from hxc.commands.base import BaseCommand
 from hxc.commands.registry import RegistryCommand
 from hxc.utils.helpers import get_project_root
 from hxc.utils.path_security import resolve_safe_path, PathSecurityError
+from hxc.core.enums import EntityType, EntityStatus, OutputFormat, SortField
 
 
 @register_command
@@ -22,18 +23,6 @@ class ListCommand(BaseCommand):
     
     name = "list"
     help = "List registry items (projects, programs, missions, actions)"
-    
-    # Valid item types
-    VALID_TYPES = ["project", "program", "mission", "action"]
-    # Mapping from item type to directory and file prefix
-    TYPE_DIR_MAP = {
-        "project": ("projects", "proj-"),
-        "program": ("programs", "prog-"),
-        "mission": ("missions", "miss-"),
-        "action": ("actions", "act-"),
-    }
-    # Valid status values
-    VALID_STATUSES = ["active", "completed", "on-hold", "cancelled", "planned"]
     
     @classmethod
     def register_subparser(cls, subparsers) -> argparse.ArgumentParser:
@@ -44,14 +33,14 @@ class ListCommand(BaseCommand):
             "type", 
             nargs="?", 
             default="project",
-            choices=cls.VALID_TYPES + ["all"],
+            choices=EntityType.values() + ["all"],
             help="Type of items to list (default: project)"
         )
         
         # Filtering options
         parser.add_argument(
             "--status", 
-            choices=cls.VALID_STATUSES + ["any"],
+            choices=EntityStatus.values() + ["any"],
             default="any",
             help="Filter by status (default: any)"
         )
@@ -95,7 +84,7 @@ class ListCommand(BaseCommand):
         )
         parser.add_argument(
             "--sort",
-            choices=["title", "id", "due_date", "status", "created", "modified"],
+            choices=SortField.values(),
             default="title",
             help="Sort items by field (default: title)"
         )
@@ -106,7 +95,7 @@ class ListCommand(BaseCommand):
         )
         parser.add_argument(
             "--format",
-            choices=["table", "yaml", "json", "id"],
+            choices=OutputFormat.values(),
             default="table",
             help="Output format (default: table)"
         )
@@ -116,31 +105,49 @@ class ListCommand(BaseCommand):
     @classmethod
     def execute(cls, args: argparse.Namespace) -> int:
         try:
+            # Validate and convert enum values early
+            try:
+                # Convert type argument to EntityType enum (or handle "all")
+                if args.type == "all":
+                    item_types = list(EntityType)
+                else:
+                    item_types = [EntityType.from_string(args.type)]
+                
+                # Convert status filter to EntityStatus enum (or handle "any")
+                status_filter = None if args.status == "any" else EntityStatus.from_string(args.status)
+                
+                # Convert sort field to SortField enum
+                sort_field = SortField.from_string(args.sort)
+                
+                # Convert output format to OutputFormat enum
+                output_format = OutputFormat.from_string(args.format)
+                
+            except ValueError as e:
+                print(f"❌ Invalid argument: {e}")
+                return 1
+            
             # Get registry path
             registry_path = cls._get_registry_path()
             if not registry_path:
                 print("❌ No registry found. Please initialize or set a registry first.")
                 return 1
             
-            # Determine which types to list
-            item_types = cls.VALID_TYPES if args.type == "all" else [args.type]
-            
             # Collect and filter items
             all_items = []
-            for item_type in item_types:
-                items = cls._get_items(registry_path, item_type)
-                filtered_items = cls._filter_items(items, args)
+            for entity_type in item_types:
+                items = cls._get_items(registry_path, entity_type)
+                filtered_items = cls._filter_items(items, args, status_filter)
                 all_items.extend(filtered_items)
             
             # Sort items
-            all_items = cls._sort_items(all_items, args.sort, args.desc)
+            all_items = cls._sort_items(all_items, sort_field, args.desc)
             
             # Apply maximum limit if specified
             if args.max > 0:
                 all_items = all_items[:args.max]
             
             # Display items
-            cls._display_items(all_items, args.format)
+            cls._display_items(all_items, output_format)
             
             return 0
         except PathSecurityError as e:
@@ -162,12 +169,13 @@ class ListCommand(BaseCommand):
         return get_project_root()
     
     @classmethod
-    def _get_items(cls, registry_path: str, item_type: str) -> List[Dict[str, Any]]:
+    def _get_items(cls, registry_path: str, entity_type: EntityType) -> List[Dict[str, Any]]:
         """Get all items of a specific type from registry"""
         items = []
         
-        # Get directory and file prefix for this type
-        dir_name, file_prefix = cls.TYPE_DIR_MAP[item_type]
+        # Get directory and file prefix for this type using enum methods
+        dir_name = entity_type.get_folder_name()
+        file_prefix = entity_type.get_file_prefix() + "-"
         
         # Securely resolve path to the directory containing this type of items
         try:
@@ -206,14 +214,21 @@ class ListCommand(BaseCommand):
         return items
     
     @classmethod
-    def _filter_items(cls, items: List[Dict[str, Any]], args: argparse.Namespace) -> List[Dict[str, Any]]:
+    def _filter_items(
+        cls, 
+        items: List[Dict[str, Any]], 
+        args: argparse.Namespace,
+        status_filter: Optional[EntityStatus]
+    ) -> List[Dict[str, Any]]:
         """Filter items based on command arguments"""
         filtered_items = []
         
         for item in items:
-            # Filter by status
-            if args.status != "any" and item.get("status") != args.status:
-                continue
+            # Filter by status using enum
+            if status_filter is not None:
+                item_status = item.get("status")
+                if item_status != status_filter.value:
+                    continue
             
             # Filter by tags
             if args.tags:
@@ -260,34 +275,41 @@ class ListCommand(BaseCommand):
         return filtered_items
     
     @classmethod
-    def _sort_items(cls, items: List[Dict[str, Any]], sort_key: str, descending: bool) -> List[Dict[str, Any]]:
-        """Sort items by specified key"""
-        # Handle special sort keys
-        if sort_key == "created":
+    def _sort_items(
+        cls, 
+        items: List[Dict[str, Any]], 
+        sort_field: SortField, 
+        descending: bool
+    ) -> List[Dict[str, Any]]:
+        """Sort items by specified key using enum"""
+        # Handle special sort keys using enum values
+        if sort_field == SortField.CREATED:
             items = sorted(items, key=lambda x: x.get("_file", {}).get("created", ""), reverse=descending)
-        elif sort_key == "modified":
+        elif sort_field == SortField.MODIFIED:
             items = sorted(items, key=lambda x: x.get("_file", {}).get("modified", ""), reverse=descending)
         else:
             # For all other keys, sort by the actual key in the items
-            items = sorted(items, key=lambda x: x.get(sort_key, ""), reverse=descending)
+            items = sorted(items, key=lambda x: x.get(sort_field.value, ""), reverse=descending)
         
         return items
     
     @classmethod
-    def _display_items(cls, items: List[Dict[str, Any]], format_type: str) -> None:
-        """Display items in the specified format"""
+    def _display_items(cls, items: List[Dict[str, Any]], output_format: OutputFormat) -> None:
+        """Display items in the specified format using enum"""
         if not items:
             print("No items found matching criteria.")
             return
             
-        if format_type == "table":
+        if output_format == OutputFormat.TABLE:
             cls._display_table(items)
-        elif format_type == "yaml":
+        elif output_format == OutputFormat.YAML:
             cls._display_yaml(items)
-        elif format_type == "json":
+        elif output_format == OutputFormat.JSON:
             cls._display_json(items)
-        elif format_type == "id":
+        elif output_format == OutputFormat.ID:
             cls._display_ids(items)
+        elif output_format == OutputFormat.PRETTY:
+            cls._display_table(items)  # Use table format for pretty display
     
     @classmethod
     def _display_table(cls, items: List[Dict[str, Any]]) -> None:

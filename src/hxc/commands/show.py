@@ -13,6 +13,7 @@ from hxc.commands.base import BaseCommand
 from hxc.commands.registry import RegistryCommand
 from hxc.utils.helpers import get_project_root
 from hxc.utils.path_security import resolve_safe_path, PathSecurityError
+from hxc.core.enums import EntityType, OutputFormat
 
 
 @register_command
@@ -21,14 +22,6 @@ class ShowCommand(BaseCommand):
     
     name = "show"
     help = "Show the content of a registry file"
-    
-    ENTITY_TYPES = ["program", "project", "mission", "action"]
-    ENTITY_FOLDERS = {
-        "program": "programs",
-        "project": "projects",
-        "mission": "missions",
-        "action": "actions"
-    }
     
     @classmethod
     def register_subparser(cls, subparsers):
@@ -41,13 +34,13 @@ class ShowCommand(BaseCommand):
         )
         parser.add_argument(
             "--type", 
-            choices=cls.ENTITY_TYPES,
+            choices=EntityType.values(),
             help="Entity type (program, project, mission, action). If not specified, all types will be searched."
         )
         parser.add_argument(
             "--format", 
-            choices=["pretty", "yaml", "json"],
-            default="pretty",
+            choices=[OutputFormat.PRETTY.value, OutputFormat.YAML.value, OutputFormat.JSON.value],
+            default=OutputFormat.PRETTY.value,
             help="Output format (default: pretty)"
         )
         parser.add_argument(
@@ -65,9 +58,15 @@ class ShowCommand(BaseCommand):
     @classmethod
     def execute(cls, args):
         try:
+            # Convert string arguments to enums early
+            try:
+                entity_type = EntityType.from_string(args.type) if args.type else None
+                output_format = OutputFormat.from_string(args.format)
+            except ValueError as e:
+                print(f"❌ Invalid argument: {e}")
+                return 1
+            
             identifier = args.identifier
-            entity_type = args.type
-            output_format = args.format
             raw = args.raw
             
             # Get the registry path
@@ -81,7 +80,7 @@ class ShowCommand(BaseCommand):
             if not file_path:
                 print(f"❌ No entity found with identifier '{identifier}'")
                 if entity_type:
-                    print(f"   (search limited to type: {entity_type})")
+                    print(f"   (search limited to type: {entity_type.value})")
                 return 1
             
             # Display the file content
@@ -108,14 +107,14 @@ class ShowCommand(BaseCommand):
         return get_project_root()
     
     @classmethod
-    def find_file(cls, registry_path: str, identifier: str, entity_type: Optional[str] = None) -> Optional[Path]:
+    def find_file(cls, registry_path: str, identifier: str, entity_type: Optional[EntityType] = None) -> Optional[Path]:
         """
         Find a file by ID or UID
         
         Args:
             registry_path: Root directory of the registry
             identifier: ID or UID to search for
-            entity_type: Optional entity type to filter by
+            entity_type: Optional entity type enum to filter by
             
         Returns:
             Path to the entity file if found, None otherwise
@@ -123,10 +122,10 @@ class ShowCommand(BaseCommand):
         Raises:
             PathSecurityError: If any path operation attempts to escape the registry
         """
-        types_to_search = [entity_type] if entity_type else cls.ENTITY_TYPES
+        types_to_search = [entity_type] if entity_type else list(EntityType)
         
-        for t in types_to_search:
-            folder_name = cls.ENTITY_FOLDERS[t]
+        for entity_type_enum in types_to_search:
+            folder_name = entity_type_enum.get_folder_name()
             
             # Securely resolve the folder path
             try:
@@ -161,13 +160,13 @@ class ShowCommand(BaseCommand):
         return None
     
     @classmethod
-    def display_file(cls, file_path: Path, output_format: str, raw: bool) -> int:
+    def display_file(cls, file_path: Path, output_format: OutputFormat, raw: bool) -> int:
         """
         Display the file content in the specified format
         
         Args:
             file_path: Path to the file to display
-            output_format: Format for output (pretty, yaml, json)
+            output_format: OutputFormat enum for output
             raw: Whether to display raw file content
             
         Returns:
@@ -183,10 +182,10 @@ class ShowCommand(BaseCommand):
                 # Parse and display formatted content
                 content = yaml.safe_load(f)
                 
-                if output_format == "json":
+                if output_format == OutputFormat.JSON:
                     import json
                     print(json.dumps(content, indent=2))
-                elif output_format == "yaml":
+                elif output_format == OutputFormat.YAML:
                     print(yaml.dump(content, default_flow_style=False, sort_keys=False))
                 else:  # pretty format
                     cls.display_pretty(content, file_path)
