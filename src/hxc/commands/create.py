@@ -13,6 +13,7 @@ from hxc.commands import register_command
 from hxc.commands.base import BaseCommand
 from hxc.commands.registry import RegistryCommand
 from hxc.utils.helpers import get_project_root
+from hxc.utils.path_security import get_safe_entity_path, PathSecurityError
 
 
 @register_command
@@ -82,16 +83,24 @@ class CreateCommand(BaseCommand):
         # Generate entity data based on arguments
         entity_data = cls._build_entity_data(args)
         
-        # Determine file name and path
+        # Determine file name
         entity_type = args.type
         uid = entity_data.get('uid', str(uuid.uuid4())[:8])
-        folder_name = cls.ENTITY_FOLDERS[entity_type]
         file_prefix = cls.FILE_PREFIXES[entity_type]
         file_name = f"{file_prefix}-{uid}.yml"
         
-        entity_dir = Path(registry_path) / folder_name
-        entity_dir.mkdir(exist_ok=True)
-        file_path = entity_dir / file_name
+        # Get safe path using path security utilities
+        try:
+            file_path = get_safe_entity_path(registry_path, entity_type, file_name)
+        except PathSecurityError as e:
+            print(f"❌ Security error: {e}")
+            return 1
+        except ValueError as e:
+            print(f"❌ Invalid entity type: {e}")
+            return 1
+        
+        # Ensure parent directory exists
+        file_path.parent.mkdir(parents=True, exist_ok=True)
         
         # Write to file
         try:

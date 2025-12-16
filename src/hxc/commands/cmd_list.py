@@ -13,6 +13,7 @@ from hxc.commands import register_command
 from hxc.commands.base import BaseCommand
 from hxc.commands.registry import RegistryCommand
 from hxc.utils.helpers import get_project_root
+from hxc.utils.path_security import resolve_safe_path, PathSecurityError
 
 
 @register_command
@@ -142,6 +143,9 @@ class ListCommand(BaseCommand):
             cls._display_items(all_items, args.format)
             
             return 0
+        except PathSecurityError as e:
+            print(f"❌ Security error: {e}")
+            return 1
         except Exception as e:
             print(f"❌ Error listing items: {e}")
             return 1
@@ -165,27 +169,37 @@ class ListCommand(BaseCommand):
         # Get directory and file prefix for this type
         dir_name, file_prefix = cls.TYPE_DIR_MAP[item_type]
         
-        # Path to the directory containing this type of items
-        type_dir = pathlib.Path(registry_path) / dir_name
+        # Securely resolve path to the directory containing this type of items
+        try:
+            type_dir = resolve_safe_path(registry_path, dir_name)
+        except PathSecurityError as e:
+            print(f"Warning: Security error accessing {dir_name}: {e}")
+            return []
+        
         if not type_dir.exists():
             return []
         
         # Load each YAML file in the directory
         for file_path in type_dir.glob(f"{file_prefix}*.yml"):
             try:
-                with open(file_path, 'r') as f:
+                # Verify that the file is within the registry
+                secure_file_path = resolve_safe_path(registry_path, file_path)
+                
+                with open(secure_file_path, 'r') as f:
                     item_data = yaml.safe_load(f)
                     
                 # Add file metadata
-                file_stat = file_path.stat()
+                file_stat = secure_file_path.stat()
                 item_data['_file'] = {
-                    'path': str(file_path),
-                    'name': file_path.name,
+                    'path': str(secure_file_path),
+                    'name': secure_file_path.name,
                     'created': datetime.datetime.fromtimestamp(file_stat.st_ctime).strftime('%Y-%m-%d'),
                     'modified': datetime.datetime.fromtimestamp(file_stat.st_mtime).strftime('%Y-%m-%d')
                 }
                 
                 items.append(item_data)
+            except PathSecurityError as e:
+                print(f"Warning: Security error with {file_path}: {e}")
             except Exception as e:
                 print(f"Warning: Could not load {file_path}: {e}")
         
