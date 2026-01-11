@@ -14,8 +14,8 @@ pip install hxc
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/hxc.git
-cd hxc
+git clone https://github.com/SDEscobedo/hoxcore
+cd hoxcore
 
 # Create a virtual environment (optional but recommended)
 python -m venv venv
