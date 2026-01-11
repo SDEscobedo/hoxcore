@@ -2,8 +2,8 @@
 Delete command implementation for removing projects, programs, actions, or missions.
 """
 import os
+import yaml
 import argparse
-import glob
 from pathlib import Path
 from typing import Optional, List, Tuple
 
@@ -11,6 +11,7 @@ from hxc.commands import register_command
 from hxc.commands.base import BaseCommand
 from hxc.commands.registry import RegistryCommand
 from hxc.utils.helpers import get_project_root
+from hxc.utils.path_security import resolve_safe_path, PathSecurityError
 
 
 @register_command
@@ -52,46 +53,57 @@ class DeleteCommand(BaseCommand):
     
     @classmethod
     def execute(cls, args):
-        # Get registry path
-        registry_path = cls._get_registry_path(args.registry)
-        if not registry_path:
-            print("❌ No registry found. Please specify with --registry or initialize one with 'hxc init'")
-            return 1
-            
-        # Find the entity file
-        files = cls._find_entity_files(registry_path, args.identifier, args.type)
-        
-        if not files:
-            print(f"❌ No entity found with identifier '{args.identifier}'")
-            if args.type:
-                print(f"   Note: Filter was applied for entity type: {args.type}")
-            return 1
-
-        if len(files) > 1:
-            print(f"❌ Multiple entities found with identifier '{args.identifier}':")
-            for file_path, entity_type in files:
-                print(f"   - {entity_type}: {file_path}")
-            print("Please specify the entity type with --type")
-            return 1
-        
-        file_path, entity_type = files[0]
-        
-        # Ask for confirmation unless --force is used
-        if not args.force:
-            entity_name = cls._get_entity_name(file_path)
-            print(f"⚠️  Warning: About to delete {entity_type} '{entity_name}' at {file_path}")
-            confirmation = input("Are you sure? (y/N): ")
-            if confirmation.lower() != 'y':
-                print("❌ Deletion cancelled")
-                return 1
-        
-        # Delete the file
         try:
-            os.remove(file_path)
-            print(f"✅ Deleted {entity_type} at {file_path}")
-            return 0
-        except Exception as e:
-            print(f"❌ Error deleting entity: {e}")
+            # Get registry path
+            registry_path = cls._get_registry_path(args.registry)
+            if not registry_path:
+                print("❌ No registry found. Please specify with --registry or initialize one with 'hxc init'")
+                return 1
+                
+            # Find the entity file
+            files = cls._find_entity_files(registry_path, args.identifier, args.type)
+            
+            if not files:
+                print(f"❌ No entity found with identifier '{args.identifier}'")
+                if args.type:
+                    print(f"   Note: Filter was applied for entity type: {args.type}")
+                return 1
+
+            if len(files) > 1:
+                print(f"❌ Multiple entities found with identifier '{args.identifier}':")
+                for file_path, entity_type in files:
+                    print(f"   - {entity_type}: {file_path}")
+                print("Please specify the entity type with --type")
+                return 1
+            
+            file_path, entity_type = files[0]
+            
+            # Verify the file is within the registry before deletion
+            try:
+                secure_file_path = resolve_safe_path(registry_path, file_path)
+            except PathSecurityError as e:
+                print(f"❌ Security error: {e}")
+                return 1
+            
+            # Ask for confirmation unless --force is used
+            if not args.force:
+                entity_name = cls._get_entity_name(str(secure_file_path))
+                print(f"⚠️  Warning: About to delete {entity_type} '{entity_name}' at {secure_file_path}")
+                confirmation = input("Are you sure? (y/N): ")
+                if confirmation.lower() != 'y':
+                    print("❌ Deletion cancelled")
+                    return 1
+            
+            # Delete the file
+            try:
+                os.remove(str(secure_file_path))
+                print(f"✅ Deleted {entity_type} at {secure_file_path}")
+                return 0
+            except Exception as e:
+                print(f"❌ Error deleting entity: {e}")
+                return 1
+        except PathSecurityError as e:
+            print(f"❌ Security error: {e}")
             return 1
     
     @classmethod
@@ -120,6 +132,9 @@ class DeleteCommand(BaseCommand):
             
         Returns:
             List of tuples (file_path, entity_type)
+            
+        Raises:
+            PathSecurityError: If any path operation attempts to escape the registry
         """
         results = []
         
@@ -130,23 +145,46 @@ class DeleteCommand(BaseCommand):
             folder = cls.ENTITY_FOLDERS[ent_type]
             prefix = cls.FILE_PREFIXES[ent_type]
             
-            # Check for direct match with file name pattern
-            folder_path = Path(registry_path) / folder
+            # Securely resolve the folder path
+            try:
+                folder_path = resolve_safe_path(registry_path, folder)
+            except PathSecurityError:
+                # Skip this folder if it's not accessible
+                continue
+            
+            if not folder_path.exists():
+                continue
             
             # Look for files with matching UID in filename (prog-{uid}.yml)
             uid_pattern = f"{prefix}-{identifier}.yml"
             for file_path in folder_path.glob(uid_pattern):
-                results.append((str(file_path), ent_type))
+                try:
+                    # Verify the file is within the registry
+                    secure_file_path = resolve_safe_path(registry_path, file_path)
+                    results.append((str(secure_file_path), ent_type))
+                except PathSecurityError:
+                    # Skip files that are outside the registry
+                    continue
             
             # If no direct matches, search inside files for ID field
             if not results:
                 for file_path in folder_path.glob(f"{prefix}-*.yml"):
-                    # Simple ID check - only check if file contains '"id": "{identifier}"'
-                    # or "id: {identifier}" for YAML format
-                    with open(file_path, 'r') as f:
-                        content = f.read()
-                        if f'"id": "{identifier}"' in content or f"id: {identifier}" in content:
-                            results.append((str(file_path), ent_type))
+                    try:
+                        # Verify the file is within the registry
+                        secure_file_path = resolve_safe_path(registry_path, file_path)
+                        
+                        # Read and check the file content
+                        with open(secure_file_path, 'r') as f:
+                            data = yaml.safe_load(f)
+                            if data and isinstance(data, dict):
+                                if data.get('id') == identifier or data.get('uid') == identifier:
+                                    results.append((str(secure_file_path), ent_type))
+                    except PathSecurityError:
+                        # Skip files that are outside the registry
+                        continue
+                    except Exception:
+                        # Skip files that can't be parsed
+                        continue
         
         return results
     
@@ -158,7 +196,6 @@ class DeleteCommand(BaseCommand):
         This is a simple implementation that extracts the title field from the YAML file.
         """
         try:
-            import yaml
             with open(file_path, 'r') as f:
                 data = yaml.safe_load(f)
                 return data.get('title', os.path.basename(file_path))

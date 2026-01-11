@@ -13,6 +13,8 @@ from hxc.commands import register_command
 from hxc.commands.base import BaseCommand
 from hxc.commands.registry import RegistryCommand
 from hxc.utils.helpers import get_project_root
+from hxc.utils.path_security import get_safe_entity_path, PathSecurityError
+from hxc.core.enums import EntityType, EntityStatus
 
 
 @register_command
@@ -22,26 +24,12 @@ class CreateCommand(BaseCommand):
     name = "create"
     help = "Create a new program, project, action, or mission"
     
-    ENTITY_TYPES = ["program", "project", "mission", "action"]
-    ENTITY_FOLDERS = {
-        "program": "programs",
-        "project": "projects",
-        "mission": "missions",
-        "action": "actions"
-    }
-    FILE_PREFIXES = {
-        "program": "prog",
-        "project": "proj",
-        "mission": "miss",
-        "action": "act"
-    }
-    
     @classmethod
     def register_subparser(cls, subparsers):
         parser = super().register_subparser(subparsers)
         
         # Required arguments
-        parser.add_argument('type', choices=cls.ENTITY_TYPES,
+        parser.add_argument('type', choices=EntityType.values(),
                           help='Type of entity to create')
         parser.add_argument('title', 
                           help='Title of the entity')
@@ -52,7 +40,7 @@ class CreateCommand(BaseCommand):
         parser.add_argument('--description', '-d',
                           help='Description of the entity')
         parser.add_argument('--status', default='active',
-                          choices=['active', 'completed', 'on-hold', 'canceled'],
+                          choices=EntityStatus.values(),
                           help='Status of the entity (default: active)')
         parser.add_argument('--start-date',
                           help='Start date in YYYY-MM-DD format (default: today)')
@@ -73,6 +61,14 @@ class CreateCommand(BaseCommand):
     
     @classmethod
     def execute(cls, args):
+        try:
+            # Convert string arguments to enums early
+            entity_type = EntityType.from_string(args.type)
+            entity_status = EntityStatus.from_string(args.status)
+        except ValueError as e:
+            print(f"❌ Invalid argument: {e}")
+            return 1
+        
         # Get registry path
         registry_path = cls._get_registry_path(args.registry)
         if not registry_path:
@@ -80,28 +76,35 @@ class CreateCommand(BaseCommand):
             return 1
             
         # Generate entity data based on arguments
-        entity_data = cls._build_entity_data(args)
+        entity_data = cls._build_entity_data(args, entity_type, entity_status)
         
-        # Determine file name and path
-        entity_type = args.type
+        # Determine file name
         uid = entity_data.get('uid', str(uuid.uuid4())[:8])
-        folder_name = cls.ENTITY_FOLDERS[entity_type]
-        file_prefix = cls.FILE_PREFIXES[entity_type]
+        file_prefix = entity_type.get_file_prefix()
         file_name = f"{file_prefix}-{uid}.yml"
         
-        entity_dir = Path(registry_path) / folder_name
-        entity_dir.mkdir(exist_ok=True)
-        file_path = entity_dir / file_name
+        # Get safe path using path security utilities
+        try:
+            file_path = get_safe_entity_path(registry_path, entity_type.value, file_name)
+        except PathSecurityError as e:
+            print(f"❌ Security error: {e}")
+            return 1
+        except ValueError as e:
+            print(f"❌ Invalid entity type: {e}")
+            return 1
+        
+        # Ensure parent directory exists
+        file_path.parent.mkdir(parents=True, exist_ok=True)
         
         # Write to file
         try:
             with open(file_path, 'w') as f:
                 yaml.dump(entity_data, f, default_flow_style=False, sort_keys=False)
             
-            print(f"✅ Created {entity_type} '{entity_data['title']}' at {file_path}")
+            print(f"✅ Created {entity_type.value} '{entity_data['title']}' at {file_path}")
             return 0
         except Exception as e:
-            print(f"❌ Error creating {entity_type}: {e}")
+            print(f"❌ Error creating {entity_type.value}: {e}")
             return 1
     
     @classmethod
@@ -119,7 +122,7 @@ class CreateCommand(BaseCommand):
         return get_project_root()
     
     @classmethod
-    def _build_entity_data(cls, args) -> Dict[str, Any]:
+    def _build_entity_data(cls, args, entity_type: EntityType, entity_status: EntityStatus) -> Dict[str, Any]:
         """Build entity data dictionary from arguments"""
         # Generate or use provided UID
         uid = str(uuid.uuid4())[:8]  # Use first 8 chars of a UUID
@@ -130,12 +133,12 @@ class CreateCommand(BaseCommand):
         # Basic entity data
         entity = {
             # Basic Metadata
-            "type": args.type,
+            "type": entity_type.value,
             "uid": uid,
             "title": args.title,
             
             # Status & Lifecycle 
-            "status": args.status,
+            "status": entity_status.value,
             "start_date": args.start_date or today,
         }
         

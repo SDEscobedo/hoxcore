@@ -11,6 +11,9 @@ from typing import Optional, List, Dict, Any
 from hxc.commands import register_command
 from hxc.commands.base import BaseCommand
 from hxc.commands.registry import RegistryCommand
+from hxc.utils.helpers import get_project_root
+from hxc.utils.path_security import resolve_safe_path, PathSecurityError
+from hxc.core.enums import EntityType, OutputFormat
 
 
 @register_command
@@ -19,8 +22,6 @@ class ShowCommand(BaseCommand):
     
     name = "show"
     help = "Show the content of a registry file"
-    
-    ENTITY_TYPES = ["program", "project", "mission", "action"]
     
     @classmethod
     def register_subparser(cls, subparsers):
@@ -33,13 +34,13 @@ class ShowCommand(BaseCommand):
         )
         parser.add_argument(
             "--type", 
-            choices=cls.ENTITY_TYPES,
+            choices=EntityType.values(),
             help="Entity type (program, project, mission, action). If not specified, all types will be searched."
         )
         parser.add_argument(
             "--format", 
-            choices=["pretty", "yaml", "json"],
-            default="pretty",
+            choices=[OutputFormat.PRETTY.value, OutputFormat.YAML.value, OutputFormat.JSON.value],
+            default=OutputFormat.PRETTY.value,
             help="Output format (default: pretty)"
         )
         parser.add_argument(
@@ -47,58 +48,111 @@ class ShowCommand(BaseCommand):
             action="store_true",
             help="Display raw file content without processing"
         )
+        parser.add_argument(
+            "--registry",
+            help="Path to registry (defaults to current or configured registry)"
+        )
         
         return parser
     
     @classmethod
     def execute(cls, args):
-        identifier = args.identifier
-        entity_type = args.type
-        output_format = args.format
-        raw = args.raw
-        
-        # Get the registry path
-        registry_path = RegistryCommand.get_registry_path()
-        if not registry_path:
-            print("❌ No registry configured.")
-            print("Run 'hxc registry path --set PATH' to set a registry.")
-            return 1
-        
-        # Find the file
-        file_path = cls.find_file(registry_path, identifier, entity_type)
-        if not file_path:
-            print(f"❌ No entity found with identifier '{identifier}'")
-            if entity_type:
-                print(f"   (search limited to type: {entity_type})")
-            return 1
-        
-        # Display the file content
         try:
+            # Convert string arguments to enums early
+            try:
+                entity_type = EntityType.from_string(args.type) if args.type else None
+                output_format = OutputFormat.from_string(args.format)
+            except ValueError as e:
+                print(f"❌ Invalid argument: {e}")
+                return 1
+            
+            identifier = args.identifier
+            raw = args.raw
+            
+            # Get the registry path
+            registry_path = cls._get_registry_path(args.registry)
+            if not registry_path:
+                print("❌ No registry found. Please specify with --registry or initialize one with 'hxc init'")
+                return 1
+            
+            # Find the file
+            file_path = cls.find_file(registry_path, identifier, entity_type)
+            if not file_path:
+                print(f"❌ No entity found with identifier '{identifier}'")
+                if entity_type:
+                    print(f"   (search limited to type: {entity_type.value})")
+                return 1
+            
+            # Display the file content
             return cls.display_file(file_path, output_format, raw)
+        except PathSecurityError as e:
+            print(f"❌ Security error: {e}")
+            return 1
         except Exception as e:
             print(f"❌ Error displaying file: {e}")
             return 1
     
     @classmethod
-    def find_file(cls, registry_path: str, identifier: str, entity_type: Optional[str] = None) -> Optional[Path]:
-        """Find a file by ID or UID"""
-        types_to_search = [entity_type] if entity_type else cls.ENTITY_TYPES
+    def _get_registry_path(cls, specified_path: Optional[str] = None) -> Optional[str]:
+        """Get registry path from specified path, config, or current directory"""
+        if specified_path:
+            return specified_path
+            
+        # Try from config
+        registry_path = RegistryCommand.get_registry_path()
+        if registry_path:
+            return registry_path
+            
+        # Try to find in current directory or parent directories
+        return get_project_root()
+    
+    @classmethod
+    def find_file(cls, registry_path: str, identifier: str, entity_type: Optional[EntityType] = None) -> Optional[Path]:
+        """
+        Find a file by ID or UID
         
-        for t in types_to_search:
-            type_dir = Path(registry_path) / f"{t}s"  # programs, projects, missions, actions
+        Args:
+            registry_path: Root directory of the registry
+            identifier: ID or UID to search for
+            entity_type: Optional entity type enum to filter by
+            
+        Returns:
+            Path to the entity file if found, None otherwise
+            
+        Raises:
+            PathSecurityError: If any path operation attempts to escape the registry
+        """
+        types_to_search = [entity_type] if entity_type else list(EntityType)
+        
+        for entity_type_enum in types_to_search:
+            folder_name = entity_type_enum.get_folder_name()
+            
+            # Securely resolve the folder path
+            try:
+                type_dir = resolve_safe_path(registry_path, folder_name)
+            except PathSecurityError:
+                # Skip this folder if it's not accessible
+                continue
+            
             if not type_dir.exists():
                 continue
-                
+            
             # Search the directory
             for file_path in type_dir.rglob("*.yml"):
                 try:
-                    with open(file_path, 'r') as f:
+                    # Verify that the file is within the registry
+                    secure_file_path = resolve_safe_path(registry_path, file_path)
+                    
+                    with open(secure_file_path, 'r') as f:
                         content = yaml.safe_load(f)
                         if content and isinstance(content, dict):
                             # Check if the file has an ID or UID that matches
                             if (content.get('id') == identifier or 
                                 content.get('uid') == identifier):
-                                return file_path
+                                return secure_file_path
+                except PathSecurityError:
+                    # Skip files that are outside the registry
+                    continue
                 except Exception:
                     # Skip files that can't be parsed
                     continue
@@ -106,26 +160,40 @@ class ShowCommand(BaseCommand):
         return None
     
     @classmethod
-    def display_file(cls, file_path: Path, output_format: str, raw: bool) -> int:
-        """Display the file content in the specified format"""
-        with open(file_path, 'r') as f:
-            if raw:
-                # Display raw file content
-                print(f.read())
+    def display_file(cls, file_path: Path, output_format: OutputFormat, raw: bool) -> int:
+        """
+        Display the file content in the specified format
+        
+        Args:
+            file_path: Path to the file to display
+            output_format: OutputFormat enum for output
+            raw: Whether to display raw file content
+            
+        Returns:
+            Exit code (0 for success, 1 for failure)
+        """
+        try:
+            with open(file_path, 'r') as f:
+                if raw:
+                    # Display raw file content
+                    print(f.read())
+                    return 0
+                
+                # Parse and display formatted content
+                content = yaml.safe_load(f)
+                
+                if output_format == OutputFormat.JSON:
+                    import json
+                    print(json.dumps(content, indent=2))
+                elif output_format == OutputFormat.YAML:
+                    print(yaml.dump(content, default_flow_style=False, sort_keys=False))
+                else:  # pretty format
+                    cls.display_pretty(content, file_path)
+                
                 return 0
-            
-            # Parse and display formatted content
-            content = yaml.safe_load(f)
-            
-            if output_format == "json":
-                import json
-                print(json.dumps(content, indent=2))
-            elif output_format == "yaml":
-                print(yaml.dump(content, default_flow_style=False, sort_keys=False))
-            else:  # pretty format
-                cls.display_pretty(content, file_path)
-            
-            return 0
+        except Exception as e:
+            print(f"❌ Error reading file: {e}")
+            return 1
     
     @classmethod
     def display_pretty(cls, content: Dict[str, Any], file_path: Path) -> None:
