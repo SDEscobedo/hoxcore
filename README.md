@@ -53,6 +53,102 @@ $ hxc command1 --option value
 $ hxc command2 --flag input-value
 ```
 
+---
+
+## MCP Server (Model Context Protocol)
+
+HoxCore includes a built-in MCP server that exposes registry functionality to LLMs through a standardized interface. This allows AI assistants (like Claude) to interact with your HoxCore registries directly.
+
+### Starting the Server
+
+```bash
+# Start with the default or configured registry
+hxc-mcp
+
+# Start with a specific registry path
+hxc-mcp --registry /path/to/your/registry
+
+# Specify transport (currently only stdio is supported)
+hxc-mcp --transport stdio
+```
+
+You can also start the server programmatically:
+
+```python
+from hxc.mcp.server import create_server
+
+server = create_server(registry_path="/path/to/registry")
+server.run_stdio()
+```
+
+### Connecting to Claude (or other MCP-compatible clients)
+
+Add HoxCore to your MCP client configuration. For Claude Desktop, update your `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "hoxcore": {
+      "command": "hxc-mcp",
+      "args": ["--registry", "/path/to/your/registry"]
+    }
+  }
+}
+```
+
+### Available Tools
+
+The MCP server exposes four tools that an LLM can call:
+
+| Tool | Description |
+|---|---|
+| `list_entities` | List entities in the registry, with optional filters for type, status, tags, category, and parent |
+| `get_entity` | Retrieve a specific entity by its ID or UID |
+| `search_entities` | Full-text search across entity titles and descriptions |
+| `get_entity_property` | Fetch a specific property from an entity, with support for list indexing and key filtering |
+
+### Available Resources
+
+Resources are accessible via `hxc://` URIs:
+
+| URI | Description |
+|---|---|
+| `hxc://entity/{identifier}` | A specific entity by ID or UID (YAML) |
+| `hxc://entities/{type}` | All entities of a given type (JSON) |
+| `hxc://hierarchy/{identifier}` | Entity hierarchy and relationships (JSON) |
+| `hxc://registry/stats` | Registry statistics and overview (JSON) |
+| `hxc://search?q={query}` | Search results for a query (JSON) |
+
+### Extending the Server
+
+You can register custom tools, resources, and prompts at runtime:
+
+```python
+from hxc.mcp.server import create_server
+
+server = create_server()
+
+# Register a custom tool
+def my_tool(registry_path=None, **kwargs):
+    """My custom tool description."""
+    return {"result": "..."}
+
+server.register_tool("my_tool", my_tool)
+
+# Register a custom prompt
+server.register_prompt({
+    "name": "my_prompt",
+    "description": "A helpful prompt template",
+    "arguments": [
+        {"name": "context", "description": "Context for the prompt", "required": True}
+    ]
+})
+
+server.run_stdio()
+```
+
+---
+
 ## Development
 
 ### Project Structure
@@ -75,6 +171,12 @@ project/
 │       ├── core/
 │       │   ├── __init__.py
 │       │   └── config.py
+│       ├── mcp/
+│       │   ├── __init__.py
+│       │   ├── server.py
+│       │   ├── tools.py
+│       │   ├── resources.py
+│       │   └── prompts.py
 │       └── utils/
 │           ├── __init__.py
 │           └── helpers.py
