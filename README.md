@@ -1,6 +1,28 @@
-# HoxCore Command Line Tool
+# HoxCore
 
-A robust, scalable, and distributable command-line interface tool with a git-like command structure.
+<p align="center">
+    <img src="./images/hoxcore_logo.jpg" alt="Hoxcore" width="400">
+</p>
+
+
+## What is HoxCore?
+
+HoxCore is a **meta-manager** — a low-level tool that centralizes the core metadata of organizational objects into a single, unified registry. Rather than managing execution or visualization directly, HoxCore acts as the foundational layer that independent software can build upon.
+
+### Organizational Object Types
+
+HoxCore handles four categories of objects:
+
+| Type | Orientation | Description |
+|---|---|---|
+| **Projects** | Goal-oriented | Has a defined finalization point; decoupled from execution |
+| **Missions** | Event-oriented | Linked to execution; tied to a specific occurrence or execution window |
+| **Activities** | Action-oriented | No definite end; represents indefinite, ongoing progression |
+| **Programs** | Container | Groups and organizes Projects, Missions, and/or Activities |
+
+### Design Philosophy
+
+HoxCore is intentionally minimal and low-level. It owns the metadata — everything else is up to you. Independent tools can be built on top of HoxCore for visualization, reporting, dashboards, or richer management interfaces, all reading from the same single source of truth.
 
 ## Installation
 
