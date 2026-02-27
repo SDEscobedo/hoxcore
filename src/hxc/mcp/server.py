@@ -31,6 +31,9 @@ from hxc.mcp.prompts import (
 )
 
 
+
+
+
 class MCPServer:
     """
     MCP Server for HoxCore Registry Access.
@@ -38,6 +41,13 @@ class MCPServer:
     This server implements the Model Context Protocol to expose HoxCore
     registry functionality to LLMs through a standardized interface.
     """
+
+    class _DateEncoder(json.JSONEncoder):
+        def default(self, obj):
+            from datetime import date, datetime
+            if isinstance(obj, (date, datetime)):
+                return obj.isoformat()
+            return super().default(obj)
     
     def __init__(self, registry_path: Optional[str] = None):
         """
@@ -176,22 +186,26 @@ class MCPServer:
         """Handle tools/call request"""
         tool_name = params.get('name')
         arguments = params.get('arguments', {})
-        
+
         if tool_name not in self._tools:
             raise ValueError(f"Unknown tool: {tool_name}")
-        
+
         # Add registry path to arguments if not provided
         if 'registry_path' not in arguments:
             arguments['registry_path'] = self.registry_path
-        
+
+        # Remap 'property' (reserved Python keyword) to 'property_name'
+        if tool_name == 'get_entity_property' and 'property' in arguments:
+            arguments['property_name'] = arguments.pop('property')
+
         tool_func = self._tools[tool_name]
         result = tool_func(**arguments)
-        
+
         return {
             "content": [
                 {
                     "type": "text",
-                    "text": json.dumps(result, indent=2)
+                    "text": json.dumps(result, indent=2, default=lambda o: o.isoformat() if hasattr(o, 'isoformat') else str(o))
                 }
             ]
         }
@@ -241,27 +255,29 @@ class MCPServer:
     def _handle_read_resource(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """Handle resources/read request"""
         uri = params.get('uri')
-        
+
         if not uri or not uri.startswith('hxc://'):
             raise ValueError(f"Invalid resource URI: {uri}")
-        
-        # Parse URI
-        uri_parts = uri.replace('hxc://', '').split('/')
+
+        # Strip scheme and split path from query string first
+        uri_without_scheme = uri.replace('hxc://', '')
+        path_part, _, query_string = uri_without_scheme.partition('?')
+        uri_parts = path_part.split('/') if path_part else []
         resource_type = uri_parts[0] if uri_parts else None
-        
+
         if resource_type == 'entity':
             identifier = uri_parts[1] if len(uri_parts) > 1 else None
             if not identifier:
                 raise ValueError("Entity identifier required")
             resource = get_entity_resource(identifier, registry_path=self.registry_path)
-        
+
         elif resource_type == 'entities':
             entity_type = uri_parts[1] if len(uri_parts) > 1 else 'all'
             resource = list_entities_resource(
                 entity_type=entity_type,
                 registry_path=self.registry_path
             )
-        
+
         elif resource_type == 'hierarchy':
             identifier = uri_parts[1] if len(uri_parts) > 1 else None
             if not identifier:
@@ -270,25 +286,28 @@ class MCPServer:
                 identifier,
                 registry_path=self.registry_path
             )
-        
+
         elif resource_type == 'registry' and len(uri_parts) > 1 and uri_parts[1] == 'stats':
             resource = get_registry_stats_resource(registry_path=self.registry_path)
-        
+
         elif resource_type == 'search':
-            query_part = uri.split('?q=')[1] if '?q=' in uri else ''
+            query_part = ''
+            for param in query_string.split('&'):
+                if param.startswith('q='):
+                    query_part = param[2:]
+                    break
             if not query_part:
                 raise ValueError("Search query required")
             resource = search_entities_resource(
                 query=query_part,
                 registry_path=self.registry_path
             )
-        
+
         else:
             raise ValueError(f"Unknown resource type: {resource_type}")
-        
-        # Format resource content
-        content_text = json.dumps(resource['content'], indent=2)
-        
+
+        content_text = json.dumps(resource['content'], indent=2, default=lambda o: o.isoformat() if hasattr(o, 'isoformat') else str(o))
+
         return {
             "contents": [
                 {
@@ -505,34 +524,37 @@ class MCPServer:
     def run_stdio(self) -> None:
         """
         Run the MCP server using stdio transport.
-        
+
         This method reads JSON-RPC requests from stdin and writes responses to stdout.
         """
+        def _json_dumps(obj):
+            return json.dumps(obj, default=lambda o: o.isoformat() if hasattr(o, 'isoformat') else str(o))
+
         try:
             for line in sys.stdin:
                 line = line.strip()
                 if not line:
                     continue
-                
+
                 try:
                     request = json.loads(line)
                     response = self.handle_request(request)
-                    print(json.dumps(response), flush=True)
+                    print(_json_dumps(response), flush=True)
                 except json.JSONDecodeError as e:
                     error_response = self._error_response(
                         None,
                         -32700,
                         f"Parse error: {str(e)}"
                     )
-                    print(json.dumps(error_response), flush=True)
+                    print(_json_dumps(error_response), flush=True)
                 except Exception as e:
                     error_response = self._error_response(
                         None,
                         -32603,
                         f"Internal error: {str(e)}"
                     )
-                    print(json.dumps(error_response), flush=True)
-        
+                    print(_json_dumps(error_response), flush=True)
+
         except KeyboardInterrupt:
             pass
     

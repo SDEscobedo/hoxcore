@@ -50,15 +50,7 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = [
-    "-v",
-    "--strict-markers",
-    "--tb=short",
-    "--cov=src/hxc",
-    "--cov-report=term-missing",
-    "--cov-report=html",
-    "--cov-report=xml"
-]
+addopts = "-v --strict-markers --tb=short --cov=src/hxc --cov-report=term-missing --cov-report=html --cov-report=xml"
 markers = [
     "mcp: marks tests for MCP server functionality",
     "integration: marks tests as integration tests",

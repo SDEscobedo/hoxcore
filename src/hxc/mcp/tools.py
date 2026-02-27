@@ -513,15 +513,18 @@ def get_registry_stats_tool(
 
 
 def _get_registry_path(specified_path: Optional[str] = None) -> Optional[str]:
-    """Get registry path from specified path, config, or current directory"""
+    """Get registry path from specified path or config"""
     if specified_path:
+        path = Path(specified_path)
+        if not path.exists() or not path.is_dir():
+            return None
         return specified_path
-    
+
     registry_path = RegistryCommand.get_registry_path()
     if registry_path:
         return registry_path
-    
-    return get_project_root()
+
+    return None
 
 
 def _find_entity_file(
