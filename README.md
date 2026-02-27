@@ -26,7 +26,7 @@ HoxCore is intentionally minimal and low-level. It owns the metadata — everyth
 
 ## Installation
 
-### From PyPI (when published)
+### From PyPI
 
 ```bash
 pip install hxc
