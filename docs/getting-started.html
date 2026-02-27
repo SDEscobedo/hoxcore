@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Getting Started with HoxCore - Learn how to install, initialize, and use the universal project registry system.">
+    <meta name="keywords" content="HoxCore, getting started, installation, tutorial, CLI, project management">
+    <meta name="author" content="HoxCore Team">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://yourusername.github.io/hoxcore/getting-started.html">
+    <meta property="og:title" content="Getting Started - HoxCore Documentation">
+    <meta property="og:description" content="Learn how to install and use HoxCore for universal project management">
+    <meta property="og:image" content="https://yourusername.github.io/hoxcore/assets/images/og-image.png">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://yourusername.github.io/hoxcore/getting-started.html">
+    <meta property="twitter:title" content="Getting Started - HoxCore Documentation">
+    <meta property="twitter:description" content="Learn how to install and use HoxCore for universal project management">
+    <meta property="twitter:image" content="https://yourusername.github.io/hoxcore/assets/images/og-image.png">
+
+    <title>Getting Started - HoxCore Documentation</title>
+    
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" type="image/x-icon" href="assets/images/favicon.ico">
+    
+    <!-- Syntax Highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <a href="index.html">
+                    <span class="logo">HoxCore</span>
+                </a>
+            </div>
+            <button class="nav-toggle" aria-label="Toggle navigation">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <ul class="nav-menu">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="getting-started.html" class="active">Getting Started</a></li>
+                <li><a href="core-concepts.html">Core Concepts</a></li>
+                <li><a href="cli-reference.html">CLI Reference</a></li>
+                <li><a href="templates.html">Templates</a></li>
+                <li><a href="integrations.html">Integrations</a></li>
+                <li><a href="ai-features.html">AI Features</a></li>
+                <li><a href="https://github.com/yourusername/hoxcore" target="_blank" class="github-link">GitHub</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Page Header -->
+    <section class="page-header">
+        <div class="container">
+            <h1>Getting Started</h1>
+            <p>Learn how to install, initialize, and start using HoxCore for universal project management</p>
+        </div>
+    </section>
+
+    <!-- Main Content -->
+    <main class="documentation">
+        <div class="container">
+            <div class="doc-layout">
+                <!-- Sidebar Navigation -->
+                <aside class="doc-sidebar">
+                    <nav class="doc-nav">
+                        <h3>On This Page</h3>
+                        <ul>
+                            <li><a href="#prerequisites">Prerequisites</a></li>
+                            <li><a href="#installation">Installation</a></li>
+                            <li><a href="#verify-installation">Verify Installation</a></li>
+                            <li><a href="#initialize-registry">Initialize a Registry</a></li>
+                            <li><a href="#registry-structure">Registry Structure</a></li>
+                            <li><a href="#create-first-project">Create Your First Project</a></li>
+                            <li><a href="#list-entities">List Entities</a></li>
+                            <li><a href="#view-entity">View Entity Details</a></li>
+                            <li><a href="#update-entity">Update an Entity</a></li>
+                            <li><a href="#query-entities">Query Entities</a></li>
+                            <li><a href="#set-registry-path">Set Registry Path</a></li>
+                            <li><a href="#next-steps">Next Steps</a></li>
+                        </ul>
+                    </nav>
+                </aside>
+
+                <!-- Main Documentation Content -->
+                <article class="doc-content">
+                    <!-- Prerequisites -->
+                    <section id="prerequisites" class="doc-section">
+                        <h2>Prerequisites</h2>
+                        <p>Before installing HoxCore, ensure you have the following:</p>
+                        <ul>
+                            <li><strong>Python 3.8 or higher</strong> - HoxCore is built with Python</li>
+                            <li><strong>pip</strong> - Python package installer (usually comes with Python)</li>
+                            <li><strong>Git</strong> - Required for version control features</li>
+                            <li><strong>Terminal/Command Line</strong> - Basic familiarity with command-line interfaces</li>
+                        </ul>
+                        
+                        <div class="info-box">
+                            <h4>💡 Check Your Python Version</h4>
+                            <pre><code class="language-bash">python --version
+# or
+python3 --version</code></pre>
+                        </div>
+                    </section>
+
+                    <!-- Installation -->
+                    <section id="installation" class="doc-section">
+                        <h2>Installation</h2>
+                        <p>Install HoxCore using pip, Python's package manager:</p>
+                        
+                        <h3>Standard Installation</h3>
+                        <pre><code class="language-bash">pip install hxc</code></pre>
+                        
+                        <h3>Install from Source</h3>
+                        <p>If you want to install from the source repository:</p>
+                        <pre><code class="language-bash"># Clone the repository
+git clone https://github.com/yourusername/hoxcore.git
+cd hoxcore
+
+# Install in development mode
+pip install -e .</code></pre>
+                        
+                        <h3>Install with Development Dependencies</h3>
+                        <p>For contributors who want to run tests and development tools:</p>
+                        <pre><code class="language-bash">pip install hxc[dev]</code></pre>
+                        
+                        <div class="warning-box">
+                            <h4>⚠️ Virtual Environment Recommended</h4>
+                            <p>It's recommended to use a virtual environment to avoid conflicts with other Python packages:</p>
+                            <pre><code class="language-bash"># Create virtual environment
+python -m venv hxc-env
+
+# Activate (Linux/Mac)
+source hxc-env/bin/activate
+
+# Activate (Windows)
+hxc-env\Scripts\activate
+
+# Install HoxCore
+pip install hxc</code></pre>
+                        </div>
+                    </section>
+
+                    <!-- Verify Installation -->
+                    <section id="verify-installation" class="doc-section">
+                        <h2>Verify Installation</h2>
+                        <p>After installation, verify that HoxCore is correctly installed:</p>
+                        
+                        <pre><code class="language-bash"># Check version
+hxc --version
+
+# View help
+hxc --help</code></pre>
+                        
+                        <p>You should see output similar to:</p>
+                        <pre><code class="language-text">hxc version 0.1.0</code></pre>
+                        
+                        <div class="success-box">
+                            <h4>✅ Installation Successful</h4>
+                            <p>If you see the version number, HoxCore is installed and ready to use!</p>
+                        </div>
+                    </section>
+
+                    <!-- Initialize Registry -->
+                    <section id="initialize-registry" class="doc-section">
+                        <h2>Initialize a Registry</h2>
+                        <p>A registry is the central repository where HoxCore stores all your project metadata. Think of it as a Git repository for your project definitions.</p>
+                        
+                        <h3>Create a New Registry</h3>
+                        <pre><code class="language-bash"># Initialize in a new directory
+hxc init my-registry
+
+# Or initialize in the current directory
+hxc init .</code></pre>
+                        
+                        <p>This command creates a new registry with the following structure:</p>
+                        <pre><code class="language-text">my-registry/
+├── .git/              # Git repository
+├── config.yml         # Registry configuration
+├── programs/          # Program definitions
+├── projects/          # Project definitions
+├── missions/          # Mission definitions
+├── actions/           # Action definitions
+├── templates/         # Custom templates
+└── .hxc/             # Internal HoxCore data
+    └── index.db      # Entity index</code></pre>
+                        
+                        <div class="info-box">
+                            <h4>💡 Registry as Git Repository</h4>
+                            <p>Every registry is automatically initialized as a Git repository. This provides:</p>
+                            <ul>
+                                <li>Version history for all changes</li>
+                                <li>Branching and merging capabilities</li>
+                                <li>Collaboration through remote repositories</li>
+                                <li>Full auditability of project evolution</li>
+                            </ul>
+                        </div>
+                    </section>
+
+                    <!-- Registry Structure -->
+                    <section id="registry-structure" class="doc-section">
+                        <h2>Registry Structure</h2>
+                        <p>Understanding the registry structure helps you navigate and manage your entities effectively.</p>
+                        
+                        <h3>Directory Organization</h3>
+                        <table class="doc-table">
+                            <thead>
+                                <tr>
+                                    <th>Directory</th>
+                                    <th>Purpose</th>
+                                    <th>Entity Type</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>programs/</code></td>
+                                    <td>Abstract containers grouping related initiatives</td>
+                                    <td>Program</td>
+                                </tr>
+                                <tr>
+                                    <td><code>projects/</code></td>
+                                    <td>Object-like efforts with concrete outputs</td>
+                                    <td>Project</td>
+                                </tr>
+                                <tr>
+                                    <td><code>missions/</code></td>
+                                    <td>Event-like efforts with clear culmination</td>
+                                    <td>Mission</td>
+                                </tr>
+                                <tr>
+                                    <td><code>actions/</code></td>
+                                    <td>Ongoing activities without defined end</td>
+                                    <td>Action</td>
+                                </tr>
+                                <tr>
+                                    <td><code>templates/</code></td>
+                                    <td>Custom scaffolding templates</td>
+                                    <td>Template</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        
+                        <h3>Configuration File</h3>
+                        <p>The <code>config.yml</code> file contains registry-wide settings:</p>
+                        <pre><code class="language-yaml"># config.yml
+registry:
+  name: my-registry
+  version: 0.1.0
+  created: 2024-01-01T00:00:00Z
+
+settings:
+  default_category: general
+  auto_commit: true
+  index_on_change: true
+
+integrations:
+  github:
+    enabled: false
+  azure_devops:
+    enabled: false</code></pre>
+                    </section>
+
+                    <!-- Create First Project -->
+                    <section id="create-first-project" class="doc-section">
+                        <h2>Create Your First Project</h2>
+                        <p>Let's create your first project in the registry:</p>
+                        
+                        <h3>Basic Project Creation</h3>
+                        <pre><code class="language-bash">hxc create project \
+  --title "My First Project" \
+  --description "Learning HoxCore basics" \
+  --category software.dev/cli-tool</code></pre>
+                        
+                        <p>This creates a new project with:</p>
+                        <ul>
+                            <li>Auto-generated UID (e.g., <code>proj_abc123def456</code>)</li>
+                            <li>Status set to <code>active</code> by default</li>
+                            <li>Current date as start date</li>
+                            <li>YAML file in <code>projects/</code> directory</li>
+                        </ul>
+                        
+                        <h3>Project with More Details</h3>
+                        <pre><code class="language-bash">hxc create project \
+  --title "AI-Powered CLI Tool" \
+  --description "Building an intelligent command-line interface" \
+  --category software.dev/cli-tool \
+  --id P-001 \
+  --tags cli,ai,python \
+  --due-date 2024-12-31</code></pre>
+                        
+                        <h3>Interactive Creation</h3>
+                        <p>You can also create projects interactively:</p>
+                        <pre><code class="language-bash">hxc create project --interactive</code></pre>
+                        
+                        <div class="success-box">
+                            <h4>✅ Project Created</h4>
+                            <p>After creation, you'll see a confirmation message with the project's UID and location in the registry.</p>
+                        </div>
+                    </section>
+
+                    <!-- List Entities -->
+                    <section id="list-entities" class="doc-section">
+                        <h2>List Entities</h2>
+                        <p>View all entities in your registry:</p>
+                        
+                        <h3>List All Projects</h3>
+                        <pre><code class="language-bash">hxc list projects</code></pre>
+                        
+                        <p>Output example:</p>
+                        <pre><code class="language-text">UID                    ID      Title                    Status    Category
+proj_abc123def456      P-001   My First Project         active    software.dev/cli-tool
+proj_xyz789ghi012      P-002   AI-Powered CLI Tool      active    software.dev/cli-tool</code></pre>
+                        
+                        <h3>List Other Entity Types</h3>
+                        <pre><code class="language-bash"># List programs
+hxc list programs
+
+# List missions
+hxc list missions
+
+# List actions
+hxc list actions
+
+# List all entities
+hxc list all</code></pre>
+                        
+                        <h3>Filter by Status</h3>
+                        <pre><code class="language-bash"># List only active projects
+hxc list projects --status active
+
+# List completed projects
+hxc list projects --status completed</code></pre>
+                        
+                        <h3>Filter by Category</h3>
+                        <pre><code class="language-bash">hxc list projects --category software.dev</code></pre>
+                    </section>
+
+                    <!-- View Entity -->
+                    <section id="view-entity" class="doc-section">
+                        <h2>View Entity Details</h2>
+                        <p>Display detailed information about a specific entity:</p>
+                        
+                        <h3>By UID</h3>
+                        <pre><code class="language-bash">hxc show proj_abc123def456</code></pre>
+                        
+                        <h3>By ID</h3>
+                        <pre><code class="language-bash">hxc show P-001</code></pre>
+                        
+                        <p>Output example:</p>
+                        <pre><code class="language-yaml">UID: proj_abc123def456
+ID: P-001
+Type: project
+Title: My First Project
+Description: Learning HoxCore basics
+Status: active
+Category: software.dev/cli-tool
+Tags: [cli, learning, tutorial]
+Created: 2024-01-01T10:00:00Z
+Modified: 2024-01-01T10:00:00Z
+Start Date: 2024-01-01
+Due Date: 2024-12-31
+
+Repositories: None
+Storage: None
+Tools: None
+Models: None</code></pre>
+                        
+                        <h3>View Raw YAML</h3>
+                        <pre><code class="language-bash">hxc show P-001 --raw</code></pre>
+                    </section>
+
+                    <!-- Update Entity -->
+                    <section id="update-entity" class="doc-section">
+                        <h2>Update an Entity</h2>
+                        <p>Modify existing entity properties:</p>
+                        
+                        <h3>Update Single Field</h3>
+                        <pre><code class="language-bash"># Update status
+hxc update P-001 --status completed
+
+# Update title
+hxc update P-001 --title "Updated Project Title"
+
+# Add tags
+hxc update P-001 --add-tags production,deployed</code></pre>
+                        
+                        <h3>Update Multiple Fields</h3>
+                        <pre><code class="language-bash">hxc update P-001 \
+  --status completed \
+  --completion-date 2024-06-30 \
+  --add-tags finished,successful</code></pre>
+                        
+                        <h3>Edit in Text Editor</h3>
+                        <pre><code class="language-bash"># Opens the YAML file in your default editor
+hxc update P-001 --edit</code></pre>
+                        
+                        <div class="warning-box">
+                            <h4>⚠️ Immutable UIDs</h4>
+                            <p>The UID field is immutable and cannot be changed. This ensures referential integrity across the registry.</p>
+                        </div>
+                    </section>
+
+                    <!-- Query Entities -->
+                    <section id="query-entities" class="doc-section">
+                        <h2>Query Entities</h2>
+                        <p>Perform advanced searches across your registry:</p>
+                        
+                        <h3>Query by Tags</h3>
+                        <pre><code class="language-bash"># Find all entities with 'ai' tag
+hxc query --tags ai
+
+# Find entities with multiple tags (AND)
+hxc query --tags ai,cli,python</code></pre>
+                        
+                        <h3>Query by Date Range</h3>
+                        <pre><code class="language-bash"># Projects starting in 2024
+hxc query projects --start-after 2024-01-01
+
+# Projects due before end of year
+hxc query projects --due-before 2024-12-31</code></pre>
+                        
+                        <h3>Complex Queries</h3>
+                        <pre><code class="language-bash"># Active software projects with AI tag
+hxc query projects \
+  --status active \
+  --category software.dev \
+  --tags ai</code></pre>
+                        
+                        <h3>Full-Text Search</h3>
+                        <pre><code class="language-bash"># Search in title and description
+hxc query --search "machine learning"</code></pre>
+                    </section>
+
+                    <!-- Set Registry Path -->
+                    <section id="set-registry-path" class="doc-section">
+                        <h2>Set Registry Path</h2>
+                        <p>Configure HoxCore to use a specific registry by default:</p>
+                        
+                        <h3>Set Default Registry</h3>
+                        <pre><code class="language-bash">hxc registry path --set /path/to/my-registry</code></pre>
+                        
+                        <h3>View Current Registry</h3>
+                        <pre><code class="language-bash">hxc registry path</code></pre>
+                        
+                        <h3>Use Different Registry Temporarily</h3>
+                        <pre><code class="language-bash"># Use --registry flag for one-time operations
+hxc list projects --registry /path/to/other-registry</code></pre>
+                        
+                        <div class="info-box">
+                            <h4>💡 Registry Discovery</h4>
+                            <p>If no registry path is set, HoxCore will search for a registry in:</p>
+                            <ol>
+                                <li>Current directory</li>
+                                <li>Parent directories (up to root)</li>
+                                <li>User's home directory (<code>~/.hxc/registry</code>)</li>
+                            </ol>
+                        </div>
+                    </section>
+
+                    <!-- Next Steps -->
+                    <section id="next-steps" class="doc-section">
+                        <h2>Next Steps</h2>
+                        <p>Now that you've learned the basics, explore more advanced features:</p>
+                        
+                        <div class="next-steps-grid">
+                            <div class="next-step-card">
+                                <h3>📚 Core Concepts</h3>
+                                <p>Understand the fundamental concepts behind HoxCore's design and architecture.</p>
+                                <a href="core-concepts.html" class="btn btn-secondary">Learn Core Concepts →</a>
+                            </div>
+                            
+                            <div class="next-step-card">
+                                <h3>📖 CLI Reference</h3>
+                                <p>Explore all available commands and their options in detail.</p>
+                                <a href="cli-reference.html" class="btn btn-secondary">View CLI Reference →</a>
+                            </div>
+                            
+                            <div class="next-step-card">
+                                <h3>📝 Templates</h3>
+                                <p>Learn how to create and use templates for project scaffolding.</p>
+                                <a href="templates.html" class="btn btn-secondary">Explore Templates →</a>
+                            </div>
+                            
+                            <div class="next-step-card">
+                                <h3>🔌 Integrations</h3>
+                                <p>Connect HoxCore with GitHub, Azure DevOps, and other tools.</p>
+                                <a href="integrations.html" class="btn btn-secondary">Setup Integrations →</a>
+                            </div>
+                            
+                            <div class="next-step-card">
+                                <h3>🤖 AI Features</h3>
+                                <p>Integrate LLM models and knowledge bases with your projects.</p>
+                                <a href="ai-features.html" class="btn btn-secondary">Discover AI Features →</a>
+                            </div>
+                            
+                            <div class="next-step-card">
+                                <h3>💬 Community</h3>
+                                <p>Join discussions, report issues, and contribute to HoxCore.</p>
+                                <a href="https://github.com/yourusername/hoxcore/discussions" target="_blank" class="btn btn-secondary">Join Community →</a>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Quick Reference -->
+                    <section class="doc-section">
+                        <h2>Quick Reference</h2>
+                        <p>Common commands for quick access:</p>
+                        
+                        <table class="doc-table">
+                            <thead>
+                                <tr>
+                                    <th>Command</th>
+                                    <th>Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>hxc init &lt;path&gt;</code></td>
+                                    <td>Initialize a new registry</td>
+                                </tr>
+                                <tr>
+                                    <td><code>hxc create project</code></td>
+                                    <td>Create a new project</td>
+                                </tr>
+                                <tr>
+                                    <td><code>hxc list projects</code></td>
+                                    <td>List all projects</td>
+                                </tr>
+                                <tr>
+                                    <td><code>hxc show &lt;id&gt;</code></td>
+                                    <td>Show entity details</td>
+                                </tr>
+                                <tr>
+                                    <td><code>hxc update &lt;id&gt;</code></td>
+                                    <td>Update an entity</td>
+                                </tr>
+                                <tr>
+                                    <td><code>hxc delete &lt;id&gt;</code></td>
+                                    <td>Delete an entity</td>
+                                </tr>
+                                <tr>
+                                    <td><code>hxc query --tags &lt;tag&gt;</code></td>
+                                    <td>Query by tags</td>
+                                </tr>
+                                <tr>
+                                    <td><code>hxc registry path</code></td>
+                                    <td>View/set registry path</td>
+                                </tr>
+                                <tr>
+                                    <td><code>hxc --help</code></td>
+                                    <td>Show help information</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </section>
+                </article>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>HoxCore</h3>
+                    <p>Universal, declarative, version-controlled project registry.</p>
+                </div>
+                <div class="footer-section">
+                    <h3>Documentation</h3>
+                    <ul>
+                        <li><a href="getting-started.html">Getting Started</a></li>
+                        <li><a href="core-concepts.html">Core Concepts</a></li>
+                        <li><a href="cli-reference.html">CLI Reference</a></li>
+                        <li><a href="templates.html">Templates</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h3>Resources</h3>
+                    <ul>
+                        <li><a href="integrations.html">Integrations</a></li>
+                        <li><a href="ai-features.html">AI Features</a></li>
+                        <li><a href="https://github.com/yourusername/hoxcore" target="_blank">GitHub</a></li>
+                        <li><a href="https://github.com/yourusername/hoxcore/issues" target="_blank">Issues</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h3>Community</h3>
+                    <ul>
+                        <li><a href="https://github.com/yourusername/hoxcore/discussions" target="_blank">Discussions</a></li>
+                        <li><a href="https://github.com/yourusername/hoxcore/blob/main/CONTRIBUTING.md" target="_blank">Contributing</a></li>
+                        <li><a href="https://github.com/yourusername/hoxcore/blob/main/LICENSE" target="_blank">License</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 HoxCore Team. Released under the MIT License.</p>
+                <p>Version 0.1.0</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/main.js"></script>
+    <script>
+        hljs.highlightAll();
+    </script>
+</body>
+</html>

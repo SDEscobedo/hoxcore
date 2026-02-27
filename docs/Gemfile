@@ -1,0 +1,11 @@
+source "https://rubygems.org"
+
+# This matches the GitHub Pages environment
+gem "github-pages", group: :jekyll
+
+# Add any extra plugins listed in your _config.yml
+group :jekyll_plugins do
+  gem "jekyll-feed"
+  gem "jekyll-seo-tag"
+  gem "jekyll-sitemap"
+end
