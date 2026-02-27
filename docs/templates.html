@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Templates in HoxCore - Learn how to create and use declarative, secure templates for project scaffolding and initialization.">
+    <meta name="keywords" content="HoxCore, templates, scaffolding, project initialization, declarative, YAML">
+    <meta name="author" content="HoxCore Team">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://yourusername.github.io/hoxcore/templates.html">
+    <meta property="og:title" content="Templates - HoxCore Documentation">
+    <meta property="og:description" content="Create declarative, secure templates for project scaffolding in HoxCore">
+    <meta property="og:image" content="https://yourusername.github.io/hoxcore/assets/images/og-image.png">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://yourusername.github.io/hoxcore/templates.html">
+    <meta property="twitter:title" content="Templates - HoxCore Documentation">
+    <meta property="twitter:description" content="Create declarative, secure templates for project scaffolding in HoxCore">
+    <meta property="twitter:image" content="https://yourusername.github.io/hoxcore/assets/images/og-image.png">
+
+    <title>Templates - HoxCore Documentation</title>
+    
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" type="image/x-icon" href="assets/images/favicon.ico">
+    
+    <!-- Syntax Highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <a href="index.html">
+                    <span class="logo">HoxCore</span>
+                </a>
+            </div>
+            <button class="nav-toggle" aria-label="Toggle navigation">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <ul class="nav-menu">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="getting-started.html">Getting Started</a></li>
+                <li><a href="core-concepts.html">Core Concepts</a></li>
+                <li><a href="cli-reference.html">CLI Reference</a></li>
+                <li><a href="templates.html" class="active">Templates</a></li>
+                <li><a href="integrations.html">Integrations</a></li>
+                <li><a href="ai-features.html">AI Features</a></li>
+                <li><a href="https://github.com/yourusername/hoxcore" target="_blank" class="github-link">GitHub</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Page Header -->
+    <section class="page-header">
+        <div class="container">
+            <h1>Templates</h1>
+            <p>Create declarative, secure templates for project scaffolding and initialization</p>
+        </div>
+    </section>
+
+    <!-- Main Content -->
+    <main class="documentation">
+        <div class="container">
+            <div class="doc-layout">
+                <!-- Sidebar Navigation -->
+                <aside class="doc-sidebar">
+                    <nav class="doc-nav">
+                        <h3>On This Page</h3>
+                        <ul>
+                            <li><a href="#overview">Overview</a></li>
+                            <li><a href="#philosophy">Template Philosophy</a></li>
+                            <li><a href="#structure">Template Structure</a></li>
+                            <li><a href="#scaffolding">Scaffolding Definition</a></li>
+                            <li><a href="#variables">Template Variables</a></li>
+                            <li><a href="#file-operations">File Operations</a></li>
+                            <li><a href="#git-integration">Git Integration</a></li>
+                            <li><a href="#category-linking">Category Linking</a></li>
+                            <li><a href="#creating-templates">Creating Templates</a></li>
+                            <li><a href="#using-templates">Using Templates</a></li>
+                            <li><a href="#built-in-templates">Built-in Templates</a></li>
+                            <li><a href="#custom-templates">Custom Templates</a></li>
+                            <li><a href="#best-practices">Best Practices</a></li>
+                            <li><a href="#examples">Complete Examples</a></li>
+                        </ul>
+                    </nav>
+                </aside>
+
+                <!-- Main Documentation Content -->
+                <article class="doc-content">
+                    <!-- Overview -->
+                    <section id="overview" class="doc-section">
+                        <h2>Overview</h2>
+                        <p>Templates in HoxCore are <strong>purely declarative</strong> and secure—no executable code, only YAML definitions. They provide a safe, predictable way to scaffold new projects with consistent structure and configuration.</p>
+
+                        <div class="success-box">
+                            <h4>✅ Safe by Design</h4>
+                            <p>HoxCore templates are interpreted by HoxCore itself, not executed as scripts. This ensures:</p>
+                            <ul>
+                                <li>No arbitrary code execution</li>
+                                <li>Predictable behavior</li>
+                                <li>Easy to audit and understand</li>
+                                <li>Safe to share and distribute</li>
+                            </ul>
+                        </div>
+
+                        <h3>What Templates Can Do</h3>
+                        <div class="features-grid">
+                            <div class="feature-card">
+                                <div class="feature-icon">📁</div>
+                                <h4>Directory Structure</h4>
+                                <p>Create folder hierarchies automatically</p>
+                            </div>
+                            <div class="feature-card">
+                                <div class="feature-icon">📄</div>
+                                <h4>File Generation</h4>
+                                <p>Generate files from templates with variable substitution</p>
+                            </div>
+                            <div class="feature-card">
+                                <div class="feature-icon">📋</div>
+                                <h4>File Copying</h4>
+                                <p>Copy static files from template directory</p>
+                            </div>
+                            <div class="feature-card">
+                                <div class="feature-icon">🔄</div>
+                                <h4>Git Initialization</h4>
+                                <p>Initialize Git repository with .gitignore</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Philosophy -->
+                    <section id="philosophy" class="doc-section">
+                        <h2>Template Philosophy</h2>
+                        <p>HoxCore's approach to templates is fundamentally different from traditional scaffolding tools:</p>
+
+                        <h3>Declarative vs. Imperative</h3>
+                        <table class="doc-table">
+                            <thead>
+                                <tr>
+                                    <th>Aspect</th>
+                                    <th>Traditional Tools</th>
+                                    <th>HoxCore</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>Execution</strong></td>
+                                    <td>Run scripts (bash, Python, etc.)</td>
+                                    <td>Interpret YAML definitions</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Security</strong></td>
+                                    <td>Can execute arbitrary code</td>
+                                    <td>No code execution</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Predictability</strong></td>
+                                    <td>Depends on script logic</td>
+                                    <td>Always predictable</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Auditability</strong></td>
+                                    <td>Must read and understand code</td>
+                                    <td>Simple YAML inspection</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Sharing</strong></td>
+                                    <td>Security risk</td>
+                                    <td>Safe to share</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <h3>Core Principles</h3>
+                        <div class="principles-list">
+                            <div class="principle-item">
+                                <h4>🔒 Security First</h4>
+                                <p>No executable code means no security vulnerabilities from malicious templates.</p>
+                            </div>
+                            <div class="principle-item">
+                                <h4>📋 Declarative Only</h4>
+                                <p>Describe what you want, not how to do it. HoxCore handles the implementation.</p>
+                            </div>
+                            <div class="principle-item">
+                                <h4>🎯 Single Responsibility</h4>
+                                <p>Templates scaffold structure. Logic belongs in your project code, not templates.</p>
+                            </div>
+                            <div class="principle-item">
+                                <h4>🔍 Transparent</h4>
+                                <p>What you see in the YAML is exactly what you get. No hidden behavior.</p>
+                            </div>
+                        </div>
+
+                        <div class="warning-box">
+                            <h4>⚠️ What Templates Cannot Do</h4>
+                            <p>By design, templates cannot:</p>
+                            <ul>
+                                <li>Execute shell commands</li>
+                                <li>Run scripts or programs</li>
+                                <li>Make network requests</li>
+                                <li>Access system resources beyond file creation</li>
+                                <li>Perform complex logic or conditionals</li>
+                            </ul>
+                            <p>This is a <strong>feature, not a limitation</strong>. It ensures templates remain safe and predictable.</p>
+                        </div>
+                    </section>
+
+                    <!-- Structure -->
+                    <section id="structure" class="doc-section">
+                        <h2>Template Structure</h2>
+                        <p>A template consists of a YAML definition file and optional template files:</p>
+
+                        <h3>Template Directory Layout</h3>
+                        <pre><code class="language-text">templates/
+└── my-template/
+    ├── template.yml           # Template definition
+    ├── files/                 # Template files
+    │   ├── README.md.template
+    │   ├── main.py.template
+    │   └── config.yml.template
+    └── static/                # Static files (copied as-is)
+        ├── .gitignore
+        └── LICENSE</code></pre>
+
+                        <h3>Template Definition (template.yml)</h3>
+                        <pre><code class="language-yaml"># Template metadata
+name: my-template
+version: 1.0.0
+description: "Description of what this template creates"
+author: "Your Name"
+category: software.dev/cli-tool
+
+# Scaffolding instructions
+scaffolding:
+  # Directories to create
+  directories:
+    - src/
+    - tests/
+    - docs/
+    - config/
+  
+  # Files to generate from templates
+  files:
+    - path: README.md
+      source: files/README.md.template
+      description: "Project README"
+    
+    - path: src/main.py
+      source: files/main.py.template
+      description: "Main entry point"
+    
+    - path: pyproject.toml
+      content: |
+        [project]
+        name = "{{id}}"
+        version = "0.1.0"
+        description = "{{description}}"
+  
+  # Static files to copy
+  static_files:
+    - source: static/.gitignore
+      destination: .gitignore
+    
+    - source: static/LICENSE
+      destination: LICENSE
+
+# Git configuration
+git:
+  initialize: true
+  initial_commit: true
+  commit_message: "Initial commit from template: {{template_name}}"
+  gitignore:
+    - __pycache__/
+    - "*.pyc"
+    - .venv/
+    - dist/
+    - build/
+
+# Template variables (with defaults)
+variables:
+  python_version: "3.8"
+  license: "MIT"
+  author_email: "user@example.com"
+
+# Requirements or dependencies
+requirements:
+  - git
+  - python >= 3.8
+
+# Post-creation instructions
+instructions: |
+  Your project has been created successfully!
+  
+  Next steps:
+  1. cd into the project directory
+  2. Create a virtual environment: python -m venv .venv
+  3. Activate it: source .venv/bin/activate
+  4. Install dependencies: pip install -e .
+  
+  Happy coding!</code></pre>
+
+                        <h3>Template File Structure</h3>
+                        <table class="doc-table">
+                            <thead>
+                                <tr>
+                                    <th>Component</th>
+                                    <th>Required</th>
+                                    <th>Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>template.yml</code></td>
+                                    <td>Yes</td>
+                                    <td>Main template definition</td>
+                                </tr>
+                                <tr>
+                                    <td><code>files/</code></td>
+                                    <td>No</td>
+                                    <td>Template files with variable substitution</td>
+                                </tr>
+                                <tr>
+                                    <td><code>static/</code></td>
+                                    <td>No</td>
+                                    <td>Static files copied as-is</td>
+                                </tr>
+                                <tr>
+                                    <td><code>README.md</code></td>
+                                    <td>No</td>
+                                    <td>Template documentation</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </section>
+
+                    <!-- Scaffolding -->
+                    <section id="scaffolding" class="doc-section">
+                        <h2>Scaffolding Definition</h2>
+                        <p>The scaffolding section defines what files and directories to create:</p>
+
+                        <h3>Directory Creation</h3>
+                        <pre><code class="language-yaml">scaffolding:
+  directories:
+    # Simple list
+    - src/
+    - tests/
+    - docs/
+    
+    # Nested directories
+    - src/core/
+    - src/utils/
+    - tests/unit/
+    - tests/integration/
+    
+    # Deep nesting
+    - config/environments/dev/
+    - config/environments/prod/</code></pre>
+
+                        <h3>File Generation</h3>
+                        <p>Generate files from templates with variable substitution:</p>
+                        <pre><code class="language-yaml">scaffolding:
+  files:
+    # From template file
+    - path: README.md
+      source: files/README.md.template
+      description: "Project README"
+    
+    # Inline content
+    - path: .env.example
+      content: |
+        # Environment variables
+        PROJECT_NAME={{title}}
+        VERSION=0.1.0
+        DEBUG=true
+      description: "Environment template"
+    
+    # Conditional description
+    - path: src/main.py
+      source: files/main.py.template
+      description: "Main application entry point"
+      executable: false</code></pre>
+
+                        <h3>Static File Copying</h3>
+                        <p>Copy files without variable substitution:</p>
+                        <pre><code class="language-yaml">scaffolding:
+  static_files:
+    # Simple copy
+    - source: static/.gitignore
+      destination: .gitignore
+    
+    # Copy to different location
+    - source: static/LICENSE
+      destination: LICENSE
+    
+    # Copy with rename
+    - source: static/config.example.yml
+      destination: config/default.yml
+    
+    # Copy entire directory
+    - source: static/assets/
+      destination: public/assets/</code></pre>
+
+                        <h3>File Operations Order</h3>
+                        <p>HoxCore processes scaffolding in this order:</p>
+                        <ol>
+                            <li><strong>Create directories</strong> - All directories are created first</li>
+                            <li><strong>Copy static files</strong> - Static files are copied as-is</li>
+                            <li><strong>Generate template files</strong> - Template files are processed with variable substitution</li>
+                            <li><strong>Initialize Git</strong> - If configured, Git repository is initialized</li>
+                        </ol>
+                    </section>
+
+                    <!-- Variables -->
+                    <section id="variables" class="doc-section">
+                        <h2>Template Variables</h2>
+                        <p>Variables enable dynamic content in template files using <code>{{variable}}</code> syntax:</p>
+
+                        <h3>Built-in Variables</h3>
+                        <p>These variables are automatically available in all templates:</p>
+                        <table class="doc-table">
+                            <thead>
+                                <tr>
+                                    <th>Variable</th>
+                                    <th>Description</th>
+                                    <th>Example</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>{{title}}</code></td>
+                                    <td>Entity title</td>
+                                    <td>My Project</td>
+                                </tr>
+                                <tr>
+                                    <td><code>{{description}}</code></td>
+                                    <td>Entity description</td>
+                                    <td>A sample project</td>
+                                </tr>
+                                <tr>
+                                    <td><code>{{uid}}</code></td>
+                                    <td>Entity UID</td>
+                                    <td>proj_abc123def456</td>
+                                </tr>
+                                <tr>
+                                    <td><code>{{id}}</code></td>
+                                    <td>Entity ID (if set)</td>
+                                    <td>P-001</td>
+                                </tr>
+                                <tr>
+                                    <td><code>{{category}}</code></td>
+                                    <td>Entity category</td>
+                                    <td>software.dev/cli-tool</td>
+                                </tr>
+                                <tr>
+                                    <td><code>{{type}}</code></td>
+                                    <td>Entity type</td>
+                                    <td>project</td>
+                                </tr>
+                                <tr>
+                                    <td><code>{{template_name}}</code></td>
+                                    <td>Template name</td>
+                                    <td>cli-tool-python</td>
+                                </tr>
+                                <tr>
+                                    <td><code>{{date}}</code></td>
+                                    <td>Current date</td>
+                                    <td>2024-01-01</td>
+                                </tr>
+                                <tr>
+                                    <td><code>{{year}}</code></td>
+                                    <td>Current year</td>
+                                    <td>2024</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <h3>Custom Variables</h3>
+                        <p>Define custom variables with defaults in your template:</p>
+                        <pre><code class="language-yaml">variables:
+  python_version: "3.8"
+  license: "MIT"
+  author_name: "Your Name"
+  author_email: "user@example.com"
+  github_username: "username"</code></pre>
+
+                        <h3>Using Variables in Templates</h3>
+                        <p>Example template file (<code>README.md.template</code>):</p>
+                        <pre><code class="language-markdown"># {{title}}
+
+{{description}}
+
+## Installation
