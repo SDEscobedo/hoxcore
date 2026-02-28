@@ -141,3 +141,8 @@ logs/
 # OS specific files
 .DS_Store
 Thumbs.db
+
+# Jekyll build output
+docs/_site/
+docs/.jekyll-cache/
+docs/.sass-cache/
