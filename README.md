@@ -29,7 +29,7 @@ HoxCore is intentionally minimal and low-level. It owns the metadata — everyth
 ### From PyPI
 
 ```bash
-pip install hxc
+pip install hoxcore
 ```
 
 ### For Development
