@@ -1,7 +1,7 @@
 # HoxCore
 
 <p align="center">
-    <img src="./images/hoxcore_logo.jpg" alt="Hoxcore" width="400">
+    <img src="https://raw.githubusercontent.com/SDEscobedo/hoxcore/main/images/hoxcore_logo.jpg" alt="Hoxcore" width="400">
 </p>
 
 
