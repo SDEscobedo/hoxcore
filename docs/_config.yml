@@ -1,0 +1,152 @@
+# Jekyll Configuration for HoxCore Documentation
+# GitHub Pages compatible configuration
+
+# Site Settings
+title: HoxCore Documentation
+description: >-
+  Universal, declarative, version-controlled project registry and initialization system.
+  Git-inspired project management for any kind of human endeavor.
+baseurl: "/hoxcore" # Change this to match your repository name
+url: "https://sdescobedo.github.io" # Change this to your GitHub Pages URL
+repository: "sdescobedo/hoxcore" # Change this to your repository
+
+# Build Settings
+markdown: kramdown
+theme: jekyll-theme-minimal
+plugins:
+  - jekyll-feed
+  - jekyll-seo-tag
+  - jekyll-sitemap
+
+# Kramdown Settings
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge
+  syntax_highlighter_opts:
+    block:
+      line_numbers: true
+
+# Collections
+collections:
+  docs:
+    output: true
+    permalink: /:collection/:path/
+
+# Defaults
+defaults:
+  - scope:
+      path: ""
+      type: "pages"
+    values:
+      layout: "default"
+  - scope:
+      path: ""
+      type: "docs"
+    values:
+      layout: "default"
+
+# Exclude from processing
+exclude:
+  - README.md
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor/bundle/
+  - vendor/cache/
+  - vendor/gems/
+  - vendor/ruby/
+  - .sass-cache/
+  - .jekyll-cache/
+  - gemfiles/
+
+# Include files
+include:
+  - _pages
+
+# Sass/SCSS Settings
+sass:
+  sass_dir: _sass
+  style: compressed
+
+# SEO Settings
+author:
+  name: HoxCore Team
+  email: contact@hoxcore.dev
+
+social:
+  name: HoxCore
+  links:
+    - https://github.com/sdescobedo/hoxcore
+
+# Google Analytics (optional - uncomment and add your tracking ID)
+# google_analytics: UA-XXXXXXXXX-X
+
+# Navigation
+navigation:
+  - title: Home
+    url: /
+  - title: Getting Started
+    url: /getting-started.html
+  - title: Core Concepts
+    url: /core-concepts.html
+  - title: CLI Reference
+    url: /cli-reference.html
+  - title: Templates
+    url: /templates.html
+  - title: Integrations
+    url: /integrations.html
+  - title: AI Features
+    url: /ai-features.html
+
+# Footer Links
+footer_links:
+  - title: GitHub
+    url: https://github.com/yourusername/hoxcore
+  - title: Issues
+    url: https://github.com/yourusername/hoxcore/issues
+  - title: License
+    url: https://github.com/yourusername/hoxcore/blob/main/LICENSE
+
+# Site Features
+features:
+  search: true
+  dark_mode: true
+  code_copy: true
+  toc: true
+
+# Timezone
+timezone: UTC
+
+# Encoding
+encoding: utf-8
+
+# Liquid Options
+liquid:
+  error_mode: warn
+  strict_filters: false
+  strict_variables: false
+
+# Permalink Style
+permalink: pretty
+
+# Pagination (if needed in future)
+paginate: 10
+paginate_path: "/blog/page:num/"
+
+# Site Logo and Favicon
+logo: /assets/images/logo.png
+favicon: /assets/images/favicon.ico
+
+# Social Media
+twitter:
+  username: hoxcore
+  card: summary_large_image
+
+# OpenGraph
+og_image: /assets/images/og-image.png
+
+# Version
+version: "0.1.0"
+
+# Last Updated
+last_updated: 2024-01-01
