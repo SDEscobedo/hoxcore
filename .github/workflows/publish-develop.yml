@@ -95,7 +95,6 @@ jobs:
       - name: Publish to TestPyPI via Trusted Publishing
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          repository-url: https://upload.pypi.org/legacy/
           # Point to TestPyPI instead of production PyPI
           repository-url: https://test.pypi.org/legacy/
 
