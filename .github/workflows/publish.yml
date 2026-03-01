@@ -1,0 +1,150 @@
+name: Publish to PyPI
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      # Only trigger when package source code changes
+      - "src/**"
+      - "pyproject.toml"
+      - "setup.py"
+
+jobs:
+  # ──────────────────────────────────────────────
+  # Job 1: Run tests before publishing anything
+  # ──────────────────────────────────────────────
+  test:
+    name: Run Test Suite
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run tests
+        run: pytest
+
+  # ──────────────────────────────────────────────
+  # Job 2: Bump version, tag, and create a GitHub Release
+  # ──────────────────────────────────────────────
+  release:
+    name: Create GitHub Release
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Required to push tags and create releases
+
+    outputs:
+      new_version: ${{ steps.bump.outputs.new_version }}
+      tag_name: ${{ steps.bump.outputs.tag_name }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history needed for changelog generation
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Read current version from pyproject.toml
+        id: current
+        run: |
+          VERSION=$(python -c "import tomllib; f=open('pyproject.toml','rb'); d=tomllib.load(f); print(d['project']['version'])")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Bump patch version
+        id: bump
+        run: |
+          OLD="${{ steps.current.outputs.version }}"
+          # Split into parts and increment patch (e.g. 0.1.0 -> 0.1.1)
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$OLD"
+          NEW="$MAJOR.$MINOR.$((PATCH + 1))"
+          echo "new_version=$NEW" >> $GITHUB_OUTPUT
+          echo "tag_name=v$NEW" >> $GITHUB_OUTPUT
+
+          # Update pyproject.toml in-place
+          sed -i "s/^version = \"$OLD\"/version = \"$NEW\"/" pyproject.toml
+          echo "Bumped $OLD → $NEW"
+
+      - name: Commit version bump
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add pyproject.toml
+          git commit -m "chore: bump version to ${{ steps.bump.outputs.new_version }} [skip ci]"
+          git push
+
+      - name: Create and push tag
+        run: |
+          git tag ${{ steps.bump.outputs.tag_name }}
+          git push origin ${{ steps.bump.outputs.tag_name }}
+
+      - name: Generate release notes from commit messages
+        id: notes
+        run: |
+          # Collect commits since the previous tag
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -z "$PREV_TAG" ]; then
+            NOTES=$(git log --pretty=format:"- %s" | head -20)
+          else
+            NOTES=$(git log "$PREV_TAG"..HEAD --pretty=format:"- %s")
+          fi
+          # Write to a file to handle multiline content safely
+          echo "$NOTES" > release_notes.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.bump.outputs.tag_name }}
+          name: "Release ${{ steps.bump.outputs.tag_name }}"
+          body_path: release_notes.txt
+          draft: false
+          prerelease: false
+
+  # ──────────────────────────────────────────────
+  # Job 3: Build and publish to PyPI
+  # ──────────────────────────────────────────────
+  publish:
+    name: Build & Publish to PyPI
+    needs: release
+    runs-on: ubuntu-latest
+    environment: pypi  # Maps to the Trusted Publisher environment on PyPI
+
+    permissions:
+      id-token: write  # Required for OIDC Trusted Publishing (no API token needed)
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Check out the version-bumped commit, not the PR merge commit
+          ref: master
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install build tools
+        run: pip install build
+
+      - name: Build distribution packages
+        run: python -m build
+        # Produces dist/hoxcore-X.Y.Z.tar.gz and dist/hoxcore-X.Y.Z-py3-none-any.whl
+
+      - name: Publish to PyPI via Trusted Publishing
+        uses: pypa/gh-action-pypi-publish@release/v1
+        # No username/password or API token needed — OIDC handles authentication
+        # through the Trusted Publisher you configured on PyPI.

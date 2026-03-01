@@ -1,0 +1,108 @@
+name: Publish Dev Build to TestPyPI
+
+on:
+  push:
+    branches:
+      - develop
+    paths:
+      # Mirror the same trigger as the master workflow
+      - "src/**"
+      - "pyproject.toml"
+      - "setup.py"
+
+jobs:
+  # ──────────────────────────────────────────────
+  # Job 1: Run tests before publishing anything
+  # ──────────────────────────────────────────────
+  test:
+    name: Run Test Suite
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run tests
+        run: pytest
+
+  # ──────────────────────────────────────────────
+  # Job 2: Build with a .devN version and publish
+  # to TestPyPI — no version is committed back
+  # to the develop branch.
+  # ──────────────────────────────────────────────
+  publish-dev:
+    name: Build & Publish to TestPyPI
+    needs: test
+    runs-on: ubuntu-latest
+    environment: testpypi  # Maps to the Trusted Publisher environment on TestPyPI
+
+    permissions:
+      id-token: write  # Required for OIDC Trusted Publishing
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Read current version from pyproject.toml
+        id: current
+        run: |
+          VERSION=$(python -c "import tomllib; f=open('pyproject.toml','rb'); d=tomllib.load(f); print(d['project']['version'])")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Compute dev version (not committed back to branch)
+        id: devversion
+        run: |
+          BASE="${{ steps.current.outputs.version }}"
+          # Use the GitHub Actions run number as the dev build counter.
+          # This is always incrementing, so versions are always unique and
+          # correctly ordered: 0.1.0.dev1 < 0.1.0.dev2 < ... < 0.1.0
+          DEV_VERSION="$BASE.dev${{ github.run_number }}"
+          echo "dev_version=$DEV_VERSION" >> $GITHUB_OUTPUT
+          echo "Dev version: $DEV_VERSION (not written back to pyproject.toml)"
+
+      - name: Stamp dev version into pyproject.toml (in-memory only)
+        run: |
+          # Overwrite the version field in pyproject.toml for the build only.
+          # This file change is never committed — it exists only in the
+          # runner's working directory for the duration of this job.
+          BASE="${{ steps.current.outputs.version }}"
+          DEV="${{ steps.devversion.outputs.dev_version }}"
+          sed -i "s/^version = \"$BASE\"/version = \"$DEV\"/" pyproject.toml
+          echo "pyproject.toml now contains: $(grep '^version' pyproject.toml)"
+
+      - name: Install build tools
+        run: pip install build
+
+      - name: Build distribution packages
+        run: python -m build
+        # Produces:
+        #   dist/hoxcore-0.1.0.dev42.tar.gz
+        #   dist/hoxcore-0.1.0.dev42-py3-none-any.whl
+
+      - name: Publish to TestPyPI via Trusted Publishing
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://upload.pypi.org/legacy/
+          # Point to TestPyPI instead of production PyPI
+          repository-url: https://test.pypi.org/legacy/
+
+      - name: Report published version
+        run: |
+          echo "✅ Published hoxcore==${{ steps.devversion.outputs.dev_version }} to TestPyPI"
+          echo "🔍 View at: https://test.pypi.org/project/hoxcore/${{ steps.devversion.outputs.dev_version }}/"
+          echo ""
+          echo "Install with:"
+          echo "  pip install --index-url https://test.pypi.org/simple/ hoxcore==${{ steps.devversion.outputs.dev_version }}"
