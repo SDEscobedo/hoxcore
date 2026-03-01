@@ -1,4 +1,3 @@
-# src/hxc/core/enums.py
 """
 Core enumerations for HXC entity types and statuses
 """

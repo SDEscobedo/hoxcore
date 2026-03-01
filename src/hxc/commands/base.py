@@ -1,4 +1,3 @@
-# src/hxc/commands/base.py
 """
 Base command class definition
 """

@@ -1,4 +1,3 @@
-# src/hxc/utils/path_security.py
 """
 Path security utilities for HoxCore registry operations.
 Ensures all file operations stay within the registry boundaries.
