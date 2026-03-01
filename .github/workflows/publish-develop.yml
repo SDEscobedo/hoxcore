@@ -82,6 +82,8 @@ jobs:
           DEV="${{ steps.devversion.outputs.dev_version }}"
           sed -i "s/^version = \"$BASE\"/version = \"$DEV\"/" pyproject.toml
           echo "pyproject.toml now contains: $(grep '^version' pyproject.toml)"
+          sed -i "s/__version__ = '$BASE'/__version__ = '$DEV'/" src/hxc/__init__.py
+          echo "__init__.py now contains: $(grep '^version' __init__.py)"
 
       - name: Install build tools
         run: pip install build
