@@ -1,4 +1,3 @@
-# src/hxc/core/config.py
 """
 Configuration management for HXC
 """
