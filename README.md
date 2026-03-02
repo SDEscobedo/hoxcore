@@ -49,30 +49,112 @@ pip install -e .
 
 ## Usage
 
-```bash
-$ hxc [command] [options]
-```
+HoxCore manages your projects using a simple file-based system. It operates on a **Registry** (a directory on your disk) that holds various **Entities** (Programs, Projects, Missions, or Actions) stored as individual files. This mental model allows you to maintain full control over your data while using simple CLI commands to organize your workflow.
 
 ### Available Commands
 
-- `command1`: Example command
-- `command2`: Another example command
+| Command | Description |
+| :--- | :--- |
+| `init` | Initialize a new registry |
+| `create` | Create a new entity (project, program, mission, action) |
+| `list` | List entities with optional filters |
+| `show` | Show full details of a specific entity |
+| `get` | Get a specific property from an entity |
+| `edit` | Edit properties of an entity |
+| `delete` | Delete an entity from the registry |
+| `validate` | Validate registry integrity |
+| `registry` | Manage registry location |
+| `mcp` | Start the MCP server for LLM access |
 
-### Examples
+### Quick Start Guide
+
+#### 1. Initialize a Registry
+
+Set up your first registry to start storing entities.
 
 ```bash
-# Get help
-$ hxc --help
+# Initialize a registry in the current directory
+hxc init
 
-# Get version information
-$ hxc --version
+# Initialize in a specific directory
+hxc init ~/my-registry
 
-# Get command-specific help
-$ hxc command1 --help
+# Initialize without git integration
+hxc init --no-git
+```
 
-# Execute commands
-$ hxc command1 --option value
-$ hxc command2 --flag input-value
+#### 2. Create Entities
+   
+Add projects, programs, missions, or actions to your registry.
+
+```bash
+# Create a basic project
+hxc create project "My First Project"
+
+# Create a project with a description, tags, and due date
+hxc create project "API Redesign" --description "Redesign the public API" --tags backend api --due-date 2025-06-01
+
+# Create a program (container for projects)
+hxc create program "Q2 Initiatives"
+
+# Create a mission (execution-oriented, time-bound)
+hxc create mission "Deploy v2.0"
+
+# Create an action (ongoing, no end date)
+hxc create action "Monitor system health"
+```
+#### 3.  List and Inspect
+   
+View your registry content and drill down into details.
+
+```bash
+# List all projects
+hxc list project
+
+# List all entities in the registry
+hxc list all
+
+# Filter by status or tag
+hxc list project --status active
+hxc list project --tag backend
+
+# Show full details of a specific entity
+hxc show <uid>
+
+# Get a specific property
+hxc get <uid> status
+```
+
+#### 4. Edit and Delete
+   
+Update or remove entities as your tasks progress.
+
+```bash
+# Change status or add a tag
+hxc edit <uid> --set-status completed
+hxc edit <uid> --add-tag backend
+
+# Set a new due date
+hxc edit <uid> --set-due-date 2025-06-01
+
+# Delete an entity (prompts for confirmation)
+hxc delete <uid>
+
+# Delete immediately without prompt
+hxc delete <uid> --force
+```
+
+**Getting Help**
+
+If you need more information about a specific command or general flags:
+
+```bash
+# General help
+hxc --help
+
+# Command-specific help
+hxc create --help
+hxc list --help
 ```
 
 ---
