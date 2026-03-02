@@ -49,7 +49,7 @@ pip install -e .
 
 ## Usage
 
-HoxCore manages your projects and tasks using a simple file-based system. It operates on a **Registry** (a directory on your disk) that holds various **Entities** (Programs, Projects, Missions, or Actions) stored as individual files. This mental model allows you to maintain full control over your data while using simple CLI commands to organize your workflow.
+HoxCore manages your projects using a simple file-based system. It operates on a **Registry** (a directory on your disk) that holds various **Entities** (Programs, Projects, Missions, or Actions) stored as individual files. This mental model allows you to maintain full control over your data while using simple CLI commands to organize your workflow.
 
 ### Available Commands
 
