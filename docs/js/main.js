@@ -193,12 +193,14 @@
     initSidebarToggle();
     initExternalLinks();
     initFooterYear();
+    initVersion();
     document.body.classList.add('js-loaded');
   }
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
-    init();
+    init();  // ← this fires immediately if DOM is already parsed
   }
+  
 })();

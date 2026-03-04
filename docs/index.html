@@ -27,6 +27,8 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" defer></script>
   <script>document.addEventListener('DOMContentLoaded', () => { if (window.hljs) hljs.highlightAll(); });</script>
+
+
 </head>
 <body>
 
@@ -39,7 +41,7 @@
       <a href="index.html" aria-label="HoxCore home">
         <span class="nav-logo">HoxCore</span>
       </a>
-      <span class="nav-version">v0.1.1</span>
+      <span class="nav-version"></span>
     </div>
 
     <ul class="nav-menu" role="list">
@@ -75,7 +77,7 @@
     <div class="hero-content">
       <div class="hero-badge">
         <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><circle cx="5" cy="5" r="5"/></svg>
-        Alpha — v0.1.1
+        Alpha — <span class="hero-version"></span>
       </div>
       <h1>Universal Project Registry</h1>
       <p class="hero-tagline">Git-inspired project management for any kind of human endeavor.</p>
@@ -91,7 +93,7 @@
 
       <div class="hero-install">
         <span class="prompt">$</span>
-        <span class="cmd">pip install hoxcore</span>
+        <span class="cmd">pip install hxc</span>
         <button class="hero-install-copy" aria-label="Copy install command">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
         </button>
@@ -148,7 +150,7 @@
         <div class="step-num">1</div>
         <div class="step-body">
           <h3>Install</h3>
-          <pre><code class="language-bash">pip install hoxcore</code></pre>
+          <pre><code class="language-bash">pip install hxc</code></pre>
         </div>
       </div>
       <div class="step">
@@ -335,13 +337,13 @@ tools:
           <li><a href="https://github.com/sdescobedo/hoxcore/discussions" target="_blank" rel="noopener">Discussions</a></li>
           <li><a href="https://github.com/sdescobedo/hoxcore/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener">Contributing</a></li>
           <li><a href="https://github.com/sdescobedo/hoxcore/blob/main/LICENSE" target="_blank" rel="noopener">License</a></li>
-          <li><a href="https://pypi.org/project/hoxcore/" target="_blank" rel="noopener">PyPI</a></li>
+          <li><a href="https://pypi.org/project/hxc/" target="_blank" rel="noopener">PyPI</a></li>
         </ul>
       </div>
     </div>
     <div class="footer-bottom">
       <span>&copy; <span class="footer-year">2024</span> HoxCore. Released under the MIT License.</span>
-      <span>v0.1.1</span>
+      <span class="footer-version"></span>
     </div>
   </div>
 </footer>
@@ -350,6 +352,7 @@ tools:
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>
 </button>
 
-<script src="js/main.js"></script>
+  <script src="js/version.js"></script>
+  <script src="js/main.js"></script>
 </body>
 </html>
