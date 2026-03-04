@@ -17,19 +17,19 @@ docs/
 ├── templates.html          # Template system documentation
 ├── integrations.html       # Integration guides
 ├── ai-features.html        # AI and LLM integration features
+├── 404.html                # Custom 404 error page
+├── robots.txt              # Search engine directives
+├── sitemap.xml             # Sitemap for SEO
 ├── css/
 │   └── style.css          # Stylesheet
 ├── js/
 │   └── main.js            # JavaScript functionality
-├── _config.yml            # Jekyll configuration
 └── README.md              # This file
 ```
 
 ## Local Development
 
 To preview the documentation site locally:
-
-### Using Python's built-in server:
 
 ```bash
 cd docs
@@ -38,14 +38,13 @@ python -m http.server 8000
 
 Then open `http://localhost:8000` in your browser.
 
-### Using Jekyll (if installed):
+> Use a local server rather than opening HTML files directly — browsers block CDN scripts (syntax highlighting) on `file://` URLs due to CORS restrictions.
+
+If port 8000 is already in use, pick any other port:
 
 ```bash
-cd docs
-bundle exec jekyll serve
+python -m http.server 8080
 ```
-
-Then open `http://localhost:4000` in your browser.
 
 ## Deployment
 
@@ -72,20 +71,21 @@ When contributing to the documentation:
 ## Technology Stack
 
 - **HTML5**: Semantic markup
-- **CSS3**: Modern styling with responsive design
-- **JavaScript**: Interactive features and navigation
-- **Jekyll**: Static site generation (GitHub Pages compatible)
+- **CSS3**: Custom properties, responsive design, dark mode
+- **JavaScript**: Theme toggle, mobile nav, code copy buttons, scroll-to-top
+- **highlight.js**: Syntax highlighting (loaded from CDN)
 - **GitHub Pages**: Hosting and deployment
+
+No build step required — the site is plain static HTML.
 
 ## Key Features
 
-The documentation site includes:
-
-- **Responsive Design**: Mobile-friendly layout
-- **Search Functionality**: Quick access to documentation
-- **Code Highlighting**: Syntax-highlighted examples
-- **Interactive Navigation**: Easy browsing between sections
-- **Dark Mode Support**: Comfortable reading in any environment
+- **Responsive design**: Mobile-friendly layout
+- **Dark mode**: System-aware, toggle persisted via localStorage
+- **Syntax highlighting**: Via highlight.js (GitHub Dark theme)
+- **Code copy buttons**: One-click copy on all code blocks
+- **Accessible**: Skip links, ARIA labels, keyboard navigation, focus indicators
+- **SEO**: Canonical URLs, Open Graph tags, sitemap, robots.txt
 
 ## Contributing
 
@@ -94,7 +94,7 @@ To contribute to the documentation:
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes in the `docs/` directory
-4. Test locally
+4. Test locally with `python -m http.server 8000`
 5. Submit a pull request
 
 ## Support
@@ -108,7 +108,3 @@ For questions or issues with the documentation:
 ## License
 
 The documentation is part of the HoxCore project and follows the same license terms.
-
----
-
-**Note**: This documentation is separate from the CLI tool implementation and can be updated independently.
