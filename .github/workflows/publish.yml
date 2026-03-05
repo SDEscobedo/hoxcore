@@ -86,7 +86,7 @@ jobs:
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add pyproject.toml src/hxc/__init__.py docs/
+          git add pyproject.toml src/hxc/__init__.py
           git commit -m "chore: bump version to ${{ steps.bump.outputs.new_version }} [skip ci]"
 
           # Commit docs separately so the Pages deployment workflow triggers
