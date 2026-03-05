@@ -1,1568 +1,480 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="CLI Reference for HoxCore - Complete command-line interface documentation with examples and options for the universal project registry system.">
-    <meta name="keywords" content="HoxCore, CLI, command line, reference, commands, documentation, API">
-    <meta name="author" content="HoxCore Team">
-    
-    <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://yourusername.github.io/hoxcore/cli-reference.html">
-    <meta property="og:title" content="CLI Reference - HoxCore Documentation">
-    <meta property="og:description" content="Complete command-line interface reference for HoxCore">
-    <meta property="og:image" content="https://yourusername.github.io/hoxcore/assets/images/og-image.png">
-
-    <!-- Twitter -->
-    <meta property="twitter:card" content="summary_large_image">
-    <meta property="twitter:url" content="https://yourusername.github.io/hoxcore/cli-reference.html">
-    <meta property="twitter:title" content="CLI Reference - HoxCore Documentation">
-    <meta property="twitter:description" content="Complete command-line interface reference for HoxCore">
-    <meta property="twitter:image" content="https://yourusername.github.io/hoxcore/assets/images/og-image.png">
-
-    <title>CLI Reference - HoxCore Documentation</title>
-    
-    <link rel="stylesheet" href="css/style.css">
-    <link rel="icon" type="image/x-icon" href="assets/images/favicon.ico">
-    
-    <!-- Syntax Highlighting -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CLI Reference — HoxCore Documentation</title>
+  <meta name="description" content="Complete reference for all hxc CLI commands, options, and flags.">
+  <link rel="canonical" href="https://sdescobedo.github.io/hoxcore/cli-reference.html">
+  <meta property="og:title" content="CLI Reference — HoxCore Documentation">
+  <meta property="og:description" content="Complete reference for all hxc CLI commands, options, and flags.">
+  <meta property="og:url" content="https://sdescobedo.github.io/hoxcore/cli-reference.html">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" defer></script>
+  <script>document.addEventListener('DOMContentLoaded', () => { if (window.hljs) hljs.highlightAll(); });</script>
 </head>
 <body>
-    <!-- Navigation -->
-    <nav class="navbar">
-        <div class="container">
-            <div class="nav-brand">
-                <a href="index.html">
-                    <span class="logo">HoxCore</span>
-                </a>
-            </div>
-            <button class="nav-toggle" aria-label="Toggle navigation">
-                <span></span>
-                <span></span>
-                <span></span>
-            </button>
-            <ul class="nav-menu">
-                <li><a href="index.html">Home</a></li>
-                <li><a href="getting-started.html">Getting Started</a></li>
-                <li><a href="core-concepts.html">Core Concepts</a></li>
-                <li><a href="cli-reference.html" class="active">CLI Reference</a></li>
-                <li><a href="templates.html">Templates</a></li>
-                <li><a href="integrations.html">Integrations</a></li>
-                <li><a href="ai-features.html">AI Features</a></li>
-                <li><a href="https://github.com/yourusername/hoxcore" target="_blank" class="github-link">GitHub</a></li>
-            </ul>
-        </div>
+
+<a href="#main" class="skip-link">Skip to main content</a>
+
+<nav class="navbar" role="navigation" aria-label="Main navigation">
+  <div class="container">
+    <div class="nav-brand">
+      <a href="index.html" aria-label="HoxCore home"><span class="nav-logo">HoxCore</span></a>
+      <span class="nav-version"></span>
+    </div>
+    <ul class="nav-menu" role="list">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="getting-started.html">Getting Started</a></li>
+      <li><a href="core-concepts.html">Concepts</a></li>
+      <li><a href="cli-reference.html" class="active">CLI</a></li>
+      <li><a href="templates.html">Templates</a></li>
+      <li><a href="integrations.html">Integrations</a></li>
+      <li><a href="ai-features.html">AI</a></li>
+    </ul>
+    <div class="nav-actions">
+      <button class="theme-toggle" aria-label="Toggle dark mode" aria-pressed="false">
+        <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
+      <a href="https://github.com/sdescobedo/hoxcore" class="nav-github" target="_blank" rel="noopener noreferrer">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        GitHub
+      </a>
+      <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><span></span><span></span><span></span></button>
+    </div>
+  </div>
+</nav>
+
+<header class="page-header">
+  <div class="page-header-inner">
+    <nav class="page-breadcrumb" aria-label="Breadcrumb">
+      <a href="index.html">HoxCore</a>
+      <span class="sep">/</span>
+      <span>CLI Reference</span>
     </nav>
+    <h1>CLI Reference</h1>
+    <p>Complete documentation for all <code>hxc</code> commands.</p>
+  </div>
+</header>
 
-    <!-- Page Header -->
-    <section class="page-header">
-        <div class="container">
-            <h1>CLI Reference</h1>
-            <p>Complete command-line interface documentation for HoxCore</p>
+<main id="main">
+<div class="doc-wrapper">
+
+  <aside class="doc-sidebar" aria-label="Page navigation">
+    <div class="sidebar-section">
+      <span class="sidebar-label">Commands</span>
+      <ul class="sidebar-nav">
+        <li><a href="#global-options">Global Options</a></li>
+        <li><a href="#init">hxc init</a></li>
+        <li><a href="#create">hxc create</a></li>
+        <li><a href="#list">hxc list</a></li>
+        <li><a href="#show">hxc show</a></li>
+        <li><a href="#update">hxc update</a></li>
+        <li><a href="#delete">hxc delete</a></li>
+        <li><a href="#query">hxc query</a></li>
+        <li><a href="#template">hxc template</a></li>
+        <li><a href="#registry">hxc registry</a></li>
+        <li><a href="#validate">hxc validate</a></li>
+        <li><a href="#export">hxc export</a></li>
+        <li><a href="#stats">hxc stats</a></li>
+      </ul>
+    </div>
+  </aside>
+
+  <div class="doc-content-area">
+    <div class="doc-content">
+
+      <section id="global-options" class="doc-section">
+        <h2>Global Options</h2>
+        <p>These options apply to every <code>hxc</code> command:</p>
+        <div class="table-wrap">
+          <table class="doc-table">
+            <thead><tr><th>Flag</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>--registry PATH</code></td><td>Override registry path for this command</td></tr>
+              <tr><td><code>--output json|yaml|table</code></td><td>Output format (default: table)</td></tr>
+              <tr><td><code>--no-color</code></td><td>Disable colored output</td></tr>
+              <tr><td><code>--quiet, -q</code></td><td>Suppress non-essential output</td></tr>
+              <tr><td><code>--verbose, -v</code></td><td>Enable verbose output</td></tr>
+              <tr><td><code>--version</code></td><td>Print version and exit</td></tr>
+              <tr><td><code>--help, -h</code></td><td>Show help for command</td></tr>
+            </tbody>
+          </table>
         </div>
-    </section>
+      </section>
 
-    <!-- Main Content -->
-    <main class="documentation">
-        <div class="container">
-            <div class="doc-layout">
-                <!-- Sidebar Navigation -->
-                <aside class="doc-sidebar">
-                    <nav class="doc-nav">
-                        <h3>Commands</h3>
-                        <ul>
-                            <li><a href="#overview">Overview</a></li>
-                            <li><a href="#global-options">Global Options</a></li>
-                            <li><a href="#init">init</a></li>
-                            <li><a href="#create">create</a></li>
-                            <li><a href="#list">list</a></li>
-                            <li><a href="#show">show</a></li>
-                            <li><a href="#update">update</a></li>
-                            <li><a href="#delete">delete</a></li>
-                            <li><a href="#query">query</a></li>
-                            <li><a href="#registry">registry</a></li>
-                            <li><a href="#template">template</a></li>
-                            <li><a href="#export">export</a></li>
-                            <li><a href="#import">import</a></li>
-                            <li><a href="#validate">validate</a></li>
-                            <li><a href="#config">config</a></li>
-                        </ul>
-                    </nav>
-                </aside>
+      <section id="init" class="doc-section">
+        <h2>hxc init</h2>
+        <p>Initialize a new HoxCore registry in the specified directory.</p>
+        <pre><code class="language-bash">hxc init [PATH] [OPTIONS]</code></pre>
+        <h3>Arguments</h3>
+        <div class="table-wrap">
+          <table class="doc-table">
+            <thead><tr><th>Argument</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>PATH</code></td><td>Directory to initialize (default: current directory)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3>Options</h3>
+        <div class="table-wrap">
+          <table class="doc-table">
+            <thead><tr><th>Flag</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>--name NAME</code></td><td>Registry name (used in config.yml)</td></tr>
+              <tr><td><code>--no-git</code></td><td>Skip Git initialization</td></tr>
+              <tr><td><code>--template NAME</code></td><td>Bootstrap from a registry template</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3>Examples</h3>
+        <pre><code class="language-bash">hxc init my-registry
+hxc init . --name "Personal Registry"
+hxc init work-projects --no-git</code></pre>
+      </section>
 
-                <!-- Main Documentation Content -->
-                <article class="doc-content">
-                    <!-- Overview -->
-                    <section id="overview" class="doc-section">
-                        <h2>Overview</h2>
-                        <p>The HoxCore CLI (<code>hxc</code>) provides a comprehensive command-line interface for managing your project registry. All commands follow a consistent pattern and support both interactive and non-interactive modes.</p>
+      <section id="create" class="doc-section">
+        <h2>hxc create</h2>
+        <p>Create a new entity in the registry.</p>
+        <pre><code class="language-bash">hxc create {program|project|mission|action} [OPTIONS]</code></pre>
+        <h3>Options</h3>
+        <div class="table-wrap">
+          <table class="doc-table">
+            <thead><tr><th>Flag</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>--title TEXT</code></td><td>Entity title (required unless --interactive)</td></tr>
+              <tr><td><code>--id TEXT</code></td><td>Human-readable ID (e.g. P-001). Auto-generated if omitted.</td></tr>
+              <tr><td><code>--description TEXT</code></td><td>Description text</td></tr>
+              <tr><td><code>--status STATUS</code></td><td>Initial status (default: active)</td></tr>
+              <tr><td><code>--category TEXT</code></td><td>Category string</td></tr>
+              <tr><td><code>--tags TEXT</code></td><td>Comma-separated tags</td></tr>
+              <tr><td><code>--parent UID</code></td><td>Parent entity UID</td></tr>
+              <tr><td><code>--start-date DATE</code></td><td>Start date (YYYY-MM-DD)</td></tr>
+              <tr><td><code>--due-date DATE</code></td><td>Due date (projects only)</td></tr>
+              <tr><td><code>--template NAME</code></td><td>Bootstrap from a named template</td></tr>
+              <tr><td><code>--interactive, -i</code></td><td>Interactive prompt mode</td></tr>
+              <tr><td><code>--edit</code></td><td>Open in $EDITOR after creation</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3>Examples</h3>
+        <pre><code class="language-bash"># Minimal project
+hxc create project --title "New API"
 
-                        <h3>Command Structure</h3>
-                        <pre><code class="language-bash">hxc [global-options] &lt;command&gt; [command-options] [arguments]</code></pre>
-
-                        <h3>Getting Help</h3>
-                        <pre><code class="language-bash"># General help
-hxc --help
-
-# Command-specific help
-hxc &lt;command&gt; --help
-
-# Show version
-hxc --version</code></pre>
-
-                        <div class="info-box">
-                            <h4>💡 Tab Completion</h4>
-                            <p>HoxCore supports shell tab completion for commands and options. Enable it by running:</p>
-                            <pre><code class="language-bash"># Bash
-eval "$(hxc completion bash)"
-
-# Zsh
-eval "$(hxc completion zsh)"</code></pre>
-                        </div>
-                    </section>
-
-                    <!-- Global Options -->
-                    <section id="global-options" class="doc-section">
-                        <h2>Global Options</h2>
-                        <p>These options can be used with any command:</p>
-
-                        <table class="doc-table">
-                            <thead>
-                                <tr>
-                                    <th>Option</th>
-                                    <th>Description</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><code>--registry PATH</code></td>
-                                    <td>Specify registry path (overrides default)</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--verbose, -v</code></td>
-                                    <td>Enable verbose output</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--quiet, -q</code></td>
-                                    <td>Suppress non-error output</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--no-color</code></td>
-                                    <td>Disable colored output</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--format FORMAT</code></td>
-                                    <td>Output format: text, json, yaml (default: text)</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--help, -h</code></td>
-                                    <td>Show help information</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--version</code></td>
-                                    <td>Show version information</td>
-                                </tr>
-                            </tbody>
-                        </table>
-
-                        <h3>Examples</h3>
-                        <pre><code class="language-bash"># Use specific registry
-hxc --registry /path/to/registry list projects
-
-# JSON output
-hxc --format json show P-001
-
-# Verbose mode
-hxc -v create project --title "New Project"</code></pre>
-                    </section>
-
-                    <!-- init -->
-                    <section id="init" class="doc-section">
-                        <h2>init</h2>
-                        <p>Initialize a new HoxCore registry.</p>
-
-                        <h3>Syntax</h3>
-                        <pre><code class="language-bash">hxc init [PATH] [options]</code></pre>
-
-                        <h3>Arguments</h3>
-                        <table class="doc-table">
-                            <thead>
-                                <tr>
-                                    <th>Argument</th>
-                                    <th>Description</th>
-                                    <th>Default</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><code>PATH</code></td>
-                                    <td>Directory path for the registry</td>
-                                    <td>Current directory</td>
-                                </tr>
-                            </tbody>
-                        </table>
-
-                        <h3>Options</h3>
-                        <table class="doc-table">
-                            <thead>
-                                <tr>
-                                    <th>Option</th>
-                                    <th>Description</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><code>--name NAME</code></td>
-                                    <td>Registry name</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--description DESC</code></td>
-                                    <td>Registry description</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--no-git</code></td>
-                                    <td>Skip Git initialization</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--template TEMPLATE</code></td>
-                                    <td>Use a registry template</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--force, -f</code></td>
-                                    <td>Overwrite existing registry</td>
-                                </tr>
-                            </tbody>
-                        </table>
-
-                        <h3>Examples</h3>
-                        <pre><code class="language-bash"># Initialize in current directory
-hxc init .
-
-# Initialize in new directory
-hxc init my-registry
-
-# Initialize with name and description
-hxc init my-registry \
-  --name "My Projects" \
-  --description "Personal project registry"
-
-# Initialize without Git
-hxc init my-registry --no-git
-
-# Force overwrite existing registry
-hxc init my-registry --force</code></pre>
-
-                        <h3>Output</h3>
-                        <pre><code class="language-text">✅ Registry initialized at: /path/to/my-registry
-📁 Created directory structure
-🔧 Initialized Git repository
-📝 Created config.yml
-✨ Registry ready to use!</code></pre>
-                    </section>
-
-                    <!-- create -->
-                    <section id="create" class="doc-section">
-                        <h2>create</h2>
-                        <p>Create a new entity (program, project, mission, or action).</p>
-
-                        <h3>Syntax</h3>
-                        <pre><code class="language-bash">hxc create &lt;type&gt; [options]</code></pre>
-
-                        <h3>Entity Types</h3>
-                        <ul>
-                            <li><code>program</code> - Abstract container grouping related initiatives</li>
-                            <li><code>project</code> - Object-like effort with concrete outputs</li>
-                            <li><code>mission</code> - Event-like effort with clear culmination</li>
-                            <li><code>action</code> - Ongoing activity without defined end</li>
-                        </ul>
-
-                        <h3>Common Options</h3>
-                        <table class="doc-table">
-                            <thead>
-                                <tr>
-                                    <th>Option</th>
-                                    <th>Description</th>
-                                    <th>Required</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><code>--title TITLE</code></td>
-                                    <td>Entity title</td>
-                                    <td>Yes</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--description DESC</code></td>
-                                    <td>Entity description</td>
-                                    <td>No</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--id ID</code></td>
-                                    <td>Human-defined ID</td>
-                                    <td>No</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--category CATEGORY</code></td>
-                                    <td>Entity category</td>
-                                    <td>No</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--tags TAG1,TAG2</code></td>
-                                    <td>Comma-separated tags</td>
-                                    <td>No</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--status STATUS</code></td>
-                                    <td>Initial status (default: active)</td>
-                                    <td>No</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--parent UID</code></td>
-                                    <td>Parent entity UID</td>
-                                    <td>No</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--start-date DATE</code></td>
-                                    <td>Start date (YYYY-MM-DD)</td>
-                                    <td>No</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--due-date DATE</code></td>
-                                    <td>Due date (YYYY-MM-DD)</td>
-                                    <td>No</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--duration DURATION</code></td>
-                                    <td>Duration estimate (e.g., 90d, 3w)</td>
-                                    <td>No</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--template TEMPLATE</code></td>
-                                    <td>Template to use for scaffolding</td>
-                                    <td>No</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--interactive, -i</code></td>
-                                    <td>Interactive mode</td>
-                                    <td>No</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--no-commit</code></td>
-                                    <td>Skip Git commit</td>
-                                    <td>No</td>
-                                </tr>
-                            </tbody>
-                        </table>
-
-                        <h3>Examples</h3>
-                        <pre><code class="language-bash"># Basic project creation
-hxc create project --title "My Project"
-
-# Project with full details
+# Fully specified
 hxc create project \
-  --title "AI-Powered CLI Tool" \
-  --description "Building an intelligent CLI" \
-  --id P-001 \
-  --category software.dev/cli-tool \
-  --tags cli,ai,python \
-  --start-date 2024-01-01 \
+  --title "GraphQL Migration" \
+  --id P-042 \
+  --category software.dev/api \
+  --tags graphql,migration,backend \
+  --parent prog_abc123 \
   --due-date 2024-12-31
 
-# Create with template
-hxc create project \
-  --title "Python CLI Tool" \
-  --template software.dev/cli-tool.python
-
-# Create with parent
-hxc create project \
-  --title "Backend API" \
-  --parent prog_abc123def456
-
-# Interactive creation
+# Interactive mode
 hxc create project --interactive
 
-# Create program
-hxc create program \
-  --title "Digital Transformation" \
-  --description "Company-wide digital initiative"
+# From template
+hxc create project --template software-project</code></pre>
+      </section>
 
-# Create mission
-hxc create mission \
-  --title "Product Launch" \
-  --due-date 2024-06-30
+      <section id="list" class="doc-section">
+        <h2>hxc list</h2>
+        <p>List entities in the registry.</p>
+        <pre><code class="language-bash">hxc list {programs|projects|missions|actions|all} [OPTIONS]</code></pre>
+        <h3>Options</h3>
+        <div class="table-wrap">
+          <table class="doc-table">
+            <thead><tr><th>Flag</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>--status STATUS</code></td><td>Filter by status</td></tr>
+              <tr><td><code>--tags TEXT</code></td><td>Filter: all listed tags must be present (AND)</td></tr>
+              <tr><td><code>--any-tags TEXT</code></td><td>Filter: any listed tag present (OR)</td></tr>
+              <tr><td><code>--category TEXT</code></td><td>Filter by category prefix</td></tr>
+              <tr><td><code>--parent UID</code></td><td>Filter by parent entity</td></tr>
+              <tr><td><code>--sort FIELD</code></td><td>Sort by field: title, status, created, updated, due</td></tr>
+              <tr><td><code>--desc</code></td><td>Reverse sort order</td></tr>
+              <tr><td><code>--limit N</code></td><td>Maximum results to return</td></tr>
+              <tr><td><code>--output json|yaml|table</code></td><td>Output format</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3>Examples</h3>
+        <pre><code class="language-bash">hxc list projects
+hxc list all --status active
+hxc list projects --tags ai,python --sort due
+hxc list projects --category software.dev --output json</code></pre>
+      </section>
 
-# Create action
-hxc create action \
-  --title "Weekly Team Meeting" \
-  --description "Recurring team sync"</code></pre>
-
-                        <h3>Output</h3>
-                        <pre><code class="language-text">✅ Project created successfully!
-UID: proj_abc123def456
-ID: P-001
-Title: AI-Powered CLI Tool
-Location: /path/to/registry/projects/proj_abc123def456.yml
-
-📝 Entity definition saved
-🔧 Template applied (if specified)
-✨ Ready to use!</code></pre>
-                    </section>
-
-                    <!-- list -->
-                    <section id="list" class="doc-section">
-                        <h2>list</h2>
-                        <p>List entities in the registry.</p>
-
-                        <h3>Syntax</h3>
-                        <pre><code class="language-bash">hxc list [type] [options]</code></pre>
-
-                        <h3>Entity Types</h3>
-                        <ul>
-                            <li><code>programs</code> - List all programs</li>
-                            <li><code>projects</code> - List all projects</li>
-                            <li><code>missions</code> - List all missions</li>
-                            <li><code>actions</code> - List all actions</li>
-                            <li><code>all</code> - List all entities (default)</li>
-                        </ul>
-
-                        <h3>Options</h3>
-                        <table class="doc-table">
-                            <thead>
-                                <tr>
-                                    <th>Option</th>
-                                    <th>Description</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><code>--status STATUS</code></td>
-                                    <td>Filter by status</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--category CATEGORY</code></td>
-                                    <td>Filter by category</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--tags TAG1,TAG2</code></td>
-                                    <td>Filter by tags (AND logic)</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--parent UID</code></td>
-                                    <td>Filter by parent entity</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--sort FIELD</code></td>
-                                    <td>Sort by field (title, created, modified, due_date)</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--reverse, -r</code></td>
-                                    <td>Reverse sort order</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--limit N</code></td>
-                                    <td>Limit number of results</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--long, -l</code></td>
-                                    <td>Show detailed information</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--tree</code></td>
-                                    <td>Show hierarchical tree view</td>
-                                </tr>
-                            </tbody>
-                        </table>
-
-                        <h3>Examples</h3>
-                        <pre><code class="language-bash"># List all projects
-hxc list projects
-
-# List active projects
-hxc list projects --status active
-
-# List by category
-hxc list projects --category software.dev
-
-# List by tags
-hxc list projects --tags ai,cli
-
-# List with sorting
-hxc list projects --sort due_date
-
-# List with limit
-hxc list projects --limit 10
-
-# Detailed list
-hxc list projects --long
-
-# Tree view
-hxc list all --tree
-
-# List children of a program
-hxc list projects --parent prog_abc123def456</code></pre>
-
-                        <h3>Output</h3>
-                        <pre><code class="language-text">UID                    ID      Title                    Status    Category
-proj_abc123def456      P-001   AI-Powered CLI Tool      active    software.dev/cli-tool
-proj_xyz789ghi012      P-002   Backend API              active    software.dev/api
-proj_mno345pqr678      P-003   Frontend App             on-hold   software.dev/web
-
-Total: 3 projects</code></pre>
-
-                        <h3>Tree View Output</h3>
-                        <pre><code class="language-text">Program: Digital Transformation (prog_abc123)
-├── Project: AI-Powered CLI Tool (proj_def456)
-│   ├── Mission: Launch v1.0 (miss_ghi789)
-│   └── Action: Weekly Standup (act_jkl012)
-└── Project: Backend API (proj_mno345)
-    └── Mission: API v2 Release (miss_pqr678)</code></pre>
-                    </section>
-
-                    <!-- show -->
-                    <section id="show" class="doc-section">
-                        <h2>show</h2>
-                        <p>Display detailed information about an entity.</p>
-
-                        <h3>Syntax</h3>
-                        <pre><code class="language-bash">hxc show &lt;identifier&gt; [options]</code></pre>
-
-                        <h3>Arguments</h3>
-                        <table class="doc-table">
-                            <thead>
-                                <tr>
-                                    <th>Argument</th>
-                                    <th>Description</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><code>identifier</code></td>
-                                    <td>Entity UID or ID</td>
-                                </tr>
-                            </tbody>
-                        </table>
-
-                        <h3>Options</h3>
-                        <table class="doc-table">
-                            <thead>
-                                <tr>
-                                    <th>Option</th>
-                                    <th>Description</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><code>--raw</code></td>
-                                    <td>Show raw YAML content</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--history</code></td>
-                                    <td>Show Git history</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--relationships</code></td>
-                                    <td>Show related entities</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--path</code></td>
-                                    <td>Show file path only</td>
-                                </tr>
-                            </tbody>
-                        </table>
-
-                        <h3>Examples</h3>
-                        <pre><code class="language-bash"># Show by UID
+      <section id="show" class="doc-section">
+        <h2>hxc show</h2>
+        <p>Display full details of a single entity.</p>
+        <pre><code class="language-bash">hxc show {UID|ID} [OPTIONS]</code></pre>
+        <h3>Options</h3>
+        <div class="table-wrap">
+          <table class="doc-table">
+            <thead><tr><th>Flag</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>--raw</code></td><td>Print raw YAML file contents</td></tr>
+              <tr><td><code>--history</code></td><td>Show Git commit history for this entity</td></tr>
+              <tr><td><code>--diff REF</code></td><td>Show diff against a Git ref (commit, branch, tag)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3>Examples</h3>
+        <pre><code class="language-bash">hxc show P-001
 hxc show proj_abc123def456
-
-# Show by ID
-hxc show P-001
-
-# Show raw YAML
 hxc show P-001 --raw
-
-# Show with history
 hxc show P-001 --history
+hxc show P-001 --diff HEAD~3</code></pre>
+      </section>
 
-# Show with relationships
-hxc show P-001 --relationships
-
-# Show file path
-hxc show P-001 --path</code></pre>
-
-                        <h3>Output</h3>
-                        <pre><code class="language-text">═══════════════════════════════════════════════════════════
-Entity Details
-═══════════════════════════════════════════════════════════
-
-UID:          proj_abc123def456
-ID:           P-001
-Type:         project
-Title:        AI-Powered CLI Tool
-Description:  Building an intelligent command-line interface
-              with LLM integration and declarative templates.
-
-Status:       active
-Category:     software.dev/cli-tool
-Tags:         cli, ai, python, tools
-
-Dates:
-  Created:    2024-01-01T10:00:00Z
-  Modified:   2024-01-15T14:30:00Z
-  Start:      2024-01-01
-  Due:        2024-12-31
-
-Hierarchy:
-  Parent:     prog_xyz789ghi012 (Digital Transformation)
-  Children:   2 entities
-
-Integrations:
-  Repositories:
-    - github: https://github.com/user/repo
-  
-  Tools:
-    - github-projects: https://github.com/user/repo/projects/1
-  
-  Models:
-    - assistant (openwebui)
-
-Location: /path/to/registry/projects/proj_abc123def456.yml</code></pre>
-                    </section>
-
-                    <!-- update -->
-                    <section id="update" class="doc-section">
-                        <h2>update</h2>
-                        <p>Update an existing entity.</p>
-
-                        <h3>Syntax</h3>
-                        <pre><code class="language-bash">hxc update &lt;identifier&gt; [options]</code></pre>
-
-                        <h3>Arguments</h3>
-                        <table class="doc-table">
-                            <thead>
-                                <tr>
-                                    <th>Argument</th>
-                                    <th>Description</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><code>identifier</code></td>
-                                    <td>Entity UID or ID</td>
-                                </tr>
-                            </tbody>
-                        </table>
-
-                        <h3>Options</h3>
-                        <table class="doc-table">
-                            <thead>
-                                <tr>
-                                    <th>Option</th>
-                                    <th>Description</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><code>--title TITLE</code></td>
-                                    <td>Update title</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--description DESC</code></td>
-                                    <td>Update description</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--id ID</code></td>
-                                    <td>Update human-defined ID</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--status STATUS</code></td>
-                                    <td>Update status</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--category CATEGORY</code></td>
-                                    <td>Update category</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--add-tags TAG1,TAG2</code></td>
-                                    <td>Add tags</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--remove-tags TAG1,TAG2</code></td>
-                                    <td>Remove tags</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--set-tags TAG1,TAG2</code></td>
-                                    <td>Replace all tags</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--parent UID</code></td>
-                                    <td>Update parent entity</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--start-date DATE</code></td>
-                                    <td>Update start date</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--due-date DATE</code></td>
-                                    <td>Update due date</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--completion-date DATE</code></td>
-                                    <td>Set completion date</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--edit, -e</code></td>
-                                    <td>Open in text editor</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--no-commit</code></td>
-                                    <td>Skip Git commit</td>
-                                </tr>
-                            </tbody>
-                        </table>
-
-                        <h3>Examples</h3>
-                        <pre><code class="language-bash"># Update status
-hxc update P-001 --status completed
-
-# Update title
-hxc update P-001 --title "Updated Project Title"
-
-# Update multiple fields
-hxc update P-001 \
-  --status completed \
-  --completion-date 2024-06-30 \
-  --add-tags finished,successful
-
-# Add tags
+      <section id="update" class="doc-section">
+        <h2>hxc update</h2>
+        <p>Update fields on an existing entity.</p>
+        <pre><code class="language-bash">hxc update {UID|ID} [OPTIONS]</code></pre>
+        <h3>Options</h3>
+        <div class="table-wrap">
+          <table class="doc-table">
+            <thead><tr><th>Flag</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>--title TEXT</code></td><td>New title</td></tr>
+              <tr><td><code>--description TEXT</code></td><td>New description</td></tr>
+              <tr><td><code>--status STATUS</code></td><td>New status</td></tr>
+              <tr><td><code>--category TEXT</code></td><td>New category</td></tr>
+              <tr><td><code>--add-tags TEXT</code></td><td>Comma-separated tags to add</td></tr>
+              <tr><td><code>--remove-tags TEXT</code></td><td>Comma-separated tags to remove</td></tr>
+              <tr><td><code>--set-tags TEXT</code></td><td>Replace all tags with this list</td></tr>
+              <tr><td><code>--parent UID</code></td><td>Set parent entity UID</td></tr>
+              <tr><td><code>--due-date DATE</code></td><td>Set due date</td></tr>
+              <tr><td><code>--completion-date DATE</code></td><td>Set completion date</td></tr>
+              <tr><td><code>--edit</code></td><td>Open in $EDITOR</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3>Examples</h3>
+        <pre><code class="language-bash">hxc update P-001 --status completed
 hxc update P-001 --add-tags production,deployed
-
-# Remove tags
-hxc update P-001 --remove-tags experimental
-
-# Replace all tags
-hxc update P-001 --set-tags production,stable,v1.0
-
-# Update parent
-hxc update P-001 --parent prog_xyz789
-
-# Edit in text editor
 hxc update P-001 --edit
+hxc update P-001 --status completed --completion-date 2024-06-30</code></pre>
+      </section>
 
-# Update without committing
-hxc update P-001 --status on-hold --no-commit</code></pre>
+      <section id="delete" class="doc-section">
+        <h2>hxc delete</h2>
+        <p>Delete an entity from the registry. The file is removed and the deletion is committed to Git.</p>
+        <pre><code class="language-bash">hxc delete {UID|ID} [OPTIONS]</code></pre>
+        <div class="warning-box">
+          <h4>Prefer archiving over deletion</h4>
+          <p>Deleting an entity removes its UID from the registry, which may break references in other entities. Consider <code>hxc update P-001 --status archived</code> instead to preserve history and referential integrity.</p>
+        </div>
+        <h3>Options</h3>
+        <div class="table-wrap">
+          <table class="doc-table">
+            <thead><tr><th>Flag</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>--force, -f</code></td><td>Skip confirmation prompt</td></tr>
+              <tr><td><code>--message TEXT</code></td><td>Custom Git commit message</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3>Examples</h3>
+        <pre><code class="language-bash">hxc delete P-001
+hxc delete proj_abc123 --force</code></pre>
+      </section>
 
-                        <h3>Output</h3>
-                        <pre><code class="language-text">✅ Entity updated successfully!
-UID: proj_abc123def456
-ID: P-001
+      <section id="query" class="doc-section">
+        <h2>hxc query</h2>
+        <p>Advanced search and filtering across all entities.</p>
+        <pre><code class="language-bash">hxc query [TYPE] [OPTIONS]</code></pre>
+        <h3>Options</h3>
+        <div class="table-wrap">
+          <table class="doc-table">
+            <thead><tr><th>Flag</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>--search TEXT</code></td><td>Full-text search across title, description, tags</td></tr>
+              <tr><td><code>--tags TEXT</code></td><td>All tags must match (AND)</td></tr>
+              <tr><td><code>--any-tags TEXT</code></td><td>Any tag must match (OR)</td></tr>
+              <tr><td><code>--status STATUS</code></td><td>Status filter</td></tr>
+              <tr><td><code>--category TEXT</code></td><td>Category prefix filter</td></tr>
+              <tr><td><code>--due-before DATE</code></td><td>Due date before (YYYY-MM-DD)</td></tr>
+              <tr><td><code>--due-after DATE</code></td><td>Due date after (YYYY-MM-DD)</td></tr>
+              <tr><td><code>--created-before DATE</code></td><td>Created before date</td></tr>
+              <tr><td><code>--created-after DATE</code></td><td>Created after date</td></tr>
+              <tr><td><code>--has-tag TEXT</code></td><td>Entity has this specific tag</td></tr>
+              <tr><td><code>--parent UID</code></td><td>Entities with this parent</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3>Examples</h3>
+        <pre><code class="language-bash"># Find all active AI projects
+hxc query projects --tags ai --status active
 
-Changes:
-  status: active → completed
-  completion_date: null → 2024-06-30
-  tags: +finished, +successful
+# Find overdue items
+hxc query --status active --due-before $(date +%Y-%m-%d)
 
-📝 Changes saved
-🔧 Git commit created
-✨ Update complete!</code></pre>
-                    </section>
-
-                    <!-- delete -->
-                    <section id="delete" class="doc-section">
-                        <h2>delete</h2>
-                        <p>Delete an entity from the registry.</p>
-
-                        <h3>Syntax</h3>
-                        <pre><code class="language-bash">hxc delete &lt;identifier&gt; [options]</code></pre>
-
-                        <h3>Arguments</h3>
-                        <table class="doc-table">
-                            <thead>
-                                <tr>
-                                    <th>Argument</th>
-                                    <th>Description</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><code>identifier</code></td>
-                                    <td>Entity UID or ID</td>
-                                </tr>
-                            </tbody>
-                        </table>
-
-                        <h3>Options</h3>
-                        <table class="doc-table">
-                            <thead>
-                                <tr>
-                                    <th>Option</th>
-                                    <th>Description</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><code>--force, -f</code></td>
-                                    <td>Skip confirmation prompt</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--recursive, -r</code></td>
-                                    <td>Delete children entities</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--no-commit</code></td>
-                                    <td>Skip Git commit</td>
-                                </tr>
-                            </tbody>
-                        </table>
-
-                        <h3>Examples</h3>
-                        <pre><code class="language-bash"># Delete with confirmation
-hxc delete P-001
-
-# Delete without confirmation
-hxc delete P-001 --force
-
-# Delete with children
-hxc delete prog_abc123 --recursive
-
-# Delete without committing
-hxc delete P-001 --no-commit</code></pre>
-
-                        <h3>Output</h3>
-                        <pre><code class="language-text">⚠️  Warning: You are about to delete the following entity:
-
-UID:   proj_abc123def456
-ID:    P-001
-Title: AI-Powered CLI Tool
-Type:  project
-
-This action cannot be undone (unless you restore from Git history).
-
-Are you sure? [y/N]: y
-
-✅ Entity deleted successfully!
-📝 File removed
-🔧 Git commit created
-✨ Deletion complete!</code></pre>
-
-                        <div class="warning-box">
-                            <h4>⚠️ Deletion Warning</h4>
-                            <p>Deleting an entity removes it from the registry. However, the entity can be restored from Git history if needed. Use <code>--recursive</code> carefully as it will delete all child entities.</p>
-                        </div>
-                    </section>
-
-                    <!-- query -->
-                    <section id="query" class="doc-section">
-                        <h2>query</h2>
-                        <p>Perform advanced searches across the registry.</p>
-
-                        <h3>Syntax</h3>
-                        <pre><code class="language-bash">hxc query [type] [options]</code></pre>
-
-                        <h3>Options</h3>
-                        <table class="doc-table">
-                            <thead>
-                                <tr>
-                                    <th>Option</th>
-                                    <th>Description</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><code>--search TEXT</code></td>
-                                    <td>Full-text search in title and description</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--tags TAG1,TAG2</code></td>
-                                    <td>Filter by tags (AND logic)</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--any-tags TAG1,TAG2</code></td>
-                                    <td>Filter by tags (OR logic)</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--status STATUS</code></td>
-                                    <td>Filter by status</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--category CATEGORY</code></td>
-                                    <td>Filter by category (supports wildcards)</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--start-after DATE</code></td>
-                                    <td>Start date after specified date</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--start-before DATE</code></td>
-                                    <td>Start date before specified date</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--due-after DATE</code></td>
-                                    <td>Due date after specified date</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--due-before DATE</code></td>
-                                    <td>Due date before specified date</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--created-after DATE</code></td>
-                                    <td>Created after specified date</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--modified-after DATE</code></td>
-                                    <td>Modified after specified date</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--has-parent</code></td>
-                                    <td>Has a parent entity</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--no-parent</code></td>
-                                    <td>Has no parent entity</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--has-children</code></td>
-                                    <td>Has child entities</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--sort FIELD</code></td>
-                                    <td>Sort results</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--limit N</code></td>
-                                    <td>Limit number of results</td>
-                                </tr>
-                            </tbody>
-                        </table>
-
-                        <h3>Examples</h3>
-                        <pre><code class="language-bash"># Full-text search
+# Full-text search
 hxc query --search "machine learning"
 
-# Search by tags (AND)
-hxc query --tags ai,cli,python
-
-# Search by tags (OR)
-hxc query --any-tags ai,ml,data
-
-# Complex query
+# Combine filters
 hxc query projects \
   --status active \
   --category software.dev \
-  --tags ai \
-  --due-before 2024-12-31
-
-# Date range query
-hxc query projects \
-  --start-after 2024-01-01 \
-  --due-before 2024-12-31
-
-# Category wildcard
-hxc query --category "software.*"
-
-# Top-level entities only
-hxc query --no-parent
-
-# Entities with children
-hxc query --has-children
-
-# Recent modifications
-hxc query --modified-after 2024-01-01 --sort modified
-
-# Overdue projects
-hxc query projects \
-  --status active \
-  --due-before $(date +%Y-%m-%d)</code></pre>
-
-                        <h3>Output</h3>
-                        <pre><code class="language-text">Query Results (5 matches)
-═══════════════════════════════════════════════════════════
-
-UID                    ID      Title                    Status    Category
-proj_abc123def456      P-001   AI-Powered CLI Tool      active    software.dev/cli-tool
-proj_xyz789ghi012      P-002   ML Pipeline              active    software.dev/ml
-proj_mno345pqr678      P-003   Data Analysis Tool       active    software.dev/data
-
-Total: 3 projects matching query</code></pre>
-                    </section>
-
-                    <!-- registry -->
-                    <section id="registry" class="doc-section">
-                        <h2>registry</h2>
-                        <p>Manage registry locations and settings.</p>
-
-                        <h3>Subcommands</h3>
-                        <ul>
-                            <li><code>path</code> - Get or set the registry path</li>
-                            <li><code>list</code> - List all known registries</li>
-                            <li><code>info</code> - Show registry information</li>
-                            <li><code>validate</code> - Validate registry structure</li>
-                        </ul>
-
-                        <h3>registry path</h3>
-                        <pre><code class="language-bash"># Get current registry path
-hxc registry path
-
-# Set registry path
-hxc registry path --set /path/to/registry</code></pre>
-
-                        <h3>registry list</h3>
-                        <pre><code class="language-bash"># List all known registries
-hxc registry list</code></pre>
-
-                        <h3>registry info</h3>
-                        <pre><code class="language-bash"># Show registry information
-hxc registry info
-
-# Show info for specific registry
-hxc registry info --registry /path/to/registry</code></pre>
-
-                        <h3>registry validate</h3>
-                        <pre><code class="language-bash"># Validate current registry
-hxc registry validate
-
-# Validate specific registry
-hxc registry validate --registry /path/to/registry</code></pre>
-
-                        <h3>Examples</h3>
-                        <pre><code class="language-bash"># Set default registry
-hxc registry path --set ~/projects/my-registry
-
-# View current registry
-hxc registry path
-
-# Show registry info
-hxc registry info
-
-# Validate registry
-hxc registry validate</code></pre>
-
-                        <h3>Output (registry info)</h3>
-                        <pre><code class="language-text">Registry Information
-═══════════════════════════════════════════════════════════
-
-Name:        my-registry
-Version:     0.1.0
-Path:        /home/user/projects/my-registry
-Created:     2024-01-01T00:00:00Z
-
-Statistics:
-  Programs:  5
-  Projects:  23
-  Missions:  8
-  Actions:   12
-  Total:     48 entities
-
-Git:
-  Branch:    main
-  Commits:   156
-  Remote:    origin (https://github.com/user/my-registry.git)
-
-Last Modified: 2024-01-15T14:30:00Z</code></pre>
-                    </section>
-
-                    <!-- template -->
-                    <section id="template" class="doc-section">
-                        <h2>template</h2>
-                        <p>Manage templates for entity scaffolding.</p>
-
-                        <h3>Subcommands</h3>
-                        <ul>
-                            <li><code>list</code> - List available templates</li>
-                            <li><code>show</code> - Show template details</li>
-                            <li><code>create</code> - Create a new template</li>
-                            <li><code>validate</code> - Validate a template</li>
-                        </ul>
-
-                        <h3>template list</h3>
-                        <pre><code class="language-bash"># List all templates
-hxc template list
-
-# List templates by category
-hxc template list --category software.dev</code></pre>
-
-                        <h3>template show</h3>
-                        <pre><code class="language-bash"># Show template details
-hxc template show software.dev/cli-tool.python</code></pre>
-
-                        <h3>template create</h3>
-                        <pre><code class="language-bash"># Create new template
-hxc template create my-template \
-  --category software.dev/custom \
-  --description "My custom template"</code></pre>
-
-                        <h3>template validate</h3>
-                        <pre><code class="language-bash"># Validate template
-hxc template validate my-template</code></pre>
-
-                        <h3>Examples</h3>
-                        <pre><code class="language-bash"># List all templates
-hxc template list
-
-# Show Python CLI template
-hxc template show software.dev/cli-tool.python
-
-# Create custom template
-hxc template create my-cli-template \
-  --category software.dev/cli-tool.custom
-
-# Validate template
-hxc template validate my-cli-template</code></pre>
-                    </section>
-
-                    <!-- export -->
-                    <section id="export" class="doc-section">
-                        <h2>export</h2>
-                        <p>Export entities to various formats.</p>
-
-                        <h3>Syntax</h3>
-                        <pre><code class="language-bash">hxc export [options]</code></pre>
-
-                        <h3>Options</h3>
-                        <table class="doc-table">
-                            <thead>
-                                <tr>
-                                    <th>Option</th>
-                                    <th>Description</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><code>--format FORMAT</code></td>
-                                    <td>Export format: json, yaml, csv, markdown</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--output FILE</code></td>
-                                    <td>Output file path</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--type TYPE</code></td>
-                                    <td>Entity type to export</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--filter QUERY</code></td>
-                                    <td>Filter entities (same as query options)</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--include-children</code></td>
-                                    <td>Include child entities</td>
-                                </tr>
-                            </tbody>
-                        </table>
-
-                        <h3>Examples</h3>
-                        <pre><code class="language-bash"># Export all to JSON
-hxc export --format json --output registry.json
-
-# Export projects to CSV
-hxc export --type projects --format csv --output projects.csv
-
-# Export active projects to Markdown
-hxc export \
-  --type projects \
-  --filter "--status active" \
-  --format markdown \
-  --output active-projects.md
-
-# Export with children
-hxc export \
-  --type programs \
-  --include-children \
-  --format yaml \
-  --output programs-full.yml</code></pre>
-                    </section>
-
-                    <!-- import -->
-                    <section id="import" class="doc-section">
-                        <h2>import</h2>
-                        <p>Import entities from external sources.</p>
-
-                        <h3>Syntax</h3>
-                        <pre><code class="language-bash">hxc import &lt;file&gt; [options]</code></pre>
-
-                        <h3>Arguments</h3>
-                        <table class="doc-table">
-                            <thead>
-                                <tr>
-                                    <th>Argument</th>
-                                    <th>Description</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><code>file</code></td>
-                                    <td>File to import (json, yaml, csv)</td>
-                                </tr>
-                            </tbody>
-                        </table>
-
-                        <h3>Options</h3>
-                        <table class="doc-table">
-                            <thead>
-                                <tr>
-                                    <th>Option</th>
-                                    <th>Description</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><code>--format FORMAT</code></td>
-                                    <td>Input format (auto-detected if not specified)</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--dry-run</code></td>
-                                    <td>Preview import without making changes</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--update-existing</code></td>
-                                    <td>Update existing entities</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--skip-validation</code></td>
-                                    <td>Skip validation checks</td>
-                                </tr>
-                            </tbody>
-                        </table>
-
-                        <h3>Examples</h3>
-                        <pre><code class="language-bash"># Import from JSON
-hxc import projects.json
-
-# Import with dry run
-hxc import projects.json --dry-run
-
-# Import and update existing
-hxc import projects.json --update-existing
-
-# Import from CSV
-hxc import projects.csv --format csv</code></pre>
-                    </section>
-
-                    <!-- validate -->
-                    <section id="validate" class="doc-section">
-                        <h2>validate</h2>
-                        <p>Validate entity definitions and registry structure.</p>
-
-                        <h3>Syntax</h3>
-                        <pre><code class="language-bash">hxc validate [identifier] [options]</code></pre>
-
-                        <h3>Options</h3>
-                        <table class="doc-table">
-                            <thead>
-                                <tr>
-                                    <th>Option</th>
-                                    <th>Description</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><code>--all</code></td>
-                                    <td>Validate all entities</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--type TYPE</code></td>
-                                    <td>Validate specific entity type</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--strict</code></td>
-                                    <td>Enable strict validation</td>
-                                </tr>
-                                <tr>
-                                    <td><code>--fix</code></td>
-                                    <td>Attempt to fix validation errors</td>
-                                </tr>
-                            </tbody>
-                        </table>
-
-                        <h3>Examples</h3>
-                        <pre><code class="language-bash"># Validate single entity
-hxc validate P-001
-
-# Validate all entities
-hxc validate --all
-
-# Validate all projects
-hxc validate --type projects
-
-# Strict validation
-hxc validate --all --strict
-
-# Validate and fix
-hxc validate --all --fix</code></pre>
-
-                        <h3>Output</h3>
-                        <pre><code class="language-text">Validation Results
-═══════════════════════════════════════════════════════════
-
-✅ proj_abc123def456 (P-001): Valid
-⚠️  proj_xyz789ghi012 (P-002): Warning - Missing due_date
-❌ proj_mno345pqr678 (P-003): Error - Invalid category format
-
-Summary:
-  Valid:    1
-  Warnings: 1
-  Errors:   1
-  Total:    3 entities validated</code></pre>
-                    </section>
-
-                    <!-- config -->
-                    <section id="config" class="doc-section">
-                        <h2>config</h2>
-                        <p>Manage HoxCore configuration settings.</p>
-
-                        <h3>Subcommands</h3>
-                        <ul>
-                            <li><code>get</code> - Get configuration value</li>
-                            <li><code>set</code> - Set configuration value</li>
-                            <li><code>list</code> - List all configuration</li>
-                            <li><code>reset</code> - Reset to defaults</li>
-                        </ul>
-
-                        <h3>config get</h3>
-                        <pre><code class="language-bash"># Get specific value
-hxc config get registry_path
-
-# Get all values
-hxc config get --all</code></pre>
-
-                        <h3>config set</h3>
-                        <pre><code class="language-bash"># Set value
-hxc config set registry_path /path/to/registry
-
-# Set multiple values
-hxc config set auto_commit true
-hxc config set default_category software.dev</code></pre>
-
-                        <h3>config list</h3>
-                        <pre><code class="language-bash"># List all configuration
-hxc config list</code></pre>
-
-                        <h3>config reset</h3>
-                        <pre><code class="language-bash"># Reset all to defaults
-hxc config reset
-
-# Reset specific key
-hxc config reset registry_path</code></pre>
-
-                        <h3>Examples</h3>
-                        <pre><code class="language-bash"># View current registry path
-hxc config get registry_path
-
-# Set auto-commit
-hxc config set auto_commit true
-
-# List all settings
-hxc config list
-
-# Reset to defaults
-hxc config reset</code></pre>
-
-                        <h3>Common Configuration Keys</h3>
-                        <table class="doc-table">
-                            <thead>
-                                <tr>
-                                    <th>Key</th>
-                                    <th>Description</th>
-                                    <th>Default</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><code>registry_path</code></td>
-                                    <td>Default registry path</td>
-                                    <td>None</td>
-                                </tr>
-                                <tr>
-                                    <td><code>auto_commit</code></td>
-                                    <td>Auto-commit changes</td>
-                                    <td>true</td>
-                                </tr>
-                                <tr>
-                                    <td><code>default_category</code></td>
-                                    <td>Default entity category</td>
-                                    <td>general</td>
-                                </tr>
-                                <tr>
-                                    <td><code>editor</code></td>
-                                    <td>Text editor for --edit</td>
-                                    <td>$EDITOR</td>
-                                </tr>
-                                <tr>
-                                    <td><code>color_output</code></td>
-                                    <td>Enable colored output</td>
-                                    <td>true</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </section>
-
-                    <!-- Exit Codes -->
-                    <section class="doc-section">
-                        <h2>Exit Codes</h2>
-                        <p>HoxCore uses standard exit codes to indicate command success or failure:</p>
-
-                        <table class="doc-table">
-                            <thead>
-                                <tr>
-                                    <th>Code</th>
-                                    <th>Meaning</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><code>0</code></td>
-                                    <td>Success</td>
-                                </tr>
-                                <tr>
-                                    <td><code>1</code></td>
-                                    <td>General error</td>
-                                </tr>
-                                <tr>
-                                    <td><code>2</code></td>
-                                    <td>Invalid arguments</td>
-                                </tr>
-                                <tr>
-                                    <td><code>3</code></td>
-                                    <td>Entity not found</td>
-                                </tr>
-                                <tr>
-                                    <td><code>4</code></td>
-                                    <td>Validation error</td>
-                                </tr>
-                                <tr>
-                                    <td><code>5</code></td>
-                                    <td>Registry error</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </section>
-
-                    <!-- Environment Variables -->
-                    <section class="doc-section">
-                        <h2>Environment Variables</h2>
-                        <p>HoxCore respects the following environment variables:</p>
-
-                        <table class="doc-table">
-                            <thead>
-                                <tr>
-                                    <th>Variable</th>
-                                    <th>Description</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><code>HXC_REGISTRY</code></td>
-                                    <td>Default registry path</td>
-                                </tr>
-                                <tr>
-                                    <td><code>HXC_CONFIG</code></td>
-                                    <td>Configuration file path</td>
-                                </tr>
-                                <tr>
-                                    <td><code>EDITOR</code></td>
-                                    <td>Text editor for --edit flag</td>
-                                </tr>
-                                <tr>
-                                    <td><code>NO_COLOR</code></td>
-                                    <td>Disable colored output (if set)</td>
-                                </tr>
-                            </tbody>
-                        </table>
-
-                        <h3>Examples</h3>
-                        <pre><code class="language-bash"># Set default registry
-export HXC_REGISTRY=/path/to/registry
-
-# Set editor
-export EDITOR=vim
-
-# Disable colors
-export NO_COLOR=1</code></pre>
-                    </section>
-
-                    <!-- Next Steps -->
-                    <section class="doc-section">
-                        <h2>Next Steps</h2>
-                        <p>Now that you're familiar with the CLI commands, explore more advanced features:</p>
-                        
-                        <div class="next-steps-grid">
-                            <div class="next-step-card">
-                                <h3>📝 Templates</h3>
-                                <p>Learn how to create and use templates for project scaffolding.</p>
-                                <a href="templates.html" class="btn btn-secondary">Explore Templates →</a>
-                            </div>
-                            
-                            <div class="next-step-card">
-                                <h3>🔌 Integrations</h3>
-                                <p>Connect HoxCore with GitHub, Azure DevOps, and other tools.</p>
-                                <a href="integrations.html" class="btn btn-secondary">Setup Integrations →</a>
-                            </div>
-                            
-                            <div class="next-step-card">
-                                <h3>🤖 AI Features</h3>
-                                <p>Integrate LLM models and knowledge bases with your projects.</p>
-                                <a href="ai-features.html" class="btn btn-secondary">Discover AI Features →</a>
-                            </div>
-                            
-                            <div class="next-step-card">
-                                <h3>📚 Core Concepts</h3>
-                                <p>Understand the fundamental concepts behind HoxCore's design.</p>
-                                <a href="core-concepts.html" class="btn btn-secondary">Learn Core Concepts →</a>
-                            </div>
-                        </div>
-                    </section>
-                </article>
-            </div>
+  --due-before 2024-12-31 \
+  --output json</code></pre>
+      </section>
+
+      <section id="template" class="doc-section">
+        <h2>hxc template</h2>
+        <p>Manage and apply entity templates.</p>
+        <pre><code class="language-bash">hxc template {list|show|apply|create} [OPTIONS]</code></pre>
+        <h3>Subcommands</h3>
+        <div class="table-wrap">
+          <table class="doc-table">
+            <thead><tr><th>Subcommand</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>hxc template list</code></td><td>List available templates</td></tr>
+              <tr><td><code>hxc template show NAME</code></td><td>Display template definition</td></tr>
+              <tr><td><code>hxc template apply NAME</code></td><td>Apply template to create entity</td></tr>
+              <tr><td><code>hxc template create --from UID</code></td><td>Create template from existing entity</td></tr>
+            </tbody>
+          </table>
         </div>
-    </main>
+        <h3>Examples</h3>
+        <pre><code class="language-bash">hxc template list
+hxc template show software-project
+hxc template apply software-project --title "New Service"
+hxc template create --from P-001 --name my-project-template</code></pre>
+      </section>
 
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h3>HoxCore</h3>
-                    <p>Universal, declarative, version-controlled project registry.</p>
-                </div>
-                <div class="footer-section">
-                    <h3>Documentation</h3>
-                    <ul>
-                        <li><a href="getting-started.html">Getting Started</a></li>
-                        <li><a href="core-concepts.html">Core Concepts</a></li>
-                        <li><a href="cli-reference.html">CLI Reference</a></li>
-                        <li><a href="templates.html">Templates</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h3>Resources</h3>
-                    <ul>
-                        <li><a href="integrations.html">Integrations</a></li>
-                        <li><a href="ai-features.html">AI Features</a></li>
-                        <li><a href="https://github.com/yourusername/hoxcore" target="_blank">GitHub</a></li>
-                        <li><a href="https://github.com/yourusername/hoxcore/issues" target="_blank">Issues</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h3>Community</h3>
-                    <ul>
-                        <li><a href="https://github.com/yourusername/hoxcore/discussions" target="_blank">Discussions</a></li>
-                        <li><a href="https://github.com/yourusername/hoxcore/blob/main/CONTRIBUTING.md" target="_blank">Contributing</a></li>
-                        <li><a href="https://github.com/yourusername/hoxcore/blob/main/LICENSE" target="_blank">License</a></li>
-                    </ul>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p>&copy; 2024 HoxCore Team. Released under the MIT License.</p>
-                <p>Version 0.1.0</p>
-            </div>
+      <section id="registry" class="doc-section">
+        <h2>hxc registry</h2>
+        <p>Manage registry configuration and paths.</p>
+        <pre><code class="language-bash">hxc registry {path|config|validate} [OPTIONS]</code></pre>
+        <h3>Subcommands</h3>
+        <div class="table-wrap">
+          <table class="doc-table">
+            <thead><tr><th>Subcommand</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>hxc registry path</code></td><td>Show current registry path</td></tr>
+              <tr><td><code>hxc registry path --set PATH</code></td><td>Set default registry path in ~/.hxc/config</td></tr>
+              <tr><td><code>hxc registry config</code></td><td>Show registry config.yml</td></tr>
+              <tr><td><code>hxc registry validate</code></td><td>Validate all entity files</td></tr>
+            </tbody>
+          </table>
         </div>
-    </footer>
+      </section>
 
-    <script src="js/main.js"></script>
-    <script>
-        hljs.highlightAll();
-    </script>
+      <section id="validate" class="doc-section">
+        <h2>hxc validate</h2>
+        <p>Validate entity YAML files against the schema.</p>
+        <pre><code class="language-bash">hxc validate [PATH] [OPTIONS]</code></pre>
+        <h3>Options</h3>
+        <div class="table-wrap">
+          <table class="doc-table">
+            <thead><tr><th>Flag</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>--strict</code></td><td>Treat warnings as errors</td></tr>
+              <tr><td><code>--fix</code></td><td>Auto-fix safe issues (e.g. missing updated_at)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <pre><code class="language-bash">hxc validate
+hxc validate projects/P-001.yaml
+hxc validate --strict</code></pre>
+      </section>
+
+      <section id="export" class="doc-section">
+        <h2>hxc export</h2>
+        <p>Export registry data to various formats.</p>
+        <pre><code class="language-bash">hxc export [TYPE] [OPTIONS]</code></pre>
+        <h3>Options</h3>
+        <div class="table-wrap">
+          <table class="doc-table">
+            <thead><tr><th>Flag</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>--format json|csv|markdown</code></td><td>Export format</td></tr>
+              <tr><td><code>--output FILE</code></td><td>Write to file (default: stdout)</td></tr>
+              <tr><td><code>--status STATUS</code></td><td>Filter by status before export</td></tr>
+              <tr><td><code>--tags TEXT</code></td><td>Filter by tags before export</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <pre><code class="language-bash">hxc export projects --format json --output projects.json
+hxc export all --format csv --output registry.csv
+hxc export projects --format markdown --status active</code></pre>
+      </section>
+
+      <section id="stats" class="doc-section">
+        <h2>hxc stats</h2>
+        <p>Show summary statistics for the registry.</p>
+        <pre><code class="language-bash">hxc stats [OPTIONS]</code></pre>
+        <pre><code class="language-text">HoxCore Registry — my-registry
+─────────────────────────────────────────
+Programs :  4   (2 active, 2 archived)
+Projects : 23   (14 active, 6 completed, 3 on_hold)
+Missions :  7   (3 active, 4 completed)
+Actions  :  5   (5 active)
+─────────────────────────────────────────
+Total    : 39   entities
+Tags     : 87   unique
+Last updated: 2024-07-15</code></pre>
+      </section>
+
+    </div>
+  </div>
+</div>
+</main>
+
+<footer class="footer" role="contentinfo">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <div class="nav-logo" style="font-size:1.25rem;margin-bottom:.75rem">HoxCore</div>
+        <p>Universal, declarative, version-controlled project registry. MIT License.</p>
+      </div>
+      <div class="footer-section">
+        <h4>Documentation</h4>
+        <ul>
+          <li><a href="getting-started.html">Getting Started</a></li>
+          <li><a href="core-concepts.html">Core Concepts</a></li>
+          <li><a href="cli-reference.html">CLI Reference</a></li>
+          <li><a href="templates.html">Templates</a></li>
+        </ul>
+      </div>
+      <div class="footer-section">
+        <h4>Resources</h4>
+        <ul>
+          <li><a href="integrations.html">Integrations</a></li>
+          <li><a href="ai-features.html">AI Features</a></li>
+          <li><a href="https://github.com/sdescobedo/hoxcore" target="_blank" rel="noopener">GitHub</a></li>
+          <li><a href="https://pypi.org/project/hxc/" target="_blank" rel="noopener">PyPI</a></li>
+        </ul>
+      </div>
+      <div class="footer-section">
+        <h4>Community</h4>
+        <ul>
+          <li><a href="https://github.com/sdescobedo/hoxcore/discussions" target="_blank" rel="noopener">Discussions</a></li>
+          <li><a href="https://github.com/sdescobedo/hoxcore/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener">Contributing</a></li>
+          <li><a href="https://github.com/sdescobedo/hoxcore/blob/main/LICENSE" target="_blank" rel="noopener">License</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>&copy; <span class="footer-year">2024</span> HoxCore. Released under the MIT License.</span>
+      <span class="footer-version"></span>
+    </div>
+  </div>
+</footer>
+
+<button class="scroll-top" aria-label="Scroll to top">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>
+</button>
+
+<script src="js/version.js"></script>
+<script src="js/main.js"></script>
 </body>
 </html>

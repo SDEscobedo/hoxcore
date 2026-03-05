@@ -1,504 +1,206 @@
-/**
- * HoxCore Documentation - Main JavaScript
- * Handles interactive features, navigation, and UI enhancements
- */
+/* HoxCore Docs — main.js */
+(function () {
+  'use strict';
 
-(function() {
-    'use strict';
+  /* ── Helpers ─────────────────────────────────── */
+  function qs(sel, ctx)  { return (ctx || document).querySelector(sel); }
+  function qsa(sel, ctx) { return Array.from((ctx || document).querySelectorAll(sel)); }
 
-    // ============================================
-    // Mobile Navigation Toggle
-    // ============================================
-    function initMobileNav() {
-        const navToggle = document.querySelector('.nav-toggle');
-        const navMenu = document.querySelector('.nav-menu');
+  /* ── Theme (dark / light) ────────────────────── */
+  function initTheme() {
+    const btn = qs('.theme-toggle');
+    const root = document.documentElement;
 
-        if (navToggle && navMenu) {
-            navToggle.addEventListener('click', function() {
-                navMenu.classList.toggle('active');
-                navToggle.classList.toggle('active');
-                
-                // Update ARIA attribute
-                const isExpanded = navMenu.classList.contains('active');
-                navToggle.setAttribute('aria-expanded', isExpanded);
-            });
+    // Restore saved preference or fall back to OS
+    const saved = localStorage.getItem('hxc-theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if (saved === 'dark' || (!saved && prefersDark)) root.classList.add('dark');
 
-            // Close menu when clicking outside
-            document.addEventListener('click', function(event) {
-                const isClickInsideNav = navToggle.contains(event.target) || navMenu.contains(event.target);
-                if (!isClickInsideNav && navMenu.classList.contains('active')) {
-                    navMenu.classList.remove('active');
-                    navToggle.classList.remove('active');
-                    navToggle.setAttribute('aria-expanded', 'false');
-                }
-            });
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+      const isDark = root.classList.toggle('dark');
+      localStorage.setItem('hxc-theme', isDark ? 'dark' : 'light');
+      btn.setAttribute('aria-pressed', String(isDark));
+    });
+    btn.setAttribute('aria-pressed', String(root.classList.contains('dark')));
+  }
 
-            // Close menu when pressing Escape
-            document.addEventListener('keydown', function(event) {
-                if (event.key === 'Escape' && navMenu.classList.contains('active')) {
-                    navMenu.classList.remove('active');
-                    navToggle.classList.remove('active');
-                    navToggle.setAttribute('aria-expanded', 'false');
-                }
-            });
-        }
+  /* ── Mobile nav ──────────────────────────────── */
+  function initMobileNav() {
+    const toggle = qs('.nav-toggle');
+    const menu   = qs('.nav-menu');
+    if (!toggle || !menu) return;
+
+    toggle.addEventListener('click', () => {
+      const open = menu.classList.toggle('open');
+      toggle.setAttribute('aria-expanded', String(open));
+    });
+
+    // Close on outside click
+    document.addEventListener('click', e => {
+      if (!toggle.contains(e.target) && !menu.contains(e.target)) {
+        menu.classList.remove('open');
+        toggle.setAttribute('aria-expanded', 'false');
+      }
+    });
+
+    // Close on Escape
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        menu.classList.remove('open');
+        toggle.setAttribute('aria-expanded', 'false');
+      }
+    });
+  }
+
+  /* ── Smooth scroll for in-page anchors ───────── */
+  function initSmoothScroll() {
+    const navbarH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--navbar-h')) || 64;
+    document.addEventListener('click', e => {
+      const a = e.target.closest('a[href^="#"]');
+      if (!a) return;
+      const id = a.getAttribute('href').slice(1);
+      const target = id ? document.getElementById(id) : null;
+      if (!target) return;
+      e.preventDefault();
+      const top = target.getBoundingClientRect().top + window.scrollY - navbarH - 16;
+      window.scrollTo({ top, behavior: 'smooth' });
+      history.pushState(null, '', '#' + id);
+    });
+  }
+
+  /* ── Active sidebar link on scroll ──────────── */
+  function initActiveSidebar() {
+    const links    = qsa('.sidebar-nav a[href^="#"]');
+    const sections = links
+      .map(a => document.getElementById(a.getAttribute('href').slice(1)))
+      .filter(Boolean);
+
+    if (!sections.length) return;
+
+    const navbarH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--navbar-h')) || 64;
+    let ticking = false;
+
+    function update() {
+      const scrollY = window.scrollY + navbarH + 24;
+      let current = sections[0];
+      for (const s of sections) {
+        if (s.offsetTop <= scrollY) current = s;
+      }
+      links.forEach(a => {
+        const active = a.getAttribute('href') === '#' + current.id;
+        a.classList.toggle('active', active);
+      });
     }
 
-    // ============================================
-    // Smooth Scrolling for Anchor Links
-    // ============================================
-    function initSmoothScroll() {
-        const links = document.querySelectorAll('a[href^="#"]');
-        
-        links.forEach(link => {
-            link.addEventListener('click', function(e) {
-                const href = this.getAttribute('href');
-                
-                // Skip if it's just "#"
-                if (href === '#') {
-                    e.preventDefault();
-                    return;
-                }
+    window.addEventListener('scroll', () => {
+      if (!ticking) { requestAnimationFrame(() => { update(); ticking = false; }); ticking = true; }
+    }, { passive: true });
+    update();
+  }
 
-                const target = document.querySelector(href);
-                
-                if (target) {
-                    e.preventDefault();
-                    
-                    // Get header height for offset
-                    const header = document.querySelector('.navbar');
-                    const headerHeight = header ? header.offsetHeight : 0;
-                    const targetPosition = target.getBoundingClientRect().top + window.pageYOffset - headerHeight - 20;
-                    
-                    window.scrollTo({
-                        top: targetPosition,
-                        behavior: 'smooth'
-                    });
+  /* ── Code copy buttons ───────────────────────── */
+  function initCopyButtons() {
+    const COPY_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
+    const CHECK_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`;
 
-                    // Update URL without jumping
-                    history.pushState(null, null, href);
+    qsa('pre').forEach(pre => {
+      const code = pre.querySelector('code');
+      if (!code) return;
 
-                    // Close mobile menu if open
-                    const navMenu = document.querySelector('.nav-menu');
-                    const navToggle = document.querySelector('.nav-toggle');
-                    if (navMenu && navMenu.classList.contains('active')) {
-                        navMenu.classList.remove('active');
-                        navToggle.classList.remove('active');
-                        navToggle.setAttribute('aria-expanded', 'false');
-                    }
-                }
-            });
-        });
-    }
+      const btn = document.createElement('button');
+      btn.className = 'copy-btn';
+      btn.setAttribute('aria-label', 'Copy code');
+      btn.innerHTML = COPY_ICON + '<span>Copy</span>';
 
-    // ============================================
-    // Active Section Highlighting in Sidebar
-    // ============================================
-    function initActiveSection() {
-        const sections = document.querySelectorAll('.doc-section[id]');
-        const navLinks = document.querySelectorAll('.doc-nav a[href^="#"]');
-
-        if (sections.length === 0 || navLinks.length === 0) {
-            return;
+      btn.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(code.innerText);
+          btn.classList.add('copied');
+          btn.innerHTML = CHECK_ICON + '<span>Copied!</span>';
+          setTimeout(() => {
+            btn.classList.remove('copied');
+            btn.innerHTML = COPY_ICON + '<span>Copy</span>';
+          }, 2000);
+        } catch {
+          btn.querySelector('span').textContent = 'Error';
+          setTimeout(() => { btn.querySelector('span').textContent = 'Copy'; }, 1500);
         }
+      });
 
-        function updateActiveLink() {
-            const scrollPosition = window.scrollY + 100; // Offset for header
+      pre.appendChild(btn);
+    });
+  }
 
-            sections.forEach(section => {
-                const sectionTop = section.offsetTop;
-                const sectionHeight = section.offsetHeight;
-                const sectionId = section.getAttribute('id');
+  /* ── Hero install copy button ────────────────── */
+  function initHeroInstallCopy() {
+    const btn = qs('.hero-install-copy');
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+      const text = qs('.hero-install .cmd')?.textContent || 'pip install hxc';
+      navigator.clipboard.writeText(text).catch(() => {});
+      const icon = btn.querySelector('svg');
+      if (icon) {
+        icon.style.color = '#059669';
+        setTimeout(() => { icon.style.color = ''; }, 1500);
+      }
+    });
+  }
 
-                if (scrollPosition >= sectionTop && scrollPosition < sectionTop + sectionHeight) {
-                    navLinks.forEach(link => {
-                        link.classList.remove('active');
-                        if (link.getAttribute('href') === `#${sectionId}`) {
-                            link.classList.add('active');
-                        }
-                    });
-                }
-            });
-        }
+  /* ── Scroll to top button ─────────────────────── */
+  function initScrollTop() {
+    const btn = qs('.scroll-top');
+    if (!btn) return;
 
-        // Throttle scroll event
-        let ticking = false;
-        window.addEventListener('scroll', function() {
-            if (!ticking) {
-                window.requestAnimationFrame(function() {
-                    updateActiveLink();
-                    ticking = false;
-                });
-                ticking = true;
-            }
-        });
+    window.addEventListener('scroll', () => {
+      btn.classList.toggle('visible', window.scrollY > 400);
+    }, { passive: true });
 
-        // Initial check
-        updateActiveLink();
-    }
+    btn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+  }
 
-    // ============================================
-    // Copy Code Button
-    // ============================================
-    function initCodeCopy() {
-        const codeBlocks = document.querySelectorAll('pre code');
+  /* ── Sidebar mobile toggle ───────────────────── */
+  function initSidebarToggle() {
+    const toggle  = qs('.sidebar-toggle');
+    const sidebar = qs('.doc-sidebar');
+    if (!toggle || !sidebar) return;
+    toggle.addEventListener('click', () => sidebar.classList.toggle('open'));
+  }
 
-        codeBlocks.forEach(block => {
-            const pre = block.parentElement;
-            
-            // Create copy button
-            const button = document.createElement('button');
-            button.className = 'copy-code-btn';
-            button.textContent = 'Copy';
-            button.setAttribute('aria-label', 'Copy code to clipboard');
+  /* ── External links ─────────────────────────── */
+  function initExternalLinks() {
+    qsa('a[href^="http"]').forEach(a => {
+      if (a.hostname === location.hostname) return;
+      a.setAttribute('target', '_blank');
+      a.setAttribute('rel', 'noopener noreferrer');
+    });
+  }
 
-            // Add button to pre element
-            pre.style.position = 'relative';
-            pre.appendChild(button);
+  /* ── Current year in footer ──────────────────── */
+  function initFooterYear() {
+    qsa('.footer-year').forEach(el => { el.textContent = new Date().getFullYear(); });
+  }
 
-            // Copy functionality
-            button.addEventListener('click', async function() {
-                const code = block.textContent;
+  /* ── Init ────────────────────────────────────── */
+  function init() {
+    initTheme();
+    initMobileNav();
+    initSmoothScroll();
+    initActiveSidebar();
+    initCopyButtons();
+    initHeroInstallCopy();
+    initScrollTop();
+    initSidebarToggle();
+    initExternalLinks();
+    initFooterYear();
+    initVersion();
+    document.body.classList.add('js-loaded');
+  }
 
-                try {
-                    await navigator.clipboard.writeText(code);
-                    button.textContent = 'Copied!';
-                    button.classList.add('copied');
-
-                    setTimeout(() => {
-                        button.textContent = 'Copy';
-                        button.classList.remove('copied');
-                    }, 2000);
-                } catch (err) {
-                    console.error('Failed to copy code:', err);
-                    button.textContent = 'Failed';
-                    
-                    setTimeout(() => {
-                        button.textContent = 'Copy';
-                    }, 2000);
-                }
-            });
-        });
-    }
-
-    // ============================================
-    // Dark Mode Toggle
-    // ============================================
-    function initDarkMode() {
-        const darkModeToggle = document.querySelector('.dark-mode-toggle');
-        
-        if (!darkModeToggle) {
-            return;
-        }
-
-        // Check for saved preference or system preference
-        const savedTheme = localStorage.getItem('theme');
-        const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        
-        if (savedTheme === 'dark' || (!savedTheme && systemPrefersDark)) {
-            document.documentElement.classList.add('dark-mode');
-            darkModeToggle.setAttribute('aria-pressed', 'true');
-        }
-
-        // Toggle dark mode
-        darkModeToggle.addEventListener('click', function() {
-            document.documentElement.classList.toggle('dark-mode');
-            const isDark = document.documentElement.classList.contains('dark-mode');
-            
-            localStorage.setItem('theme', isDark ? 'dark' : 'light');
-            darkModeToggle.setAttribute('aria-pressed', isDark);
-        });
-    }
-
-    // ============================================
-    // Search Functionality
-    // ============================================
-    function initSearch() {
-        const searchInput = document.querySelector('.search-input');
-        const searchResults = document.querySelector('.search-results');
-
-        if (!searchInput || !searchResults) {
-            return;
-        }
-
-        let searchIndex = [];
-
-        // Build search index from page content
-        function buildSearchIndex() {
-            const sections = document.querySelectorAll('.doc-section');
-            
-            sections.forEach(section => {
-                const id = section.getAttribute('id');
-                const title = section.querySelector('h2, h3')?.textContent || '';
-                const content = section.textContent || '';
-
-                searchIndex.push({
-                    id: id,
-                    title: title,
-                    content: content.toLowerCase(),
-                    element: section
-                });
-            });
-        }
-
-        // Perform search
-        function performSearch(query) {
-            if (!query || query.length < 2) {
-                searchResults.innerHTML = '';
-                searchResults.style.display = 'none';
-                return;
-            }
-
-            const results = searchIndex.filter(item => 
-                item.content.includes(query.toLowerCase())
-            ).slice(0, 5); // Limit to 5 results
-
-            if (results.length === 0) {
-                searchResults.innerHTML = '<div class="search-no-results">No results found</div>';
-                searchResults.style.display = 'block';
-                return;
-            }
-
-            const resultsHTML = results.map(result => `
-                <a href="#${result.id}" class="search-result-item">
-                    <strong>${result.title}</strong>
-                </a>
-            `).join('');
-
-            searchResults.innerHTML = resultsHTML;
-            searchResults.style.display = 'block';
-        }
-
-        // Debounce search
-        let searchTimeout;
-        searchInput.addEventListener('input', function() {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                performSearch(this.value);
-            }, 300);
-        });
-
-        // Close search results when clicking outside
-        document.addEventListener('click', function(event) {
-            if (!searchInput.contains(event.target) && !searchResults.contains(event.target)) {
-                searchResults.style.display = 'none';
-            }
-        });
-
-        // Build index on load
-        buildSearchIndex();
-    }
-
-    // ============================================
-    // Table of Contents Generator
-    // ============================================
-    function initTableOfContents() {
-        const tocContainer = document.querySelector('.auto-toc');
-        
-        if (!tocContainer) {
-            return;
-        }
-
-        const headings = document.querySelectorAll('.doc-content h2, .doc-content h3');
-        
-        if (headings.length === 0) {
-            return;
-        }
-
-        const tocList = document.createElement('ul');
-        tocList.className = 'toc-list';
-
-        headings.forEach(heading => {
-            const level = heading.tagName.toLowerCase();
-            const text = heading.textContent;
-            const id = heading.getAttribute('id') || text.toLowerCase().replace(/\s+/g, '-');
-            
-            // Ensure heading has an ID
-            if (!heading.getAttribute('id')) {
-                heading.setAttribute('id', id);
-            }
-
-            const listItem = document.createElement('li');
-            listItem.className = `toc-item toc-${level}`;
-            
-            const link = document.createElement('a');
-            link.href = `#${id}`;
-            link.textContent = text;
-            
-            listItem.appendChild(link);
-            tocList.appendChild(listItem);
-        });
-
-        tocContainer.appendChild(tocList);
-    }
-
-    // ============================================
-    // Scroll to Top Button
-    // ============================================
-    function initScrollToTop() {
-        const scrollBtn = document.querySelector('.scroll-to-top');
-        
-        if (!scrollBtn) {
-            return;
-        }
-
-        // Show/hide button based on scroll position
-        window.addEventListener('scroll', function() {
-            if (window.pageYOffset > 300) {
-                scrollBtn.classList.add('visible');
-            } else {
-                scrollBtn.classList.remove('visible');
-            }
-        });
-
-        // Scroll to top on click
-        scrollBtn.addEventListener('click', function() {
-            window.scrollTo({
-                top: 0,
-                behavior: 'smooth'
-            });
-        });
-    }
-
-    // ============================================
-    // External Links
-    // ============================================
-    function initExternalLinks() {
-        const links = document.querySelectorAll('a[href^="http"]');
-        
-        links.forEach(link => {
-            // Skip if it's an internal link
-            if (link.hostname === window.location.hostname) {
-                return;
-            }
-
-            // Add external link attributes
-            link.setAttribute('target', '_blank');
-            link.setAttribute('rel', 'noopener noreferrer');
-            
-            // Add visual indicator
-            if (!link.querySelector('.external-icon')) {
-                const icon = document.createElement('span');
-                icon.className = 'external-icon';
-                icon.setAttribute('aria-hidden', 'true');
-                icon.textContent = ' ↗';
-                link.appendChild(icon);
-            }
-        });
-    }
-
-    // ============================================
-    // Print Styles
-    // ============================================
-    function initPrintStyles() {
-        // Add print button if needed
-        const printBtn = document.querySelector('.print-btn');
-        
-        if (printBtn) {
-            printBtn.addEventListener('click', function() {
-                window.print();
-            });
-        }
-    }
-
-    // ============================================
-    // Keyboard Navigation
-    // ============================================
-    function initKeyboardNav() {
-        document.addEventListener('keydown', function(event) {
-            // Skip if user is typing in an input
-            if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
-                return;
-            }
-
-            // Navigate with arrow keys
-            if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
-                const prevLink = document.querySelector('.prev-page');
-                const nextLink = document.querySelector('.next-page');
-
-                if (event.key === 'ArrowLeft' && prevLink) {
-                    prevLink.click();
-                } else if (event.key === 'ArrowRight' && nextLink) {
-                    nextLink.click();
-                }
-            }
-        });
-    }
-
-    // ============================================
-    // Accessibility Enhancements
-    // ============================================
-    function initAccessibility() {
-        // Add skip to content link
-        const skipLink = document.createElement('a');
-        skipLink.href = '#main-content';
-        skipLink.className = 'skip-link';
-        skipLink.textContent = 'Skip to main content';
-        document.body.insertBefore(skipLink, document.body.firstChild);
-
-        // Add main content ID if not present
-        const mainContent = document.querySelector('main');
-        if (mainContent && !mainContent.id) {
-            mainContent.id = 'main-content';
-        }
-
-        // Improve focus visibility
-        document.addEventListener('keydown', function(event) {
-            if (event.key === 'Tab') {
-                document.body.classList.add('keyboard-nav');
-            }
-        });
-
-        document.addEventListener('mousedown', function() {
-            document.body.classList.remove('keyboard-nav');
-        });
-    }
-
-    // ============================================
-    // Performance Monitoring
-    // ============================================
-    function initPerformanceMonitoring() {
-        if ('performance' in window) {
-            window.addEventListener('load', function() {
-                const perfData = window.performance.timing;
-                const pageLoadTime = perfData.loadEventEnd - perfData.navigationStart;
-                
-                // Log performance data (can be sent to analytics)
-                console.log('Page load time:', pageLoadTime + 'ms');
-            });
-        }
-    }
-
-    // ============================================
-    // Initialize All Features
-    // ============================================
-    function init() {
-        // Wait for DOM to be ready
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', init);
-            return;
-        }
-
-        // Initialize all features
-        initMobileNav();
-        initSmoothScroll();
-        initActiveSection();
-        initCodeCopy();
-        initDarkMode();
-        initSearch();
-        initTableOfContents();
-        initScrollToTop();
-        initExternalLinks();
-        initPrintStyles();
-        initKeyboardNav();
-        initAccessibility();
-        initPerformanceMonitoring();
-
-        // Add loaded class to body
-        document.body.classList.add('loaded');
-    }
-
-    // Start initialization
-    init();
-
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();  // ← this fires immediately if DOM is already parsed
+  }
+  
 })();

@@ -1,1116 +1,383 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="AI Features in HoxCore - Learn how to integrate LLM models, knowledge bases, and AI assistants with your project registry for intelligent project management.">
-    <meta name="keywords" content="HoxCore, AI, LLM, machine learning, OpenAI, Ollama, OpenWebUI, knowledge base, AI assistant">
-    <meta name="author" content="HoxCore Team">
-    
-    <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://yourusername.github.io/hoxcore/ai-features.html">
-    <meta property="og:title" content="AI Features - HoxCore Documentation">
-    <meta property="og:description" content="Integrate LLM models and AI assistants with HoxCore for intelligent project management">
-    <meta property="og:image" content="https://yourusername.github.io/hoxcore/assets/images/og-image.png">
-
-    <!-- Twitter -->
-    <meta property="twitter:card" content="summary_large_image">
-    <meta property="twitter:url" content="https://yourusername.github.io/hoxcore/ai-features.html">
-    <meta property="twitter:title" content="AI Features - HoxCore Documentation">
-    <meta property="twitter:description" content="Integrate LLM models and AI assistants with HoxCore for intelligent project management">
-    <meta property="twitter:image" content="https://yourusername.github.io/hoxcore/assets/images/og-image.png">
-
-    <title>AI Features - HoxCore Documentation</title>
-    
-    <link rel="stylesheet" href="css/style.css">
-    <link rel="icon" type="image/x-icon" href="assets/images/favicon.ico">
-    
-    <!-- Syntax Highlighting -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Features — HoxCore Documentation</title>
+  <meta name="description" content="Integrate LLM models and knowledge bases with your HoxCore registry. Built for AI-native workflows from day one.">
+  <link rel="canonical" href="https://sdescobedo.github.io/hoxcore/ai-features.html">
+  <meta property="og:title" content="AI Features — HoxCore Documentation">
+  <meta property="og:description" content="Integrate LLM models and knowledge bases with your HoxCore registry.">
+  <meta property="og:url" content="https://sdescobedo.github.io/hoxcore/ai-features.html">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" defer></script>
+  <script>document.addEventListener('DOMContentLoaded', () => { if (window.hljs) hljs.highlightAll(); });</script>
 </head>
 <body>
-    <!-- Navigation -->
-    <nav class="navbar">
-        <div class="container">
-            <div class="nav-brand">
-                <a href="index.html">
-                    <span class="logo">HoxCore</span>
-                </a>
-            </div>
-            <button class="nav-toggle" aria-label="Toggle navigation">
-                <span></span>
-                <span></span>
-                <span></span>
-            </button>
-            <ul class="nav-menu">
-                <li><a href="index.html">Home</a></li>
-                <li><a href="getting-started.html">Getting Started</a></li>
-                <li><a href="core-concepts.html">Core Concepts</a></li>
-                <li><a href="cli-reference.html">CLI Reference</a></li>
-                <li><a href="templates.html">Templates</a></li>
-                <li><a href="integrations.html">Integrations</a></li>
-                <li><a href="ai-features.html" class="active">AI Features</a></li>
-                <li><a href="https://github.com/yourusername/hoxcore" target="_blank" class="github-link">GitHub</a></li>
-            </ul>
-        </div>
+
+<a href="#main" class="skip-link">Skip to main content</a>
+
+<nav class="navbar" role="navigation" aria-label="Main navigation">
+  <div class="container">
+    <div class="nav-brand">
+      <a href="index.html" aria-label="HoxCore home"><span class="nav-logo">HoxCore</span></a>
+      <span class="nav-version"></span>
+    </div>
+    <ul class="nav-menu" role="list">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="getting-started.html">Getting Started</a></li>
+      <li><a href="core-concepts.html">Concepts</a></li>
+      <li><a href="cli-reference.html">CLI</a></li>
+      <li><a href="templates.html">Templates</a></li>
+      <li><a href="integrations.html">Integrations</a></li>
+      <li><a href="ai-features.html" class="active">AI</a></li>
+    </ul>
+    <div class="nav-actions">
+      <button class="theme-toggle" aria-label="Toggle dark mode" aria-pressed="false">
+        <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
+      <a href="https://github.com/sdescobedo/hoxcore" class="nav-github" target="_blank" rel="noopener noreferrer">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        GitHub
+      </a>
+      <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><span></span><span></span><span></span></button>
+    </div>
+  </div>
+</nav>
+
+<header class="page-header">
+  <div class="page-header-inner">
+    <nav class="page-breadcrumb" aria-label="Breadcrumb">
+      <a href="index.html">HoxCore</a>
+      <span class="sep">/</span>
+      <span>AI Features</span>
     </nav>
+    <h1>AI Features</h1>
+    <p>HoxCore is built for the age of LLMs — from schema design to active model integration.</p>
+  </div>
+</header>
 
-    <!-- Page Header -->
-    <section class="page-header">
-        <div class="container">
-            <h1>AI Features</h1>
-            <p>Integrate LLM models and AI assistants with HoxCore for intelligent project management</p>
+<main id="main">
+<div class="doc-wrapper">
+
+  <aside class="doc-sidebar" aria-label="Page navigation">
+    <div class="sidebar-section">
+      <span class="sidebar-label">On this page</span>
+      <ul class="sidebar-nav">
+        <li><a href="#ai-first-design">AI-First Design</a></li>
+        <li><a href="#models-field">The models Field</a></li>
+        <li><a href="#knowledge-bases">Knowledge Bases</a></li>
+        <li><a href="#supported-providers">Supported Providers</a></li>
+        <li><a href="#ollama">Ollama (Local)</a></li>
+        <li><a href="#openai">OpenAI</a></li>
+        <li><a href="#anthropic">Anthropic</a></li>
+        <li><a href="#llm-context">Using Registry as LLM Context</a></li>
+        <li><a href="#ai-commands">AI CLI Commands</a></li>
+        <li><a href="#best-practices">Best Practices</a></li>
+      </ul>
+    </div>
+  </aside>
+
+  <div class="doc-content-area">
+    <div class="doc-content">
+
+      <section id="ai-first-design" class="doc-section">
+        <h2>AI-First Design</h2>
+        <p>HoxCore was designed from the ground up to work with LLMs. Every design decision — YAML over proprietary formats, declarative over executable, human-readable schemas — reflects the goal of making registry data maximally useful as AI context.</p>
+
+        <p>There are two distinct ways HoxCore works with AI:</p>
+        <ul>
+          <li><strong>Passive</strong> — Your YAML entity files are fed directly to LLMs as structured context. No special tooling required.</li>
+          <li><strong>Active</strong> — Entities reference specific LLM models and knowledge bases that HoxCore can invoke on your behalf.</li>
+        </ul>
+
+        <div class="info-box">
+          <h4>YAML is naturally LLM-friendly</h4>
+          <p>YAML is structured, human-readable, and fits well within LLM context windows. A single HoxCore entity file gives an LLM all it needs to understand a project: its purpose, status, relationships, tools, and knowledge sources.</p>
         </div>
-    </section>
+      </section>
 
-    <!-- Main Content -->
-    <main class="documentation">
-        <div class="container">
-            <div class="doc-layout">
-                <!-- Sidebar Navigation -->
-                <aside class="doc-sidebar">
-                    <nav class="doc-nav">
-                        <h3>On This Page</h3>
-                        <ul>
-                            <li><a href="#overview">Overview</a></li>
-                            <li><a href="#llm-native-design">LLM-Native Design</a></li>
-                            <li><a href="#model-integration">Model Integration</a></li>
-                            <li><a href="#knowledge-bases">Knowledge Bases</a></li>
-                            <li><a href="#registry-indexing">Registry Indexing</a></li>
-                            <li><a href="#ai-assistant">Global AI Assistant</a></li>
-                            <li><a href="#natural-language">Natural Language Queries</a></li>
-                            <li><a href="#providers">Supported Providers</a></li>
-                            <li><a href="#use-cases">Use Cases</a></li>
-                            <li><a href="#best-practices">Best Practices</a></li>
-                            <li><a href="#examples">Examples</a></li>
-                        </ul>
-                    </nav>
-                </aside>
-
-                <!-- Main Documentation Content -->
-                <article class="doc-content">
-                    <!-- Overview -->
-                    <section id="overview" class="doc-section">
-                        <h2>Overview</h2>
-                        <p>HoxCore is designed to be <strong>LLM-native</strong> from the ground up. This means that every aspect of the system—from entity definitions to relationships and metadata—is structured to be understood by both humans and Large Language Models (LLMs).</p>
-
-                        <div class="info-box">
-                            <h4>💡 Why LLM-Native?</h4>
-                            <p>By making HoxCore LLM-native, we enable:</p>
-                            <ul>
-                                <li>AI-assisted project management and decision-making</li>
-                                <li>Natural language queries across your entire registry</li>
-                                <li>Context-aware assistance based on project metadata</li>
-                                <li>Automated insights and recommendations</li>
-                                <li>Intelligent search and discovery</li>
-                            </ul>
-                        </div>
-
-                        <h3>Key AI Capabilities</h3>
-                        <div class="features-grid">
-                            <div class="feature-card">
-                                <div class="feature-icon">🤖</div>
-                                <h4>Model References</h4>
-                                <p>Link projects to specific LLM models for specialized assistance</p>
-                            </div>
-                            <div class="feature-card">
-                                <div class="feature-icon">📚</div>
-                                <h4>Knowledge Bases</h4>
-                                <p>Connect projects to knowledge bases for context-aware AI</p>
-                            </div>
-                            <div class="feature-card">
-                                <div class="feature-icon">🔍</div>
-                                <h4>Registry Indexing</h4>
-                                <p>Index your entire registry for AI-powered search</p>
-                            </div>
-                            <div class="feature-card">
-                                <div class="feature-icon">💬</div>
-                                <h4>Natural Language</h4>
-                                <p>Query and interact with your registry using natural language</p>
-                            </div>
-                        </div>
-                    </section>
-
-                    <!-- LLM-Native Design -->
-                    <section id="llm-native-design" class="doc-section">
-                        <h2>LLM-Native Design</h2>
-                        <p>HoxCore's YAML-based entity definitions are specifically designed to be machine-readable while remaining human-friendly:</p>
-
-                        <h3>Structured Metadata</h3>
-                        <pre><code class="language-yaml">type: project
-title: "AI-Powered CLI Tool"
-description: >
-  Building an intelligent command-line interface
-  with LLM integration and declarative templates.
-  
-  This project aims to create a universal project
-  registry that can be understood by both humans
-  and AI systems.
-
-category: software.dev/cli-tool
-tags: [cli, ai, python, llm, automation]
-
-# AI can understand relationships
-parent: prog_digital_transformation
-related: [proj_backend_api, proj_frontend_app]
-
-# AI can reason about status and timeline
-status: active
-start_date: 2024-01-01
-due_date: 2024-12-31</code></pre>
-
-                        <h3>Why This Works for LLMs</h3>
-                        <table class="doc-table">
-                            <thead>
-                                <tr>
-                                    <th>Aspect</th>
-                                    <th>Human Benefit</th>
-                                    <th>LLM Benefit</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><strong>YAML Format</strong></td>
-                                    <td>Easy to read and edit</td>
-                                    <td>Structured, parseable data</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Descriptive Fields</strong></td>
-                                    <td>Clear understanding of purpose</td>
-                                    <td>Rich context for reasoning</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Relationships</strong></td>
-                                    <td>Visual project hierarchy</td>
-                                    <td>Graph-based reasoning</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Tags & Categories</strong></td>
-                                    <td>Quick filtering and search</td>
-                                    <td>Semantic understanding</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Timestamps</strong></td>
-                                    <td>Track progress</td>
-                                    <td>Temporal reasoning</td>
-                                </tr>
-                            </tbody>
-                        </table>
-
-                        <div class="success-box">
-                            <h4>✅ Human + Machine Understanding</h4>
-                            <p>The same YAML file that you edit manually can be understood, analyzed, and reasoned about by AI systems. This dual-purpose design is at the core of HoxCore's philosophy.</p>
-                        </div>
-                    </section>
-
-                    <!-- Model Integration -->
-                    <section id="model-integration" class="doc-section">
-                        <h2>Model Integration</h2>
-                        <p>Projects can reference one or multiple LLM models for specialized assistance:</p>
-
-                        <h3>Basic Model Reference</h3>
-                        <pre><code class="language-yaml">models:
+      <section id="models-field" class="doc-section">
+        <h2>The <code>models</code> Field</h2>
+        <p>Any entity can reference one or more LLM models. These define which AI systems are associated with this project and how to reach them:</p>
+        <pre><code class="language-yaml">models:
   - id: assistant
-    provider: openwebui
-    url: http://openwebui.local/?models=assistant</code></pre>
+    provider: ollama
+    model: llama3
+    description: "General project assistant"
 
-                        <h3>Multiple Models</h3>
-                        <p>Different models for different purposes:</p>
-                        <pre><code class="language-yaml">models:
-  # General-purpose assistant
-  - id: general-assistant
-    provider: openwebui
-    url: http://openwebui.local/?models=gpt-4
-    description: "General project assistance and planning"
-  
-  # Code-specific model
+  - id: code-reviewer
+    provider: openai
+    model: gpt-4o
+    description: "Code review and refactoring suggestions"
+
+  - id: doc-writer
+    provider: anthropic
+    model: claude-opus-4-5
+    description: "Documentation generation"</code></pre>
+
+        <div class="table-wrap">
+          <table class="doc-table">
+            <thead><tr><th>Field</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>id</code></td><td>Yes</td><td>Local identifier for this model reference</td></tr>
+              <tr><td><code>provider</code></td><td>Yes</td><td>Model provider: ollama, openai, anthropic, mistral, etc.</td></tr>
+              <tr><td><code>model</code></td><td>Yes</td><td>Model name as used by the provider</td></tr>
+              <tr><td><code>description</code></td><td>No</td><td>Human note on this model's purpose for the project</td></tr>
+              <tr><td><code>base_url</code></td><td>No</td><td>Custom API endpoint (for self-hosted or proxy)</td></tr>
+              <tr><td><code>context</code></td><td>No</td><td>System prompt or context template for this model</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="knowledge-bases" class="doc-section">
+        <h2>Knowledge Bases</h2>
+        <p>Knowledge bases point to collections of documents, notes, or files that provide context for AI interactions with this entity:</p>
+        <pre><code class="language-yaml">knowledge_bases:
+  - id: kb-project-docs
+    path: ./docs/
+    description: "Project documentation and specs"
+
+  - id: kb-codebase
+    path: /path/to/codebase/
+    description: "Source code for context"
+
+  - id: kb-papers
+    path: ~/research/papers/
+    description: "Reference literature"
+
+  - id: kb-notes
+    path: ./notes/
+    description: "Meeting notes and decisions"</code></pre>
+
+        <div class="table-wrap">
+          <table class="doc-table">
+            <thead><tr><th>Field</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>id</code></td><td>Yes</td><td>Local identifier for this knowledge base</td></tr>
+              <tr><td><code>path</code></td><td>Yes</td><td>Filesystem path (relative to registry root or absolute)</td></tr>
+              <tr><td><code>description</code></td><td>No</td><td>Human description of the contents</td></tr>
+              <tr><td><code>include</code></td><td>No</td><td>Glob patterns to include (default: all)</td></tr>
+              <tr><td><code>exclude</code></td><td>No</td><td>Glob patterns to exclude</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="supported-providers" class="doc-section">
+        <h2>Supported Providers</h2>
+        <div class="table-wrap">
+          <table class="doc-table">
+            <thead><tr><th>Provider</th><th>ID string</th><th>Notes</th></tr></thead>
+            <tbody>
+              <tr><td>Ollama (local)</td><td><code>ollama</code></td><td>Runs locally, no API key required</td></tr>
+              <tr><td>OpenAI</td><td><code>openai</code></td><td>Requires <code>OPENAI_API_KEY</code></td></tr>
+              <tr><td>Anthropic</td><td><code>anthropic</code></td><td>Requires <code>ANTHROPIC_API_KEY</code></td></tr>
+              <tr><td>Mistral</td><td><code>mistral</code></td><td>Requires <code>MISTRAL_API_KEY</code></td></tr>
+              <tr><td>Google (Gemini)</td><td><code>google</code></td><td>Requires <code>GOOGLE_API_KEY</code></td></tr>
+              <tr><td>Cohere</td><td><code>cohere</code></td><td>Requires <code>COHERE_API_KEY</code></td></tr>
+              <tr><td>Custom/OpenAI-compatible</td><td><code>openai-compat</code></td><td>Any OpenAI-compatible API; set <code>base_url</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="ollama" class="doc-section">
+        <h2>Ollama (Local Models)</h2>
+        <p>Ollama is the recommended provider for local, private AI assistance. No data leaves your machine.</p>
+        <pre><code class="language-bash"># Install Ollama
+curl -fsSL https://ollama.ai/install.sh | sh
+
+# Pull a model
+ollama pull llama3
+ollama pull mistral
+ollama pull codellama</code></pre>
+
+        <pre><code class="language-yaml"># In your entity
+models:
+  - id: local-assistant
+    provider: ollama
+    model: llama3
+
   - id: code-helper
     provider: ollama
     model: codellama
-    description: "Code generation and review"
-  
-  # Lightweight model for quick queries
-  - id: quick-assistant
-    provider: ollama
-    model: llama2
-    description: "Fast responses for simple queries"
-  
-  # Cloud-based model for complex tasks
-  - id: advanced-reasoning
+    description: "Code generation and review"</code></pre>
+
+        <pre><code class="language-bash"># Ask project context
+hxc ai ask P-001 "Summarize this project's current status and blockers"
+hxc ai ask P-001 --model code-helper "Suggest improvements to the API design"</code></pre>
+      </section>
+
+      <section id="openai" class="doc-section">
+        <h2>OpenAI</h2>
+        <pre><code class="language-bash">export OPENAI_API_KEY="sk-..."</code></pre>
+        <pre><code class="language-yaml">models:
+  - id: gpt4
     provider: openai
-    model: gpt-4-turbo
-    api_key_env: OPENAI_API_KEY
-    description: "Complex reasoning and analysis"</code></pre>
+    model: gpt-4o
+    description: "Primary reasoning model"
 
-                        <h3>Model Configuration Options</h3>
-                        <table class="doc-table">
-                            <thead>
-                                <tr>
-                                    <th>Field</th>
-                                    <th>Required</th>
-                                    <th>Description</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><code>id</code></td>
-                                    <td>Yes</td>
-                                    <td>Unique identifier for the model reference</td>
-                                </tr>
-                                <tr>
-                                    <td><code>provider</code></td>
-                                    <td>Yes</td>
-                                    <td>Provider name (openwebui, ollama, openai, etc.)</td>
-                                </tr>
-                                <tr>
-                                    <td><code>url</code></td>
-                                    <td>No</td>
-                                    <td>Direct URL to the model interface</td>
-                                </tr>
-                                <tr>
-                                    <td><code>model</code></td>
-                                    <td>No</td>
-                                    <td>Specific model name (for providers like Ollama)</td>
-                                </tr>
-                                <tr>
-                                    <td><code>api_key_env</code></td>
-                                    <td>No</td>
-                                    <td>Environment variable containing API key</td>
-                                </tr>
-                                <tr>
-                                    <td><code>description</code></td>
-                                    <td>No</td>
-                                    <td>Purpose or use case for this model</td>
-                                </tr>
-                            </tbody>
-                        </table>
-
-                        <h3>Use Cases for Multiple Models</h3>
-                        <ul>
-                            <li><strong>Specialized Tasks</strong>: Use different models for code, documentation, and planning</li>
-                            <li><strong>Cost Optimization</strong>: Use lightweight models for simple tasks, powerful models for complex ones</li>
-                            <li><strong>Privacy</strong>: Use local models for sensitive data, cloud models for general tasks</li>
-                            <li><strong>Performance</strong>: Balance speed and quality based on task requirements</li>
-                        </ul>
-                    </section>
-
-                    <!-- Knowledge Bases -->
-                    <section id="knowledge-bases" class="doc-section">
-                        <h2>Knowledge Bases</h2>
-                        <p>Link knowledge bases to provide context-specific information to AI assistants:</p>
-
-                        <h3>Basic Knowledge Base Reference</h3>
-                        <pre><code class="language-yaml">knowledge_bases:
-  - id: kb-project-docs
-    url: http://openwebui.local/workspace/knowledge/5f0f9cc7...</code></pre>
-
-                        <h3>Multiple Knowledge Bases</h3>
-                        <pre><code class="language-yaml">knowledge_bases:
-  # Project-specific documentation
-  - id: kb-project-docs
-    url: http://openwebui.local/workspace/knowledge/5f0f9cc7...
-    description: "Project documentation and specifications"
-  
-  # Technical standards
-  - id: kb-coding-standards
-    url: http://openwebui.local/workspace/knowledge/a1b2c3d4...
-    description: "Company coding standards and best practices"
-  
-  # Domain knowledge
-  - id: kb-domain-expertise
-    path: ./knowledge/domain-specific/
-    description: "Domain-specific knowledge and terminology"
-  
-  # API documentation
-  - id: kb-api-docs
-    url: https://api-docs.example.com
-    description: "External API documentation"</code></pre>
-
-                        <h3>Knowledge Base Types</h3>
-                        <div class="concept-box">
-                            <h4>URL-Based Knowledge Bases</h4>
-                            <p>Reference external knowledge bases via URL:</p>
-                            <pre><code class="language-yaml">knowledge_bases:
-  - id: kb-external
-    url: http://openwebui.local/workspace/knowledge/abc123
-    provider: openwebui</code></pre>
-                        </div>
-
-                        <div class="concept-box">
-                            <h4>Path-Based Knowledge Bases</h4>
-                            <p>Reference local knowledge bases via file path:</p>
-                            <pre><code class="language-yaml">knowledge_bases:
-  - id: kb-local
-    path: ./docs/knowledge-base/
-    format: markdown</code></pre>
-                        </div>
-
-                        <h3>Knowledge Base Configuration</h3>
-                        <table class="doc-table">
-                            <thead>
-                                <tr>
-                                    <th>Field</th>
-                                    <th>Required</th>
-                                    <th>Description</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><code>id</code></td>
-                                    <td>Yes</td>
-                                    <td>Unique identifier for the knowledge base</td>
-                                </tr>
-                                <tr>
-                                    <td><code>url</code></td>
-                                    <td>No*</td>
-                                    <td>URL to external knowledge base</td>
-                                </tr>
-                                <tr>
-                                    <td><code>path</code></td>
-                                    <td>No*</td>
-                                    <td>Local path to knowledge base files</td>
-                                </tr>
-                                <tr>
-                                    <td><code>provider</code></td>
-                                    <td>No</td>
-                                    <td>Knowledge base provider (openwebui, notion, etc.)</td>
-                                </tr>
-                                <tr>
-                                    <td><code>format</code></td>
-                                    <td>No</td>
-                                    <td>Format of knowledge base (markdown, pdf, etc.)</td>
-                                </tr>
-                                <tr>
-                                    <td><code>description</code></td>
-                                    <td>No</td>
-                                    <td>Purpose or content description</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                        <p class="table-note">* Either <code>url</code> or <code>path</code> is required</p>
-                    </section>
-
-                    <!-- Registry Indexing -->
-                    <section id="registry-indexing" class="doc-section">
-                        <h2>Registry Indexing</h2>
-                        <p>The entire HoxCore registry can be indexed and made available to AI systems as a knowledge base:</p>
-
-                        <h3>Automatic Indexing</h3>
-                        <p>HoxCore maintains an internal index of all entities for fast querying:</p>
-                        <pre><code class="language-bash"># Index is automatically updated on entity changes
-hxc create project --title "New Project"  # Index updated
-
-# Force rebuild index
-hxc index rebuild
-
-# View index statistics
-hxc index stats</code></pre>
-
-                        <h3>Export Registry as Knowledge Base</h3>
-                        <p>Export your registry in formats suitable for LLM consumption:</p>
-                        <pre><code class="language-bash"># Export as structured JSON
-hxc export --format json --output registry.json
-
-# Export as Markdown documentation
-hxc export --format markdown --output registry.md
-
-# Export specific entity types
-hxc export --type projects --format json --output projects.json</code></pre>
-
-                        <h3>Registry as LLM Context</h3>
-                        <p>Configure your registry to be accessible by AI assistants:</p>
-                        <pre><code class="language-yaml"># In registry config.yml
-ai:
-  indexing:
-    enabled: true
-    auto_update: true
-    export_format: json
-    
-  knowledge_base:
-    provider: openwebui
-    url: http://openwebui.local/workspace/knowledge/registry
-    auto_sync: true
-    sync_interval: 1h</code></pre>
-
-                        <h3>What Gets Indexed</h3>
-                        <ul>
-                            <li><strong>Entity Metadata</strong>: All YAML fields (title, description, status, etc.)</li>
-                            <li><strong>Relationships</strong>: Parent-child and related entity connections</li>
-                            <li><strong>History</strong>: Git commit history and change logs</li>
-                            <li><strong>Tags & Categories</strong>: Classification and semantic information</li>
-                            <li><strong>Integrations</strong>: Links to external tools and resources</li>
-                        </ul>
-
-                        <div class="info-box">
-                            <h4>💡 Privacy Considerations</h4>
-                            <p>When indexing your registry for AI systems:</p>
-                            <ul>
-                                <li>Review what data is being shared with external AI providers</li>
-                                <li>Consider using local LLM models for sensitive projects</li>
-                                <li>Use selective indexing to exclude confidential information</li>
-                                <li>Implement access controls on knowledge base endpoints</li>
-                            </ul>
-                        </div>
-                    </section>
-
-                    <!-- AI Assistant -->
-                    <section id="ai-assistant" class="doc-section">
-                        <h2>Global AI Assistant</h2>
-                        <p>HoxCore can be configured with a global AI assistant that has access to your entire registry:</p>
-
-                        <h3>Configure Global Assistant</h3>
-                        <pre><code class="language-yaml"># In registry config.yml
-ai:
-  global_assistant:
-    enabled: true
-    provider: openwebui
-    model: gpt-4
-    url: http://openwebui.local/?models=gpt-4
-    
-    # Context configuration
-    context:
-      include_registry: true
-      include_relationships: true
-      include_history: false
-      max_entities: 100
-    
-    # Capabilities
-    capabilities:
-      - query_entities
-      - suggest_relationships
-      - analyze_status
-      - recommend_actions
-      - generate_reports</code></pre>
-
-                        <h3>Assistant Capabilities</h3>
-                        <div class="capabilities-grid">
-                            <div class="capability-card">
-                                <h4>🔍 Query Entities</h4>
-                                <p>Ask questions about your projects in natural language</p>
-                                <pre><code class="language-text">"Show me all active AI projects"
-"What projects are overdue?"
-"Which projects depend on the backend API?"</code></pre>
-                            </div>
-
-                            <div class="capability-card">
-                                <h4>🔗 Suggest Relationships</h4>
-                                <p>AI can identify potential relationships between entities</p>
-                                <pre><code class="language-text">"These two projects seem related based on their tags and descriptions"
-"Consider linking this project to the parent program"</code></pre>
-                            </div>
-
-                            <div class="capability-card">
-                                <h4>📊 Analyze Status</h4>
-                                <p>Get insights about project health and progress</p>
-                                <pre><code class="language-text">"Project X is behind schedule"
-"You have 5 projects due this month"
-"Program Y has 3 blocked projects"</code></pre>
-                            </div>
-
-                            <div class="capability-card">
-                                <h4>💡 Recommend Actions</h4>
-                                <p>Receive AI-powered recommendations</p>
-                                <pre><code class="language-text">"Consider updating the status of completed projects"
-"Project X might benefit from additional resources"
-"Time to review on-hold projects"</code></pre>
-                            </div>
-                        </div>
-
-                        <h3>Using the Global Assistant</h3>
-                        <pre><code class="language-bash"># Ask questions via CLI
-hxc ai ask "What are my active projects?"
-
-# Get project recommendations
-hxc ai recommend --project P-001
-
-# Analyze registry health
-hxc ai analyze
-
-# Generate reports
-hxc ai report --type status --format markdown</code></pre>
-                    </section>
-
-                    <!-- Natural Language -->
-                    <section id="natural-language" class="doc-section">
-                        <h2>Natural Language Queries</h2>
-                        <p>Query your registry using natural language instead of structured commands:</p>
-
-                        <h3>Natural Language Query Examples</h3>
-                        <pre><code class="language-bash"># Instead of: hxc list projects --status active --tags ai
-hxc ai query "Show me all active AI projects"
-
-# Instead of: hxc query projects --due-before 2024-12-31 --status active
-hxc ai query "Which projects are due before the end of the year?"
-
-# Complex queries
-hxc ai query "What projects are related to the backend API and are currently on hold?"
-
-# Relationship queries
-hxc ai query "Show me all projects under the Digital Transformation program"
-
-# Status analysis
-hxc ai query "Which projects are overdue?"
-
-# Trend analysis
-hxc ai query "What projects were completed last month?"</code></pre>
-
-                        <h3>Query Translation</h3>
-                        <p>The AI assistant translates natural language to structured queries:</p>
-                        <div class="translation-example">
-                            <div class="translation-input">
-                                <h4>Natural Language Input</h4>
-                                <pre><code class="language-text">"Show me all active software projects with AI tags that are due this quarter"</code></pre>
-                            </div>
-                            <div class="translation-arrow">→</div>
-                            <div class="translation-output">
-                                <h4>Structured Query</h4>
-                                <pre><code class="language-bash">hxc query projects \
-  --status active \
-  --category software.dev \
-  --tags ai \
-  --due-before 2024-03-31</code></pre>
-                            </div>
-                        </div>
-
-                        <h3>Conversational Context</h3>
-                        <p>The AI assistant maintains context across multiple queries:</p>
-                        <pre><code class="language-bash"># First query
-hxc ai query "Show me all AI projects"
-
-# Follow-up query (uses context)
-hxc ai query "Which of these are overdue?"
-
-# Another follow-up
-hxc ai query "Show me their dependencies"</code></pre>
-                    </section>
-
-                    <!-- Providers -->
-                    <section id="providers" class="doc-section">
-                        <h2>Supported Providers</h2>
-                        <p>HoxCore supports integration with various LLM providers:</p>
-
-                        <h3>OpenWebUI</h3>
-                        <div class="provider-card">
-                            <h4>🌐 OpenWebUI</h4>
-                            <p>Self-hosted web interface for LLMs with knowledge base support</p>
-                            <pre><code class="language-yaml">models:
-  - id: assistant
-    provider: openwebui
-    url: http://openwebui.local/?models=gpt-4
-
-knowledge_bases:
-  - id: kb-docs
-    provider: openwebui
-    url: http://openwebui.local/workspace/knowledge/abc123</code></pre>
-                            <p><strong>Features</strong>: Knowledge bases, multiple models, web interface</p>
-                            <p><strong>Best For</strong>: Self-hosted deployments, privacy-focused setups</p>
-                        </div>
-
-                        <h3>Ollama</h3>
-                        <div class="provider-card">
-                            <h4>🦙 Ollama</h4>
-                            <p>Local LLM runtime for running models on your machine</p>
-                            <pre><code class="language-yaml">models:
-  - id: code-helper
-    provider: ollama
-    model: codellama
-    url: http://localhost:11434
-
-  - id: general
-    provider: ollama
-    model: llama2</code></pre>
-                            <p><strong>Features</strong>: Local execution, no API costs, privacy</p>
-                            <p><strong>Best For</strong>: Development, sensitive data, offline work</p>
-                        </div>
-
-                        <h3>OpenAI</h3>
-                        <div class="provider-card">
-                            <h4>🤖 OpenAI</h4>
-                            <p>Cloud-based LLM service with powerful models</p>
-                            <pre><code class="language-yaml">models:
-  - id: advanced
+  - id: gpt4-mini
     provider: openai
-    model: gpt-4-turbo
-    api_key_env: OPENAI_API_KEY
+    model: gpt-4o-mini
+    description: "Fast, cost-effective tasks"</code></pre>
+      </section>
 
-  - id: fast
-    provider: openai
-    model: gpt-3.5-turbo
-    api_key_env: OPENAI_API_KEY</code></pre>
-                            <p><strong>Features</strong>: Powerful models, fast responses, API-based</p>
-                            <p><strong>Best For</strong>: Production use, complex reasoning, high quality</p>
-                        </div>
-
-                        <h3>Anthropic Claude</h3>
-                        <div class="provider-card">
-                            <h4>🧠 Anthropic Claude</h4>
-                            <p>Advanced AI assistant with strong reasoning capabilities</p>
-                            <pre><code class="language-yaml">models:
+      <section id="anthropic" class="doc-section">
+        <h2>Anthropic</h2>
+        <pre><code class="language-bash">export ANTHROPIC_API_KEY="sk-ant-..."</code></pre>
+        <pre><code class="language-yaml">models:
   - id: claude
     provider: anthropic
-    model: claude-3-opus
-    api_key_env: ANTHROPIC_API_KEY</code></pre>
-                            <p><strong>Features</strong>: Long context, strong reasoning, safety-focused</p>
-                            <p><strong>Best For</strong>: Complex analysis, long documents, detailed reasoning</p>
-                        </div>
+    model: claude-opus-4-5
+    description: "Complex reasoning and writing"
 
-                        <h3>Custom Providers</h3>
-                        <div class="provider-card">
-                            <h4>🔧 Custom Providers</h4>
-                            <p>Integrate with any LLM provider via custom configuration</p>
-                            <pre><code class="language-yaml">models:
-  - id: custom
-    provider: custom
-    api_url: https://api.custom-llm.com/v1/chat
-    api_key_env: CUSTOM_API_KEY
-    headers:
-      Content-Type: application/json
-    model: custom-model-v1</code></pre>
-                            <p><strong>Features</strong>: Flexible integration, custom endpoints</p>
-                            <p><strong>Best For</strong>: Enterprise deployments, specialized models</p>
-                        </div>
-                    </section>
-
-                    <!-- Use Cases -->
-                    <section id="use-cases" class="doc-section">
-                        <h2>Use Cases</h2>
-                        <p>Real-world scenarios where AI integration enhances project management:</p>
-
-                        <h3>1. Intelligent Project Discovery</h3>
-                        <div class="use-case-example">
-                            <h4>Scenario</h4>
-                            <p>You have hundreds of projects and need to find relevant ones quickly.</p>
-                            <h4>Solution</h4>
-                            <pre><code class="language-bash"># Natural language search
-hxc ai query "Find all machine learning projects that are related to healthcare and started this year"
-
-# AI understands context and relationships
-hxc ai query "Show me projects similar to P-001"</code></pre>
-                        </div>
-
-                        <h3>2. Automated Status Reports</h3>
-                        <div class="use-case-example">
-                            <h4>Scenario</h4>
-                            <p>Generate weekly status reports for stakeholders.</p>
-                            <h4>Solution</h4>
-                            <pre><code class="language-bash"># Generate comprehensive report
-hxc ai report --type weekly --format markdown --output report.md
-
-# AI analyzes progress, identifies blockers, suggests actions</code></pre>
-                        </div>
-
-                        <h3>3. Context-Aware Code Assistance</h3>
-                        <div class="use-case-example">
-                            <h4>Scenario</h4>
-                            <p>Get code help that understands your project context.</p>
-                            <h4>Solution</h4>
-                            <pre><code class="language-yaml"># Project with code-specific model and knowledge base
-models:
-  - id: code-helper
-    provider: ollama
-    model: codellama
-
-knowledge_bases:
-  - id: kb-codebase
-    path: ./src/
-  - id: kb-docs
-    path: ./docs/</code></pre>
-                            <p>The AI assistant can now provide code suggestions based on your actual codebase and documentation.</p>
-                        </div>
-
-                        <h3>4. Dependency Analysis</h3>
-                        <div class="use-case-example">
-                            <h4>Scenario</h4>
-                            <p>Understand complex project dependencies and impacts.</p>
-                            <h4>Solution</h4>
-                            <pre><code class="language-bash"># Ask about dependencies
-hxc ai query "What projects will be affected if I delay the backend API project?"
-
-# Get impact analysis
-hxc ai analyze --project P-001 --impact</code></pre>
-                        </div>
-
-                        <h3>5. Automated Documentation</h3>
-                        <div class="use-case-example">
-                            <h4>Scenario</h4>
-                            <p>Generate documentation from project metadata.</p>
-                            <h4>Solution</h4>
-                            <pre><code class="language-bash"># Generate project documentation
-hxc ai document --project P-001 --output README.md
-
-# Generate architecture overview
-hxc ai document --program prog_digital_transformation --type architecture</code></pre>
-                        </div>
-
-                        <h3>6. Smart Recommendations</h3>
-                        <div class="use-case-example">
-                            <h4>Scenario</h4>
-                            <p>Get AI-powered recommendations for project management.</p>
-                            <h4>Solution</h4>
-                            <pre><code class="language-bash"># Get recommendations for a project
-hxc ai recommend --project P-001
-
-# AI suggests:
-# - Update overdue tasks
-# - Link to related projects
-# - Add missing tags
-# - Update status based on completion</code></pre>
-                        </div>
-                    </section>
-
-                    <!-- Best Practices -->
-                    <section id="best-practices" class="doc-section">
-                        <h2>Best Practices</h2>
-                        <p>Guidelines for effective AI integration with HoxCore:</p>
-
-                        <h3>1. Choose the Right Model</h3>
-                        <div class="best-practice">
-                            <h4>✅ Do</h4>
-                            <ul>
-                                <li>Use lightweight models (Llama2) for simple queries</li>
-                                <li>Use powerful models (GPT-4) for complex reasoning</li>
-                                <li>Use specialized models (CodeLlama) for code-related tasks</li>
-                                <li>Consider cost vs. quality trade-offs</li>
-                            </ul>
-                            <h4>❌ Don't</h4>
-                            <ul>
-                                <li>Use expensive models for simple tasks</li>
-                                <li>Use general models for highly specialized tasks</li>
-                                <li>Ignore privacy implications of cloud models</li>
-                            </ul>
-                        </div>
-
-                        <h3>2. Maintain Rich Metadata</h3>
-                        <div class="best-practice">
-                            <h4>✅ Do</h4>
-                            <ul>
-                                <li>Write detailed descriptions for projects</li>
-                                <li>Use meaningful tags and categories</li>
-                                <li>Document relationships between entities</li>
-                                <li>Keep status and dates up to date</li>
-                            </ul>
-                            <h4>❌ Don't</h4>
-                            <ul>
-                                <li>Leave descriptions empty or vague</li>
-                                <li>Use inconsistent tagging schemes</li>
-                                <li>Neglect relationship documentation</li>
-                            </ul>
-                        </div>
-
-                        <h3>3. Organize Knowledge Bases</h3>
-                        <div class="best-practice">
-                            <h4>✅ Do</h4>
-                            <ul>
-                                <li>Create project-specific knowledge bases</li>
-                                <li>Keep knowledge bases up to date</li>
-                                <li>Use clear, descriptive names</li>
-                                <li>Document the purpose of each knowledge base</li>
-                            </ul>
-                            <h4>❌ Don't</h4>
-                            <ul>
-                                <li>Mix unrelated information in one knowledge base</li>
-                                <li>Let knowledge bases become stale</li>
-                                <li>Use cryptic or unclear identifiers</li>
-                            </ul>
-                        </div>
-
-                        <h3>4. Privacy and Security</h3>
-                        <div class="best-practice">
-                            <h4>✅ Do</h4>
-                            <ul>
-                                <li>Use local models for sensitive data</li>
-                                <li>Review what data is sent to external APIs</li>
-                                <li>Implement access controls on knowledge bases</li>
-                                <li>Use environment variables for API keys</li>
-                            </ul>
-                            <h4>❌ Don't</h4>
-                            <ul>
-                                <li>Send confidential data to public APIs</li>
-                                <li>Hardcode API keys in configuration</li>
-                                <li>Share knowledge bases without access controls</li>
-                            </ul>
-                        </div>
-
-                        <h3>5. Performance Optimization</h3>
-                        <div class="best-practice">
-                            <h4>✅ Do</h4>
-                            <ul>
-                                <li>Cache AI responses when appropriate</li>
-                                <li>Use selective indexing for large registries</li>
-                                <li>Limit context size for faster responses</li>
-                                <li>Monitor API usage and costs</li>
-                            </ul>
-                            <h4>❌ Don't</h4>
-                            <ul>
-                                <li>Send entire registry for every query</li>
-                                <li>Ignore response time issues</li>
-                                <li>Exceed API rate limits</li>
-                            </ul>
-                        </div>
-                    </section>
-
-                    <!-- Examples -->
-                    <section id="examples" class="doc-section">
-                        <h2>Complete Examples</h2>
-                        <p>Full configuration examples for different scenarios:</p>
-
-                        <h3>Example 1: Software Development Project</h3>
-                        <pre><code class="language-yaml">type: project
-title: "AI-Powered CLI Tool"
-description: >
-  Building an intelligent command-line interface
-  with LLM integration and declarative templates.
-
-category: software.dev/cli-tool
-tags: [cli, ai, python, llm, automation]
-
-# Multiple models for different purposes
-models:
-  # General assistance
-  - id: assistant
-    provider: openwebui
-    url: http://openwebui.local/?models=gpt-4
-    description: "General project assistance"
-  
-  # Code generation
-  - id: code-helper
-    provider: ollama
-    model: codellama
-    description: "Code generation and review"
-  
-  # Quick queries
-  - id: quick
-    provider: ollama
-    model: llama2
-    description: "Fast responses"
-
-# Knowledge bases
-knowledge_bases:
-  # Project documentation
-  - id: kb-docs
-    path: ./docs/
-    format: markdown
-    description: "Project documentation"
-  
-  # Codebase
-  - id: kb-code
-    path: ./src/
-    format: python
-    description: "Source code"
-  
-  # Standards
-  - id: kb-standards
-    url: http://openwebui.local/workspace/knowledge/standards
-    description: "Coding standards"
-
-# Repositories
-repositories:
-  - name: github
-    url: https://github.com/user/hoxcore
-
-# Tools
-tools:
-  - name: github-projects
-    provider: github
-    url: https://github.com/user/hoxcore/projects/1</code></pre>
-
-                        <h3>Example 2: Research Project</h3>
-                        <pre><code class="language-yaml">type: project
-title: "Machine Learning Research"
-description: >
-  Investigating novel approaches to natural language
-  understanding using transformer architectures.
-
-category: academic/research-paper
-tags: [ml, nlp, transformers, research]
-
-# Research-focused models
-models:
-  # Literature review
-  - id: research-assistant
+  - id: claude-fast
     provider: anthropic
-    model: claude-3-opus
-    api_key_env: ANTHROPIC_API_KEY
-    description: "Literature review and analysis"
-  
-  # Data analysis
-  - id: data-analyst
-    provider: openai
-    model: gpt-4-turbo
-    api_key_env: OPENAI_API_KEY
-    description: "Data analysis and visualization"
+    model: claude-haiku-4-5
+    description: "Fast summaries and classification"</code></pre>
+      </section>
 
-# Knowledge bases
-knowledge_bases:
-  # Research papers
-  - id: kb-papers
-    path: ./papers/
-    format: pdf
-    description: "Related research papers"
-  
-  # Experimental data
-  - id: kb-data
-    path: ./data/
-    description: "Experimental datasets"
-  
-  # Domain knowledge
-  - id: kb-domain
-    url: http://openwebui.local/workspace/knowledge/nlp-domain
-    description: "NLP domain knowledge"
+      <section id="llm-context" class="doc-section">
+        <h2>Using Registry as LLM Context</h2>
+        <p>Even without any active AI commands, your HoxCore registry is immediately useful as LLM context. Feed entity YAML directly to any LLM for instant project awareness:</p>
 
-# Repositories
-repositories:
-  - name: overleaf
-    url: https://www.overleaf.com/project/abc123
-  - name: github
-    url: https://github.com/user/ml-research
+        <h3>Export single entity for context</h3>
+        <pre><code class="language-bash"># Export raw YAML to clipboard or pipe to LLM
+hxc show P-001 --raw | pbcopy
 
-# Storage
-storage:
-  - name: gdrive
-    provider: google-drive
-    url: https://drive.google.com/drive/folders/research</code></pre>
+# Export as structured JSON for API use
+hxc show P-001 --output json</code></pre>
 
-                        <h3>Example 3: Business Initiative</h3>
-                        <pre><code class="language-yaml">type: program
-title: "Digital Transformation Initiative"
-description: >
-  Company-wide initiative to modernize systems,
-  processes, and capabilities.
+        <h3>Export project context bundle</h3>
+        <pre><code class="language-bash"># Generate a context document for an LLM
+hxc export projects --format markdown --status active > context.md
 
-category: business/initiative.strategic
-tags: [transformation, strategy, modernization]
+# Feed to an LLM via CLI tool (e.g. llm, aichat, etc.)
+hxc show P-001 --raw | llm "What are the critical risks in this project?"</code></pre>
 
-# Executive-level models
-models:
-  # Strategic planning
-  - id: strategy-advisor
-    provider: openai
-    model: gpt-4-turbo
-    api_key_env: OPENAI_API_KEY
-    description: "Strategic planning and analysis"
-  
-  # Report generation
-  - id: report-generator
-    provider: anthropic
-    model: claude-3-opus
-    api_key_env: ANTHROPIC_API_KEY
-    description: "Executive report generation"
+        <h3>Programmatic use</h3>
+        <pre><code class="language-python">import subprocess
+import json
 
-# Knowledge bases
-knowledge_bases:
-  # Company strategy
-  - id: kb-strategy
-    url: https://notion.so/workspace/strategy
-    provider: notion
-    description: "Strategic documents"
-  
-  # Market research
-  - id: kb-market
-    path: ./market-research/
-    description: "Market analysis and trends"
-  
-  # Best practices
-  - id: kb-best-practices
-    url: http://openwebui.local/workspace/knowledge/best-practices
-    description: "Industry best practices"
+# Load project as structured data
+result = subprocess.run(
+    ["hxc", "show", "P-001", "--output", "json"],
+    capture_output=True, text=True
+)
+project = json.loads(result.stdout)
 
-# Tools
-tools:
-  - name: azure-devops
-    provider: azure
-    url: https://dev.azure.com/company/transformation
+# Pass to your LLM of choice
+context = f"""
+Project: {project['title']}
+Status: {project['status']}
+Description: {project['description']}
+Tags: {', '.join(project.get('tags', []))}
+"""</code></pre>
+      </section>
 
-# Children projects
-children:
-  - proj_system_modernization
-  - proj_process_automation
-  - proj_capability_building</code></pre>
-                    </section>
+      <section id="ai-commands" class="doc-section">
+        <h2>AI CLI Commands</h2>
+        <p>HoxCore provides <code>hxc ai</code> subcommands for active model interaction:</p>
 
-                    <!-- Next Steps -->
-                    <section class="doc-section">
-                        <h2>Next Steps</h2>
-                        <p>Now that you understand AI features in HoxCore, explore related topics:</p>
-                        
-                        <div class="next-steps-grid">
-                            <div class="next-step-card">
-                                <h3>🔌 Integrations</h3>
-                                <p>Learn how to integrate HoxCore with external tools and services.</p>
-                                <a href="integrations.html" class="btn btn-secondary">View Integrations →</a>
-                            </div>
-                            
-                            <div class="next-step-card">
-                                <h3>📚 Core Concepts</h3>
-                                <p>Understand the fundamental concepts behind HoxCore's design.</p>
-                                <a href="core-concepts.html" class="btn btn-secondary">Learn Core Concepts →</a>
-                            </div>
-                            
-                            <div class="next-step-card">
-                                <h3>📖 CLI Reference</h3>
-                                <p>Explore all available commands including AI-related commands.</p>
-                                <a href="cli-reference.html" class="btn btn-secondary">View CLI Reference →</a>
-                            </div>
-                            
-                            <div class="next-step-card">
-                                <h3>📝 Templates</h3>
-                                <p>Learn how to create templates with AI model configurations.</p>
-                                <a href="templates.html" class="btn btn-secondary">Explore Templates →</a>
-                            </div>
-                        </div>
-                    </section>
-                </article>
-            </div>
+        <pre><code class="language-bash"># Ask a question in the context of a project
+hxc ai ask P-001 "What should I prioritize this week?"
+
+# Specify a model ID from the entity's models list
+hxc ai ask P-001 --model code-helper "Review this architecture decision"
+
+# Summarize a project
+hxc ai summarize P-001
+
+# Generate a status report
+hxc ai report P-001 --format markdown
+
+# Ask across multiple projects
+hxc ai ask --tags ai,active "What are the common blockers across these projects?"</code></pre>
+
+        <div class="warning-box">
+          <h4>Active AI commands — alpha feature</h4>
+          <p>The <code>hxc ai</code> command group is in active development. Features may change between releases. The reference model (storing <code>models</code> and <code>knowledge_bases</code> in YAML) is stable.</p>
         </div>
-    </main>
+      </section>
 
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h3>HoxCore</h3>
-                    <p>Universal, declarative, version-controlled project registry.</p>
-                </div>
-                <div class="footer-section">
-                    <h3>Documentation</h3>
-                    <ul>
-                        <li><a href="getting-started.html">Getting Started</a></li>
-                        <li><a href="core-concepts.html">Core Concepts</a></li>
-                        <li><a href="cli-reference.html">CLI Reference</a></li>
-                        <li><a href="templates.html">Templates</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h3>Resources</h3>
-                    <ul>
-                        <li><a href="integrations.html">Integrations</a></li>
-                        <li><a href="ai-features.html">AI Features</a></li>
-                        <li><a href="https://github.com/yourusername/hoxcore" target="_blank">GitHub</a></li>
-                        <li><a href="https://github.com/yourusername/hoxcore/issues" target="_blank">Issues</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h3>Community</h3>
-                    <ul>
-                        <li><a href="https://github.com/yourusername/hoxcore/discussions" target="_blank">Discussions</a></li>
-                        <li><a href="https://github.com/yourusername/hoxcore/blob/main/CONTRIBUTING.md" target="_blank">Contributing</a></li>
-                        <li><a href="https://github.com/yourusername/hoxcore/blob/main/LICENSE" target="_blank">License</a></li>
-                    </ul>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p>&copy; 2024 HoxCore Team. Released under the MIT License.</p>
-                <p>Version 0.1.0</p>
-            </div>
-        </div>
-    </footer>
+      <section id="best-practices" class="doc-section">
+        <h2>Best Practices</h2>
 
-    <script src="js/main.js"></script>
-    <script>
-        hljs.highlightAll();
-    </script>
+        <h3>Keep knowledge bases focused</h3>
+        <p>Reference specific, relevant directories rather than your entire filesystem. An LLM context window is finite — focused knowledge bases produce better results than sprawling ones.</p>
+
+        <h3>Name models by role, not by provider</h3>
+        <p>Use descriptive IDs like <code>code-reviewer</code> or <code>doc-writer</code> rather than <code>gpt4</code> or <code>claude</code>. This makes it easy to swap providers without updating entity files.</p>
+
+        <h3>Use local models for sensitive data</h3>
+        <p>For entities containing confidential business context, configure Ollama local models. This ensures your project data never leaves your machine.</p>
+
+        <h3>Treat the entity YAML as a project brief</h3>
+        <p>Write your <code>description</code> fields as if you're briefing a new team member — or a new AI assistant. The more context you provide, the more useful the LLM responses will be.</p>
+
+        <h3>Consistent model IDs across templates</h3>
+        <p>If you use templates, standardize model IDs so your AI workflows work uniformly across all entities. Define a baseline set in your team templates.</p>
+      </section>
+
+    </div>
+  </div>
+</div>
+</main>
+
+<footer class="footer" role="contentinfo">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <div class="nav-logo" style="font-size:1.25rem;margin-bottom:.75rem">HoxCore</div>
+        <p>Universal, declarative, version-controlled project registry. MIT License.</p>
+      </div>
+      <div class="footer-section">
+        <h4>Documentation</h4>
+        <ul>
+          <li><a href="getting-started.html">Getting Started</a></li>
+          <li><a href="core-concepts.html">Core Concepts</a></li>
+          <li><a href="cli-reference.html">CLI Reference</a></li>
+          <li><a href="templates.html">Templates</a></li>
+        </ul>
+      </div>
+      <div class="footer-section">
+        <h4>Resources</h4>
+        <ul>
+          <li><a href="integrations.html">Integrations</a></li>
+          <li><a href="ai-features.html">AI Features</a></li>
+          <li><a href="https://github.com/sdescobedo/hoxcore" target="_blank" rel="noopener">GitHub</a></li>
+          <li><a href="https://pypi.org/project/hxc/" target="_blank" rel="noopener">PyPI</a></li>
+        </ul>
+      </div>
+      <div class="footer-section">
+        <h4>Community</h4>
+        <ul>
+          <li><a href="https://github.com/sdescobedo/hoxcore/discussions" target="_blank" rel="noopener">Discussions</a></li>
+          <li><a href="https://github.com/sdescobedo/hoxcore/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener">Contributing</a></li>
+          <li><a href="https://github.com/sdescobedo/hoxcore/blob/main/LICENSE" target="_blank" rel="noopener">License</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>&copy; <span class="footer-year">2024</span> HoxCore. Released under the MIT License.</span>
+      <span class="footer-version"></span>
+    </div>
+  </div>
+</footer>
+
+<button class="scroll-top" aria-label="Scroll to top">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>
+</button>
+
+<script src="js/version.js"></script>
+<script src="js/main.js"></script>
 </body>
 </html>

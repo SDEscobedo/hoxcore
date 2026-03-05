@@ -1,1235 +1,372 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Integrations in HoxCore - Learn how to connect HoxCore with GitHub, Azure DevOps, Overleaf, Notion, and other external tools for seamless project management.">
-    <meta name="keywords" content="HoxCore, integrations, GitHub, Azure DevOps, Overleaf, Notion, Trello, version control, project management">
-    <meta name="author" content="HoxCore Team">
-    
-    <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://yourusername.github.io/hoxcore/integrations.html">
-    <meta property="og:title" content="Integrations - HoxCore Documentation">
-    <meta property="og:description" content="Connect HoxCore with external tools for enhanced project management">
-    <meta property="og:image" content="https://yourusername.github.io/hoxcore/assets/images/og-image.png">
-
-    <!-- Twitter -->
-    <meta property="twitter:card" content="summary_large_image">
-    <meta property="twitter:url" content="https://yourusername.github.io/hoxcore/integrations.html">
-    <meta property="twitter:title" content="Integrations - HoxCore Documentation">
-    <meta property="twitter:description" content="Connect HoxCore with external tools for enhanced project management">
-    <meta property="twitter:image" content="https://yourusername.github.io/hoxcore/assets/images/og-image.png">
-
-    <title>Integrations - HoxCore Documentation</title>
-    
-    <link rel="stylesheet" href="css/style.css">
-    <link rel="icon" type="image/x-icon" href="assets/images/favicon.ico">
-    
-    <!-- Syntax Highlighting -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Integrations — HoxCore Documentation</title>
+  <meta name="description" content="Connect HoxCore to GitHub, Azure DevOps, Notion, Overleaf, Trello, and more via declarative YAML references.">
+  <link rel="canonical" href="https://sdescobedo.github.io/hoxcore/integrations.html">
+  <meta property="og:title" content="Integrations — HoxCore Documentation">
+  <meta property="og:url" content="https://sdescobedo.github.io/hoxcore/integrations.html">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" defer></script>
+  <script>document.addEventListener('DOMContentLoaded', () => { if (window.hljs) hljs.highlightAll(); });</script>
 </head>
 <body>
-    <!-- Navigation -->
-    <nav class="navbar">
-        <div class="container">
-            <div class="nav-brand">
-                <a href="index.html">
-                    <span class="logo">HoxCore</span>
-                </a>
-            </div>
-            <button class="nav-toggle" aria-label="Toggle navigation">
-                <span></span>
-                <span></span>
-                <span></span>
-            </button>
-            <ul class="nav-menu">
-                <li><a href="index.html">Home</a></li>
-                <li><a href="getting-started.html">Getting Started</a></li>
-                <li><a href="core-concepts.html">Core Concepts</a></li>
-                <li><a href="cli-reference.html">CLI Reference</a></li>
-                <li><a href="templates.html">Templates</a></li>
-                <li><a href="integrations.html" class="active">Integrations</a></li>
-                <li><a href="ai-features.html">AI Features</a></li>
-                <li><a href="https://github.com/yourusername/hoxcore" target="_blank" class="github-link">GitHub</a></li>
-            </ul>
-        </div>
+
+<a href="#main" class="skip-link">Skip to main content</a>
+
+<nav class="navbar" role="navigation" aria-label="Main navigation">
+  <div class="container">
+    <div class="nav-brand">
+      <a href="index.html" aria-label="HoxCore home"><span class="nav-logo">HoxCore</span></a>
+      <span class="nav-version"></span>
+    </div>
+    <ul class="nav-menu" role="list">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="getting-started.html">Getting Started</a></li>
+      <li><a href="core-concepts.html">Concepts</a></li>
+      <li><a href="cli-reference.html">CLI</a></li>
+      <li><a href="templates.html">Templates</a></li>
+      <li><a href="integrations.html" class="active">Integrations</a></li>
+      <li><a href="ai-features.html">AI</a></li>
+    </ul>
+    <div class="nav-actions">
+      <button class="theme-toggle" aria-label="Toggle dark mode" aria-pressed="false">
+        <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
+      <a href="https://github.com/sdescobedo/hoxcore" class="nav-github" target="_blank" rel="noopener noreferrer">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        GitHub
+      </a>
+      <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><span></span><span></span><span></span></button>
+    </div>
+  </div>
+</nav>
+
+<header class="page-header">
+  <div class="page-header-inner">
+    <nav class="page-breadcrumb" aria-label="Breadcrumb">
+      <a href="index.html">HoxCore</a>
+      <span class="sep">/</span>
+      <span>Integrations</span>
     </nav>
+    <h1>Integrations</h1>
+    <p>HoxCore references your tools — it doesn't replace them.</p>
+  </div>
+</header>
 
-    <!-- Page Header -->
-    <section class="page-header">
-        <div class="container">
-            <h1>Integrations</h1>
-            <p>Connect HoxCore with external tools for enhanced project management</p>
+<main id="main">
+<div class="doc-wrapper">
+
+  <aside class="doc-sidebar" aria-label="Page navigation">
+    <div class="sidebar-section">
+      <span class="sidebar-label">On this page</span>
+      <ul class="sidebar-nav">
+        <li><a href="#integration-model">Integration Model</a></li>
+        <li><a href="#tools-field">The tools Field</a></li>
+        <li><a href="#repositories-field">The repositories Field</a></li>
+        <li><a href="#github">GitHub</a></li>
+        <li><a href="#azure-devops">Azure DevOps</a></li>
+        <li><a href="#notion">Notion</a></li>
+        <li><a href="#overleaf">Overleaf</a></li>
+        <li><a href="#trello">Trello</a></li>
+        <li><a href="#google-workspace">Google Workspace</a></li>
+        <li><a href="#custom">Custom Integrations</a></li>
+      </ul>
+    </div>
+  </aside>
+
+  <div class="doc-content-area">
+    <div class="doc-content">
+
+      <section id="integration-model" class="doc-section">
+        <h2>Integration Model</h2>
+        <p>HoxCore's philosophy is <strong>reference, don't replicate</strong>. Rather than syncing data from external tools into the registry, HoxCore stores authoritative links to where data lives in your existing tools.</p>
+
+        <p>This means:</p>
+        <ul>
+          <li>Your GitHub issues stay in GitHub</li>
+          <li>Your Notion pages stay in Notion</li>
+          <li>Your Trello boards stay in Trello</li>
+          <li>HoxCore is the single place to find <em>which</em> tools and URLs belong to a given project</li>
+        </ul>
+
+        <div class="info-box">
+          <h4>No OAuth, no sync, no webhooks</h4>
+          <p>Integration references are just URLs and metadata in YAML. HoxCore requires no API keys, no OAuth flows, and no background sync processes for its reference model. Future releases may add optional live data fetch features.</p>
         </div>
-    </section>
+      </section>
 
-    <!-- Main Content -->
-    <main class="documentation">
-        <div class="container">
-            <div class="doc-layout">
-                <!-- Sidebar Navigation -->
-                <aside class="doc-sidebar">
-                    <nav class="doc-nav">
-                        <h3>On This Page</h3>
-                        <ul>
-                            <li><a href="#overview">Overview</a></li>
-                            <li><a href="#integration-philosophy">Integration Philosophy</a></li>
-                            <li><a href="#version-control">Version Control</a></li>
-                            <li><a href="#project-management">Project Management</a></li>
-                            <li><a href="#storage">Storage & Documentation</a></li>
-                            <li><a href="#databases">Databases</a></li>
-                            <li><a href="#communication">Communication Tools</a></li>
-                            <li><a href="#ci-cd">CI/CD Platforms</a></li>
-                            <li><a href="#custom-integrations">Custom Integrations</a></li>
-                            <li><a href="#best-practices">Best Practices</a></li>
-                        </ul>
-                    </nav>
-                </aside>
-
-                <!-- Main Documentation Content -->
-                <article class="doc-content">
-                    <!-- Overview -->
-                    <section id="overview" class="doc-section">
-                        <h2>Overview</h2>
-                        <p>HoxCore is designed to <strong>integrate with existing tools</strong> rather than replace them. By referencing external systems in your entity definitions, you create a unified view of your project ecosystem while leveraging the specialized capabilities of each tool.</p>
-
-                        <div class="info-box">
-                            <h4>💡 Integration Model</h4>
-                            <p>HoxCore acts as a <strong>registry and orchestrator</strong>, not a replacement for specialized tools. It provides:</p>
-                            <ul>
-                                <li>A single source of truth for project metadata</li>
-                                <li>Declarative references to external systems</li>
-                                <li>Unified querying across all your projects</li>
-                                <li>Version-controlled integration configuration</li>
-                            </ul>
-                        </div>
-
-                        <h3>Integration Categories</h3>
-                        <div class="integration-categories">
-                            <div class="category-card">
-                                <h4>🔄 Version Control</h4>
-                                <p>GitHub, Azure DevOps, GitLab, Gitea, Overleaf</p>
-                            </div>
-                            <div class="category-card">
-                                <h4>📋 Project Management</h4>
-                                <p>GitHub Projects, Azure Boards, Trello, OpenProject</p>
-                            </div>
-                            <div class="category-card">
-                                <h4>📁 Storage & Docs</h4>
-                                <p>Google Drive, Notion, Confluence, SharePoint</p>
-                            </div>
-                            <div class="category-card">
-                                <h4>🗄️ Databases</h4>
-                                <p>PostgreSQL, MySQL, SQLite, MongoDB</p>
-                            </div>
-                            <div class="category-card">
-                                <h4>💬 Communication</h4>
-                                <p>Slack, Microsoft Teams, Discord</p>
-                            </div>
-                            <div class="category-card">
-                                <h4>🚀 CI/CD</h4>
-                                <p>GitHub Actions, Azure Pipelines, Jenkins</p>
-                            </div>
-                        </div>
-                    </section>
-
-                    <!-- Integration Philosophy -->
-                    <section id="integration-philosophy" class="doc-section">
-                        <h2>Integration Philosophy</h2>
-                        <p>HoxCore follows a clear philosophy when it comes to integrations:</p>
-
-                        <h3>Core Principles</h3>
-                        <div class="principles-list">
-                            <div class="principle-item">
-                                <h4>🔗 Reference, Don't Duplicate</h4>
-                                <p>Store references to external systems, not copies of their data. The external tool remains the source of truth for its domain.</p>
-                            </div>
-                            <div class="principle-item">
-                                <h4>📋 Declarative Configuration</h4>
-                                <p>All integrations are defined declaratively in YAML. No hidden configuration or magic connections.</p>
-                            </div>
-                            <div class="principle-item">
-                                <h4>🔒 Version Controlled</h4>
-                                <p>Integration configurations are part of your Git-tracked registry, providing full history and auditability.</p>
-                            </div>
-                            <div class="principle-item">
-                                <h4>🎯 Composable</h4>
-                                <p>Mix and match integrations as needed. Use GitHub for code, Notion for docs, and Trello for tasks—all in one project.</p>
-                            </div>
-                        </div>
-
-                        <h3>Integration Structure</h3>
-                        <p>All integrations follow a consistent structure in entity definitions:</p>
-                        <pre><code class="language-yaml"># Generic integration format
-integration_type:
-  - name: identifier
-    provider: provider_name
-    url: https://external-system.com/resource
-    # Additional provider-specific fields</code></pre>
-                    </section>
-
-                    <!-- Version Control -->
-                    <section id="version-control" class="doc-section">
-                        <h2>Version Control Integrations</h2>
-                        <p>Connect your projects to version control systems where your code and documents live.</p>
-
-                        <h3>GitHub</h3>
-                        <div class="integration-detail">
-                            <h4>Configuration</h4>
-                            <pre><code class="language-yaml">repositories:
-  - name: main-repo
+      <section id="tools-field" class="doc-section">
+        <h2>The <code>tools</code> Field</h2>
+        <p>Any entity can include a <code>tools</code> list. Each entry specifies a name, provider, and URL:</p>
+        <pre><code class="language-yaml">tools:
+  - name: project-board
     provider: github
-    url: https://github.com/username/repository
-    branch: main
-  
-  - name: docs-repo
+    url: https://github.com/sdescobedo/hoxcore/projects/1
+
+  - name: design-doc
+    provider: notion
+    url: https://notion.so/team/design-abc123
+
+  - name: backlog
+    provider: trello
+    url: https://trello.com/b/xyz123/backlog
+
+  - name: ci-pipeline
+    provider: github-actions
+    url: https://github.com/sdescobedo/hoxcore/actions</code></pre>
+
+        <div class="table-wrap">
+          <table class="doc-table">
+            <thead><tr><th>Field</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>name</code></td><td>Yes</td><td>Descriptive label for this tool reference</td></tr>
+              <tr><td><code>provider</code></td><td>No</td><td>Tool provider identifier (used for display/filtering)</td></tr>
+              <tr><td><code>url</code></td><td>Yes</td><td>Direct URL to the relevant resource</td></tr>
+              <tr><td><code>description</code></td><td>No</td><td>Optional human-readable note</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="repositories-field" class="doc-section">
+        <h2>The <code>repositories</code> Field</h2>
+        <p>Source code repositories get a dedicated field (separate from <code>tools</code>) to make them easily queryable:</p>
+        <pre><code class="language-yaml">repositories:
+  - name: main
+    url: https://github.com/sdescobedo/hoxcore
     provider: github
-    url: https://github.com/username/docs
-    branch: main</code></pre>
 
-                            <h4>Features</h4>
-                            <ul>
-                                <li>Link to specific repositories</li>
-                                <li>Reference branches or commits</li>
-                                <li>Connect to GitHub Projects (see Project Management)</li>
-                                <li>Integrate with GitHub Actions (see CI/CD)</li>
-                            </ul>
-
-                            <h4>Use Cases</h4>
-                            <ul>
-                                <li>Software development projects</li>
-                                <li>Documentation repositories</li>
-                                <li>Open source projects</li>
-                                <li>Team collaboration</li>
-                            </ul>
-                        </div>
-
-                        <h3>Azure DevOps</h3>
-                        <div class="integration-detail">
-                            <h4>Configuration</h4>
-                            <pre><code class="language-yaml">repositories:
-  - name: azure-repo
-    provider: azure-devops
-    url: https://dev.azure.com/org/project/_git/repository
-    branch: develop</code></pre>
-
-                            <h4>Features</h4>
-                            <ul>
-                                <li>Enterprise-grade version control</li>
-                                <li>Integration with Azure Boards</li>
-                                <li>Azure Pipelines support</li>
-                                <li>Work item tracking</li>
-                            </ul>
-                        </div>
-
-                        <h3>GitLab</h3>
-                        <div class="integration-detail">
-                            <h4>Configuration</h4>
-                            <pre><code class="language-yaml">repositories:
-  - name: gitlab-repo
-    provider: gitlab
-    url: https://gitlab.com/username/project
-    branch: main</code></pre>
-
-                            <h4>Features</h4>
-                            <ul>
-                                <li>Self-hosted or cloud options</li>
-                                <li>Built-in CI/CD</li>
-                                <li>Issue tracking</li>
-                                <li>Container registry</li>
-                            </ul>
-                        </div>
-
-                        <h3>Overleaf (LaTeX)</h3>
-                        <div class="integration-detail">
-                            <h4>Configuration</h4>
-                            <pre><code class="language-yaml">repositories:
-  - name: research-paper
-    provider: overleaf
-    url: https://www.overleaf.com/project/abc123def456
-    description: "Research paper LaTeX source"</code></pre>
-
-                            <h4>Features</h4>
-                            <ul>
-                                <li>Academic paper writing</li>
-                                <li>Real-time collaboration</li>
-                                <li>LaTeX compilation</li>
-                                <li>Version history</li>
-                            </ul>
-
-                            <h4>Use Cases</h4>
-                            <ul>
-                                <li>Academic research projects</li>
-                                <li>Scientific publications</li>
-                                <li>Technical documentation</li>
-                                <li>Thesis writing</li>
-                            </ul>
-                        </div>
-
-                        <h3>Gitea (Self-Hosted)</h3>
-                        <div class="integration-detail">
-                            <h4>Configuration</h4>
-                            <pre><code class="language-yaml">repositories:
-  - name: internal-repo
-    provider: gitea
-    url: https://git.company.com/team/project
-    branch: main</code></pre>
-
-                            <h4>Features</h4>
-                            <ul>
-                                <li>Self-hosted Git service</li>
-                                <li>Lightweight and fast</li>
-                                <li>Private repositories</li>
-                                <li>Issue tracking</li>
-                            </ul>
-                        </div>
-
-                        <h3>Complete Example</h3>
-                        <pre><code class="language-yaml">type: project
-title: "Multi-Repository Project"
-description: "Project using multiple version control systems"
-
-repositories:
-  # Main codebase on GitHub
-  - name: backend
-    provider: github
-    url: https://github.com/company/backend
-    branch: main
-  
-  # Frontend on GitLab
   - name: frontend
-    provider: gitlab
-    url: https://gitlab.com/company/frontend
-    branch: develop
-  
-  # Documentation on Overleaf
+    url: https://github.com/sdescobedo/hoxcore-web
+    provider: github
+
+  - name: infra
+    url: https://gitlab.com/team/infrastructure
+    provider: gitlab</code></pre>
+
+        <pre><code class="language-bash"># Find all projects with GitHub repos
+hxc query projects --has-tool github</code></pre>
+      </section>
+
+      <section id="github" class="doc-section">
+        <h2>GitHub</h2>
+        <p>HoxCore integrates deeply with GitHub as a reference provider:</p>
+        <pre><code class="language-yaml">repositories:
+  - name: main
+    url: https://github.com/sdescobedo/hoxcore
+    provider: github
+
+tools:
+  - name: project-board
+    provider: github
+    url: https://github.com/sdescobedo/hoxcore/projects/1
+    description: "Main project planning board"
+
+  - name: ci-cd
+    provider: github-actions
+    url: https://github.com/sdescobedo/hoxcore/actions
+    description: "CI/CD pipeline"
+
+  - name: issues
+    provider: github
+    url: https://github.com/sdescobedo/hoxcore/issues
+    description: "Issue tracker"
+
+  - name: discussions
+    provider: github
+    url: https://github.com/sdescobedo/hoxcore/discussions</code></pre>
+      </section>
+
+      <section id="azure-devops" class="doc-section">
+        <h2>Azure DevOps</h2>
+        <pre><code class="language-yaml">repositories:
+  - name: main
+    url: https://dev.azure.com/myorg/myproject/_git/myrepo
+    provider: azure-devops
+
+tools:
+  - name: work-items
+    provider: azure-devops
+    url: https://dev.azure.com/myorg/myproject/_workitems
+    description: "Sprint backlog and work items"
+
+  - name: pipelines
+    provider: azure-devops
+    url: https://dev.azure.com/myorg/myproject/_build
+    description: "Build and release pipelines"
+
+  - name: wiki
+    provider: azure-devops
+    url: https://dev.azure.com/myorg/myproject/_wiki</code></pre>
+      </section>
+
+      <section id="notion" class="doc-section">
+        <h2>Notion</h2>
+        <pre><code class="language-yaml">tools:
+  - name: design-doc
+    provider: notion
+    url: https://notion.so/workspace/Design-Document-abc123
+    description: "Architecture and design decisions"
+
+  - name: meeting-notes
+    provider: notion
+    url: https://notion.so/workspace/Meeting-Notes-def456
+    description: "Recurring meeting notes database"
+
+  - name: roadmap
+    provider: notion
+    url: https://notion.so/workspace/Roadmap-ghi789
+    description: "Product roadmap page"</code></pre>
+      </section>
+
+      <section id="overleaf" class="doc-section">
+        <h2>Overleaf</h2>
+        <p>Particularly useful for academic research projects and papers:</p>
+        <pre><code class="language-yaml">tools:
   - name: paper
     provider: overleaf
-    url: https://www.overleaf.com/project/abc123
-  
-  # Internal tools on Gitea
-  - name: internal-tools
-    provider: gitea
-    url: https://git.company.com/team/tools
-    branch: main</code></pre>
-                    </section>
+    url: https://www.overleaf.com/project/abc123def456
+    description: "Main paper draft (LaTeX)"
 
-                    <!-- Project Management -->
-                    <section id="project-management" class="doc-section">
-                        <h2>Project Management Integrations</h2>
-                        <p>Connect to project management and task tracking tools.</p>
+  - name: supplementary
+    provider: overleaf
+    url: https://www.overleaf.com/project/xyz789ghi012
+    description: "Supplementary materials"</code></pre>
+      </section>
 
-                        <h3>GitHub Projects</h3>
-                        <div class="integration-detail">
-                            <h4>Configuration</h4>
-                            <pre><code class="language-yaml">tools:
-  - name: project-board
-    provider: github-projects
-    url: https://github.com/users/username/projects/1
-    description: "Main project board"</code></pre>
-
-                            <h4>Features</h4>
-                            <ul>
-                                <li>Kanban-style boards</li>
-                                <li>Issue integration</li>
-                                <li>Automation rules</li>
-                                <li>Custom fields</li>
-                            </ul>
-                        </div>
-
-                        <h3>Azure DevOps Boards</h3>
-                        <div class="integration-detail">
-                            <h4>Configuration</h4>
-                            <pre><code class="language-yaml">tools:
-  - name: azure-board
-    provider: azure-devops-boards
-    url: https://dev.azure.com/org/project/_boards
-    description: "Sprint planning board"</code></pre>
-
-                            <h4>Features</h4>
-                            <ul>
-                                <li>Agile planning tools</li>
-                                <li>Sprint management</li>
-                                <li>Work item tracking</li>
-                                <li>Burndown charts</li>
-                            </ul>
-                        </div>
-
-                        <h3>Trello</h3>
-                        <div class="integration-detail">
-                            <h4>Configuration</h4>
-                            <pre><code class="language-yaml">tools:
-  - name: trello-board
-    provider: trello
-    url: https://trello.com/b/abc123/project-name
-    description: "Task tracking board"</code></pre>
-
-                            <h4>Features</h4>
-                            <ul>
-                                <li>Simple, visual boards</li>
-                                <li>Card-based tasks</li>
-                                <li>Labels and due dates</li>
-                                <li>Power-ups for extensions</li>
-                            </ul>
-                        </div>
-
-                        <h3>OpenProject</h3>
-                        <div class="integration-detail">
-                            <h4>Configuration</h4>
-                            <pre><code class="language-yaml">tools:
-  - name: openproject
-    provider: openproject
-    url: https://openproject.company.com/projects/my-project
-    description: "Enterprise project management"</code></pre>
-
-                            <h4>Features</h4>
-                            <ul>
-                                <li>Open source project management</li>
-                                <li>Gantt charts</li>
-                                <li>Time tracking</li>
-                                <li>Cost reporting</li>
-                            </ul>
-                        </div>
-
-                        <h3>Jira</h3>
-                        <div class="integration-detail">
-                            <h4>Configuration</h4>
-                            <pre><code class="language-yaml">tools:
-  - name: jira-project
-    provider: jira
-    url: https://company.atlassian.net/browse/PROJ
-    description: "Issue tracking"</code></pre>
-
-                            <h4>Features</h4>
-                            <ul>
-                                <li>Advanced issue tracking</li>
-                                <li>Agile boards</li>
-                                <li>Custom workflows</li>
-                                <li>Extensive reporting</li>
-                            </ul>
-                        </div>
-
-                        <h3>Complete Example</h3>
-                        <pre><code class="language-yaml">type: project
-title: "Agile Software Project"
-
-tools:
-  # Sprint planning
+      <section id="trello" class="doc-section">
+        <h2>Trello</h2>
+        <pre><code class="language-yaml">tools:
   - name: sprint-board
-    provider: azure-devops-boards
-    url: https://dev.azure.com/company/project/_boards
-  
-  # Issue tracking
-  - name: issues
-    provider: github-projects
-    url: https://github.com/company/repo/projects/1
-  
-  # High-level roadmap
-  - name: roadmap
     provider: trello
-    url: https://trello.com/b/abc123/roadmap</code></pre>
-                    </section>
+    url: https://trello.com/b/abc123/sprint-board
+    description: "Current sprint kanban board"
 
-                    <!-- Storage -->
-                    <section id="storage" class="doc-section">
-                        <h2>Storage & Documentation Integrations</h2>
-                        <p>Link to document storage, knowledge bases, and collaboration platforms.</p>
+  - name: backlog
+    provider: trello
+    url: https://trello.com/b/xyz456/product-backlog
+    description: "Product backlog"</code></pre>
+      </section>
 
-                        <h3>Google Drive</h3>
-                        <div class="integration-detail">
-                            <h4>Configuration</h4>
-                            <pre><code class="language-yaml">storage:
-  - name: project-docs
-    provider: google-drive
-    url: https://drive.google.com/drive/folders/abc123def456
-    description: "Project documentation and assets"</code></pre>
+      <section id="google-workspace" class="doc-section">
+        <h2>Google Workspace</h2>
+        <pre><code class="language-yaml">tools:
+  - name: spec-doc
+    provider: google-docs
+    url: https://docs.google.com/document/d/abc123/edit
+    description: "Product specification document"
 
-                            <h4>Features</h4>
-                            <ul>
-                                <li>Cloud file storage</li>
-                                <li>Real-time collaboration</li>
-                                <li>Google Docs/Sheets/Slides</li>
-                                <li>Sharing and permissions</li>
-                            </ul>
+  - name: roadmap-sheet
+    provider: google-sheets
+    url: https://docs.google.com/spreadsheets/d/xyz456/edit
+    description: "Roadmap and OKR tracker"
 
-                            <h4>Use Cases</h4>
-                            <ul>
-                                <li>Document collaboration</li>
-                                <li>File sharing</li>
-                                <li>Meeting notes</li>
-                                <li>Presentations</li>
-                            </ul>
-                        </div>
-
-                        <h3>Notion</h3>
-                        <div class="integration-detail">
-                            <h4>Configuration</h4>
-                            <pre><code class="language-yaml">storage:
-  - name: notion-workspace
-    provider: notion
-    url: https://notion.so/workspace/project-abc123
-    description: "Project wiki and documentation"</code></pre>
-
-                            <h4>Features</h4>
-                            <ul>
-                                <li>All-in-one workspace</li>
-                                <li>Databases and wikis</li>
-                                <li>Rich content blocks</li>
-                                <li>Templates and views</li>
-                            </ul>
-
-                            <h4>Use Cases</h4>
-                            <ul>
-                                <li>Project wikis</li>
-                                <li>Knowledge bases</li>
-                                <li>Meeting notes</li>
-                                <li>Documentation</li>
-                            </ul>
-                        </div>
-
-                        <h3>Confluence</h3>
-                        <div class="integration-detail">
-                            <h4>Configuration</h4>
-                            <pre><code class="language-yaml">storage:
-  - name: confluence-space
-    provider: confluence
-    url: https://company.atlassian.net/wiki/spaces/PROJ
-    description: "Team documentation space"</code></pre>
-
-                            <h4>Features</h4>
-                            <ul>
-                                <li>Enterprise wiki</li>
-                                <li>Page hierarchies</li>
-                                <li>Jira integration</li>
-                                <li>Advanced permissions</li>
-                            </ul>
-                        </div>
-
-                        <h3>SharePoint</h3>
-                        <div class="integration-detail">
-                            <h4>Configuration</h4>
-                            <pre><code class="language-yaml">storage:
-  - name: sharepoint-site
-    provider: sharepoint
-    url: https://company.sharepoint.com/sites/project
-    description: "Document library"</code></pre>
-
-                            <h4>Features</h4>
-                            <ul>
-                                <li>Microsoft 365 integration</li>
-                                <li>Document management</li>
-                                <li>Version control</li>
-                                <li>Enterprise features</li>
-                            </ul>
-                        </div>
-
-                        <h3>Local Paths</h3>
-                        <div class="integration-detail">
-                            <h4>Configuration</h4>
-                            <pre><code class="language-yaml">storage:
-  - name: local-docs
-    provider: local
-    path: ./docs/project-documentation
-    description: "Local documentation folder"
-  
-  - name: assets
-    provider: local
-    path: /shared/project-assets
-    description: "Shared network drive"</code></pre>
-
-                            <h4>Features</h4>
-                            <ul>
-                                <li>Reference local file systems</li>
-                                <li>Network drives</li>
-                                <li>Relative or absolute paths</li>
-                                <li>No cloud dependency</li>
-                            </ul>
-                        </div>
-
-                        <h3>Complete Example</h3>
-                        <pre><code class="language-yaml">type: project
-title: "Documentation-Heavy Project"
-
-storage:
-  # Cloud collaboration
   - name: team-drive
     provider: google-drive
-    url: https://drive.google.com/drive/folders/abc123
-    description: "Shared team documents"
-  
-  # Knowledge base
-  - name: wiki
-    provider: notion
-    url: https://notion.so/workspace/project-wiki
-    description: "Project wiki and guides"
-  
-  # Local assets
-  - name: design-files
-    provider: local
-    path: ./assets/design
-    description: "Design mockups and assets"
-  
-  # Enterprise docs
-  - name: official-docs
-    provider: sharepoint
-    url: https://company.sharepoint.com/sites/project
-    description: "Official documentation"</code></pre>
-                    </section>
+    url: https://drive.google.com/drive/folders/abc789
+    description: "Project assets and files"
 
-                    <!-- Databases -->
-                    <section id="databases" class="doc-section">
-                        <h2>Database Integrations</h2>
-                        <p>Reference databases used by your projects.</p>
+  - name: team-meeting
+    provider: google-meet
+    url: https://meet.google.com/xyz-abc-def
+    description: "Weekly standup link"</code></pre>
+      </section>
 
-                        <h3>PostgreSQL</h3>
-                        <div class="integration-detail">
-                            <h4>Configuration</h4>
-                            <pre><code class="language-yaml">databases:
-  - name: production-db
-    type: postgres
-    url: postgres://user:pass@host:5432/dbname
-    description: "Production database"
-    environment: production</code></pre>
+      <section id="custom" class="doc-section">
+        <h2>Custom Integrations</h2>
+        <p>The <code>tools</code> field is fully open-ended. Any URL-addressable resource can be referenced:</p>
+        <pre><code class="language-yaml">tools:
+  - name: monitoring
+    provider: datadog
+    url: https://app.datadoghq.com/dashboard/abc123
+    description: "Production monitoring dashboard"
 
-                            <h4>Security Note</h4>
-                            <div class="warning-box">
-                                <h4>⚠️ Credentials Management</h4>
-                                <p>Never store actual credentials in your registry. Use environment variables or reference credential management systems:</p>
-                                <pre><code class="language-yaml">databases:
-  - name: production-db
-    type: postgres
-    host: db.company.com
-    port: 5432
-    database: myapp
-    credentials_ref: ${DB_CREDENTIALS}
-    description: "Production database"</code></pre>
-                            </div>
-                        </div>
+  - name: support
+    provider: zendesk
+    url: https://company.zendesk.com/agent/queues
+    description: "Customer support queue"
 
-                        <h3>MySQL</h3>
-                        <div class="integration-detail">
-                            <h4>Configuration</h4>
-                            <pre><code class="language-yaml">databases:
-  - name: mysql-db
-    type: mysql
-    host: mysql.company.com
-    port: 3306
-    database: application
-    credentials_ref: ${MYSQL_CREDENTIALS}
-    description: "MySQL database"</code></pre>
-                        </div>
+  - name: analytics
+    provider: mixpanel
+    url: https://mixpanel.com/project/123456
+    description: "Product analytics"
 
-                        <h3>SQLite</h3>
-                        <div class="integration-detail">
-                            <h4>Configuration</h4>
-                            <pre><code class="language-yaml">databases:
-  - name: local-db
-    type: sqlite
-    path: ./data/application.db
-    description: "Local SQLite database"</code></pre>
+  - name: internal-wiki
+    provider: confluence
+    url: https://company.atlassian.net/wiki/spaces/ENG/pages/123
+    description: "Engineering runbook"
 
-                            <h4>Features</h4>
-                            <ul>
-                                <li>File-based database</li>
-                                <li>No server required</li>
-                                <li>Perfect for development</li>
-                                <li>Portable</li>
-                            </ul>
-                        </div>
+  # Any arbitrary tool
+  - name: custom-dashboard
+    provider: custom
+    url: https://internal.company.com/projects/P-001
+    description: "Internal project dashboard"</code></pre>
 
-                        <h3>MongoDB</h3>
-                        <div class="integration-detail">
-                            <h4>Configuration</h4>
-                            <pre><code class="language-yaml">databases:
-  - name: mongo-db
-    type: mongodb
-    url: mongodb://host:27017/database
-    credentials_ref: ${MONGO_CREDENTIALS}
-    description: "MongoDB database"</code></pre>
-                        </div>
-
-                        <h3>Redis</h3>
-                        <div class="integration-detail">
-                            <h4>Configuration</h4>
-                            <pre><code class="language-yaml">databases:
-  - name: cache
-    type: redis
-    host: redis.company.com
-    port: 6379
-    credentials_ref: ${REDIS_PASSWORD}
-    description: "Redis cache"</code></pre>
-                        </div>
-
-                        <h3>Complete Example</h3>
-                        <pre><code class="language-yaml">type: project
-title: "Full-Stack Application"
-
-databases:
-  # Production database
-  - name: prod-postgres
-    type: postgres
-    host: db.company.com
-    port: 5432
-    database: myapp_prod
-    credentials_ref: ${PROD_DB_CREDENTIALS}
-    environment: production
-  
-  # Development database
-  - name: dev-sqlite
-    type: sqlite
-    path: ./dev-data/app.db
-    environment: development
-  
-  # Cache layer
-  - name: redis-cache
-    type: redis
-    host: cache.company.com
-    port: 6379
-    credentials_ref: ${REDIS_PASSWORD}
-    description: "Application cache"
-  
-  # Analytics database
-  - name: analytics-mongo
-    type: mongodb
-    url: mongodb://analytics.company.com:27017/analytics
-    credentials_ref: ${MONGO_CREDENTIALS}
-    description: "Analytics data store"</code></pre>
-                    </section>
-
-                    <!-- Communication -->
-                    <section id="communication" class="doc-section">
-                        <h2>Communication Tool Integrations</h2>
-                        <p>Link to team communication channels and collaboration spaces.</p>
-
-                        <h3>Slack</h3>
-                        <div class="integration-detail">
-                            <h4>Configuration</h4>
-                            <pre><code class="language-yaml">communication:
-  - name: project-channel
-    provider: slack
-    url: https://company.slack.com/archives/C123ABC456
-    channel: "#project-team"
-    description: "Main project channel"</code></pre>
-
-                            <h4>Features</h4>
-                            <ul>
-                                <li>Real-time messaging</li>
-                                <li>Channel organization</li>
-                                <li>File sharing</li>
-                                <li>Integrations and bots</li>
-                            </ul>
-                        </div>
-
-                        <h3>Microsoft Teams</h3>
-                        <div class="integration-detail">
-                            <h4>Configuration</h4>
-                            <pre><code class="language-yaml">communication:
-  - name: teams-channel
-    provider: microsoft-teams
-    url: https://teams.microsoft.com/l/channel/...
-    team: "Engineering"
-    channel: "Project Alpha"
-    description: "Team collaboration space"</code></pre>
-
-                            <h4>Features</h4>
-                            <ul>
-                                <li>Microsoft 365 integration</li>
-                                <li>Video meetings</li>
-                                <li>File collaboration</li>
-                                <li>Enterprise features</li>
-                            </ul>
-                        </div>
-
-                        <h3>Discord</h3>
-                        <div class="integration-detail">
-                            <h4>Configuration</h4>
-                            <pre><code class="language-yaml">communication:
-  - name: discord-server
-    provider: discord
-    url: https://discord.gg/abc123
-    server: "Project Community"
-    channel: "#general"
-    description: "Community server"</code></pre>
-
-                            <h4>Features</h4>
-                            <ul>
-                                <li>Voice and text channels</li>
-                                <li>Community building</li>
-                                <li>Bots and automation</li>
-                                <li>Screen sharing</li>
-                            </ul>
-                        </div>
-
-                        <h3>Complete Example</h3>
-                        <pre><code class="language-yaml">type: project
-title: "Collaborative Project"
-
-communication:
-  # Internal team communication
-  - name: team-slack
-    provider: slack
-    url: https://company.slack.com/archives/C123ABC
-    channel: "#project-alpha"
-    description: "Internal team channel"
-  
-  # Stakeholder updates
-  - name: stakeholder-teams
-    provider: microsoft-teams
-    url: https://teams.microsoft.com/l/channel/...
-    team: "Leadership"
-    channel: "Project Updates"
-    description: "Stakeholder communication"
-  
-  # Community engagement
-  - name: community-discord
-    provider: discord
-    url: https://discord.gg/xyz789
-    server: "Open Source Community"
-    description: "Community discussions"</code></pre>
-                    </section>
-
-                    <!-- CI/CD -->
-                    <section id="ci-cd" class="doc-section">
-                        <h2>CI/CD Platform Integrations</h2>
-                        <p>Reference continuous integration and deployment pipelines.</p>
-
-                        <h3>GitHub Actions</h3>
-                        <div class="integration-detail">
-                            <h4>Configuration</h4>
-                            <pre><code class="language-yaml">ci_cd:
-  - name: main-pipeline
-    provider: github-actions
-    url: https://github.com/user/repo/actions
-    workflow: "CI/CD Pipeline"
-    description: "Main build and deploy pipeline"</code></pre>
-
-                            <h4>Features</h4>
-                            <ul>
-                                <li>Integrated with GitHub</li>
-                                <li>YAML-based workflows</li>
-                                <li>Matrix builds</li>
-                                <li>Marketplace actions</li>
-                            </ul>
-                        </div>
-
-                        <h3>Azure Pipelines</h3>
-                        <div class="integration-detail">
-                            <h4>Configuration</h4>
-                            <pre><code class="language-yaml">ci_cd:
-  - name: azure-pipeline
-    provider: azure-pipelines
-    url: https://dev.azure.com/org/project/_build
-    pipeline: "Build and Deploy"
-    description: "Azure DevOps pipeline"</code></pre>
-
-                            <h4>Features</h4>
-                            <ul>
-                                <li>Multi-platform builds</li>
-                                <li>Release management</li>
-                                <li>Deployment gates</li>
-                                <li>Azure integration</li>
-                            </ul>
-                        </div>
-
-                        <h3>Jenkins</h3>
-                        <div class="integration-detail">
-                            <h4>Configuration</h4>
-                            <pre><code class="language-yaml">ci_cd:
-  - name: jenkins-job
-    provider: jenkins
-    url: https://jenkins.company.com/job/project-build
-    job: "project-build"
-    description: "Jenkins build job"</code></pre>
-
-                            <h4>Features</h4>
-                            <ul>
-                                <li>Self-hosted automation</li>
-                                <li>Extensive plugin ecosystem</li>
-                                <li>Pipeline as code</li>
-                                <li>Distributed builds</li>
-                            </ul>
-                        </div>
-
-                        <h3>GitLab CI/CD</h3>
-                        <div class="integration-detail">
-                            <h4>Configuration</h4>
-                            <pre><code class="language-yaml">ci_cd:
-  - name: gitlab-pipeline
-    provider: gitlab-ci
-    url: https://gitlab.com/user/project/-/pipelines
-    description: "GitLab CI/CD pipeline"</code></pre>
-
-                            <h4>Features</h4>
-                            <ul>
-                                <li>Integrated with GitLab</li>
-                                <li>Auto DevOps</li>
-                                <li>Container registry</li>
-                                <li>Kubernetes integration</li>
-                            </ul>
-                        </div>
-
-                        <h3>Complete Example</h3>
-                        <pre><code class="language-yaml">type: project
-title: "Multi-Platform Application"
-
-ci_cd:
-  # Main build pipeline
-  - name: build
-    provider: github-actions
-    url: https://github.com/company/app/actions
-    workflow: "Build"
-    description: "Build and test"
-  
-  # Deployment pipeline
-  - name: deploy
-    provider: azure-pipelines
-    url: https://dev.azure.com/company/project/_build
-    pipeline: "Deploy to Production"
-    description: "Production deployment"
-  
-  # Legacy system
-  - name: legacy-build
-    provider: jenkins
-    url: https://jenkins.company.com/job/legacy-build
-    job: "legacy-build"
-    description: "Legacy system build"</code></pre>
-                    </section>
-
-                    <!-- Custom Integrations -->
-                    <section id="custom-integrations" class="doc-section">
-                        <h2>Custom Integrations</h2>
-                        <p>Define custom integrations for tools not covered by standard providers.</p>
-
-                        <h3>Generic Integration Format</h3>
-                        <pre><code class="language-yaml">custom_integrations:
-  - name: custom-tool
-    type: custom
-    url: https://custom-tool.company.com/project/123
-    api_endpoint: https://api.custom-tool.com/v1
-    credentials_ref: ${CUSTOM_TOOL_TOKEN}
-    metadata:
-      project_id: "123"
-      workspace: "engineering"
-    description: "Custom internal tool"</code></pre>
-
-                        <h3>API Integration</h3>
-                        <pre><code class="language-yaml">custom_integrations:
-  - name: internal-api
-    type: api
-    base_url: https://api.internal.company.com
-    endpoints:
-      projects: /v1/projects/{id}
-      tasks: /v1/projects/{id}/tasks
-    auth_type: bearer
-    credentials_ref: ${API_TOKEN}
-    description: "Internal project API"</code></pre>
-
-                        <h3>Webhook Integration</h3>
-                        <pre><code class="language-yaml">custom_integrations:
-  - name: notification-webhook
-    type: webhook
-    url: https://hooks.company.com/project-updates
-    method: POST
-    headers:
-      Content-Type: application/json
-      Authorization: ${WEBHOOK_SECRET}
-    description: "Project update notifications"</code></pre>
-
-                        <h3>Complete Custom Example</h3>
-                        <pre><code class="language-yaml">type: project
-title: "Enterprise Project with Custom Tools"
-
-# Standard integrations
-repositories:
-  - name: github
-    provider: github
-    url: https://github.com/company/project
-
-# Custom integrations
-custom_integrations:
-  # Internal project management system
-  - name: internal-pms
-    type: custom
-    url: https://pms.company.com/projects/12345
-    api_endpoint: https://api.pms.company.com/v2
-    credentials_ref: ${PMS_TOKEN}
-    metadata:
-      project_id: "12345"
-      department: "engineering"
-    description: "Internal project management system"
-  
-  # Custom reporting tool
-  - name: reporting-dashboard
-    type: custom
-    url: https://reports.company.com/dashboard/project-alpha
-    description: "Custom reporting dashboard"
-  
-  # Integration webhook
-  - name: status-webhook
-    type: webhook
-    url: https://hooks.company.com/project-status
-    method: POST
-    headers:
-      Content-Type: application/json
-    description: "Status update webhook"</code></pre>
-                    </section>
-
-                    <!-- Best Practices -->
-                    <section id="best-practices" class="doc-section">
-                        <h2>Best Practices</h2>
-                        <p>Guidelines for effective integration management in HoxCore.</p>
-
-                        <h3>1. Security & Credentials</h3>
-                        <div class="best-practice">
-                            <h4>✅ Do</h4>
-                            <ul>
-                                <li>Use environment variables for credentials</li>
-                                <li>Reference credential management systems</li>
-                                <li>Use read-only access when possible</li>
-                                <li>Regularly rotate credentials</li>
-                                <li>Document required permissions</li>
-                            </ul>
-                            <h4>❌ Don't</h4>
-                            <ul>
-                                <li>Store passwords or tokens in YAML files</li>
-                                <li>Commit credentials to Git</li>
-                                <li>Use overly permissive access</li>
-                                <li>Share credentials across projects unnecessarily</li>
-                            </ul>
-                        </div>
-
-                        <h3>2. Organization & Naming</h3>
-                        <div class="best-practice">
-                            <h4>✅ Do</h4>
-                            <ul>
-                                <li>Use descriptive, consistent names</li>
-                                <li>Group related integrations</li>
-                                <li>Add meaningful descriptions</li>
-                                <li>Document the purpose of each integration</li>
-                                <li>Use consistent naming conventions</li>
-                            </ul>
-                            <h4>❌ Don't</h4>
-                            <ul>
-                                <li>Use cryptic or unclear names</li>
-                                <li>Leave descriptions empty</li>
-                                <li>Mix unrelated integrations</li>
-                                <li>Use inconsistent naming patterns</li>
-                            </ul>
-                        </div>
-
-                        <h3>3. Maintenance & Updates</h3>
-                        <div class="best-practice">
-                            <h4>✅ Do</h4>
-                            <ul>
-                                <li>Keep integration URLs up to date</li>
-                                <li>Remove obsolete integrations</li>
-                                <li>Document integration dependencies</li>
-                                <li>Test integrations periodically</li>
-                                <li>Version control integration changes</li>
-                            </ul>
-                            <h4>❌ Don't</h4>
-                            <ul>
-                                <li>Leave broken links in definitions</li>
-                                <li>Accumulate unused integrations</li>
-                                <li>Ignore integration failures</li>
-                                <li>Make undocumented changes</li>
-                            </ul>
-                        </div>
-
-                        <h3>4. Documentation</h3>
-                        <div class="best-practice">
-                            <h4>✅ Do</h4>
-                            <ul>
-                                <li>Document integration setup steps</li>
-                                <li>Explain required permissions</li>
-                                <li>Provide access instructions</li>
-                                <li>List integration dependencies</li>
-                                <li>Include troubleshooting tips</li>
-                            </ul>
-                            <h4>❌ Don't</h4>
-                            <ul>
-                                <li>Assume everyone knows how to access tools</li>
-                                <li>Skip permission documentation</li>
-                                <li>Leave setup undocumented</li>
-                                <li>Ignore common issues</li>
-                            </ul>
-                        </div>
-
-                        <h3>5. Integration Scope</h3>
-                        <div class="best-practice">
-                            <h4>✅ Do</h4>
-                            <ul>
-                                <li>Link only relevant integrations</li>
-                                <li>Use specific URLs when possible</li>
-                                <li>Separate concerns (code, docs, tasks)</li>
-                                <li>Consider team access needs</li>
-                                <li>Balance completeness with simplicity</li>
-                            </ul>
-                            <h4>❌ Don't</h4>
-                            <ul>
-                                <li>Link every possible tool</li>
-                                <li>Use overly broad references</li>
-                                <li>Mix unrelated resources</li>
-                                <li>Create integration overload</li>
-                            </ul>
-                        </div>
-
-                        <h3>Example: Well-Documented Integration</h3>
-                        <pre><code class="language-yaml">type: project
-title: "Well-Integrated Project"
-description: >
-  This project demonstrates best practices for
-  integration management in HoxCore.
-
-# Version Control
-repositories:
-  - name: main-repo
-    provider: github
-    url: https://github.com/company/project
-    branch: main
-    description: "Main codebase - requires read access"
-
-# Project Management
-tools:
-  - name: sprint-board
-    provider: github-projects
-    url: https://github.com/orgs/company/projects/1
-    description: "Sprint planning board - team members have write access"
-
-# Documentation
-storage:
-  - name: team-docs
-    provider: notion
-    url: https://notion.so/company/project-docs
-    description: "Project documentation - all team members have edit access"
-
-# Communication
-communication:
-  - name: team-channel
-    provider: slack
-    url: https://company.slack.com/archives/C123ABC
-    channel: "#project-team"
-    description: "Main team channel - join for project updates"
-
-# CI/CD
-ci_cd:
-  - name: build-pipeline
-    provider: github-actions
-    url: https://github.com/company/project/actions
-    workflow: "CI/CD"
-    description: "Automated build and deployment - view-only for most team members"
-
-# Database (credentials managed externally)
-databases:
-  - name: production-db
-    type: postgres
-    host: db.company.com
-    port: 5432
-    database: project_prod
-    credentials_ref: ${PROD_DB_CREDENTIALS}
-    description: "Production database - access via VPN, credentials in vault"
-    environment: production
-
-# Notes on access and setup
-metadata:
-  integration_notes: |
-    Setup Instructions:
-    1. Request GitHub org access from IT
-    2. Join #project-team Slack channel
-    3. Get Notion workspace invite from team lead
-    4. VPN required for database access
-    5. Credentials stored in company vault
-    
-    Troubleshooting:
-    - GitHub access issues: Contact IT helpdesk
-    - Slack channel not visible: Check workspace settings
-    - Database connection: Verify VPN connection
-    - CI/CD failures: Check GitHub Actions logs</code></pre>
-                    </section>
-
-                    <!-- Next Steps -->
-                    <section class="doc-section">
-                        <h2>Next Steps</h2>
-                        <p>Now that you understand integrations in HoxCore, explore related topics:</p>
-                        
-                        <div class="next-steps-grid">
-                            <div class="next-step-card">
-                                <h3>🤖 AI Features</h3>
-                                <p>Learn how to integrate LLM models and knowledge bases with your projects.</p>
-                                <a href="ai-features.html" class="btn btn-secondary">Explore AI Features →</a>
-                            </div>
-                            
-                            <div class="next-step-card">
-                                <h3>📝 Templates</h3>
-                                <p>Create templates with pre-configured integrations for consistent project setup.</p>
-                                <a href="templates.html" class="btn btn-secondary">Learn About Templates →</a>
-                            </div>
-                            
-                            <div class="next-step-card">
-                                <h3>📚 Core Concepts</h3>
-                                <p>Understand the fundamental concepts behind HoxCore's design.</p>
-                                <a href="core-concepts.html" class="btn btn-secondary">Learn Core Concepts →</a>
-                            </div>
-                            
-                            <div class="next-step-card">
-                                <h3>📖 CLI Reference</h3>
-                                <p>Explore all available commands for managing integrations.</p>
-                                <a href="cli-reference.html" class="btn btn-secondary">View CLI Reference →</a>
-                            </div>
-                        </div>
-                    </section>
-                </article>
-            </div>
+        <div class="info-box">
+          <h4>Provider naming convention</h4>
+          <p>Provider names are arbitrary strings. Use lowercase with hyphens for consistency: <code>github</code>, <code>azure-devops</code>, <code>google-docs</code>. This enables future filtering by <code>hxc query --has-tool github</code>.</p>
         </div>
-    </main>
+      </section>
 
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h3>HoxCore</h3>
-                    <p>Universal, declarative, version-controlled project registry.</p>
-                </div>
-                <div class="footer-section">
-                    <h3>Documentation</h3>
-                    <ul>
-                        <li><a href="getting-started.html">Getting Started</a></li>
-                        <li><a href="core-concepts.html">Core Concepts</a></li>
-                        <li><a href="cli-reference.html">CLI Reference</a></li>
-                        <li><a href="templates.html">Templates</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h3>Resources</h3>
-                    <ul>
-                        <li><a href="integrations.html">Integrations</a></li>
-                        <li><a href="ai-features.html">AI Features</a></li>
-                        <li><a href="https://github.com/yourusername/hoxcore" target="_blank">GitHub</a></li>
-                        <li><a href="https://github.com/yourusername/hoxcore/issues" target="_blank">Issues</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h3>Community</h3>
-                    <ul>
-                        <li><a href="https://github.com/yourusername/hoxcore/discussions" target="_blank">Discussions</a></li>
-                        <li><a href="https://github.com/yourusername/hoxcore/blob/main/CONTRIBUTING.md" target="_blank">Contributing</a></li>
-                        <li><a href="https://github.com/yourusername/hoxcore/blob/main/LICENSE" target="_blank">License</a></li>
-                    </ul>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p>&copy; 2024 HoxCore Team. Released under the MIT License.</p>
-                <p>Version 0.1.0</p>
-            </div>
-        </div>
-    </footer>
+    </div>
+  </div>
+</div>
+</main>
 
-    <script src="js/main.js"></script>
-    <script>
-        hljs.highlightAll();
-    </script>
+<footer class="footer" role="contentinfo">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <div class="nav-logo" style="font-size:1.25rem;margin-bottom:.75rem">HoxCore</div>
+        <p>Universal, declarative, version-controlled project registry. MIT License.</p>
+      </div>
+      <div class="footer-section">
+        <h4>Documentation</h4>
+        <ul>
+          <li><a href="getting-started.html">Getting Started</a></li>
+          <li><a href="core-concepts.html">Core Concepts</a></li>
+          <li><a href="cli-reference.html">CLI Reference</a></li>
+          <li><a href="templates.html">Templates</a></li>
+        </ul>
+      </div>
+      <div class="footer-section">
+        <h4>Resources</h4>
+        <ul>
+          <li><a href="integrations.html">Integrations</a></li>
+          <li><a href="ai-features.html">AI Features</a></li>
+          <li><a href="https://github.com/sdescobedo/hoxcore" target="_blank" rel="noopener">GitHub</a></li>
+          <li><a href="https://pypi.org/project/hoxcore/" target="_blank" rel="noopener">PyPI</a></li>
+        </ul>
+      </div>
+      <div class="footer-section">
+        <h4>Community</h4>
+        <ul>
+          <li><a href="https://github.com/sdescobedo/hoxcore/discussions" target="_blank" rel="noopener">Discussions</a></li>
+          <li><a href="https://github.com/sdescobedo/hoxcore/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener">Contributing</a></li>
+          <li><a href="https://github.com/sdescobedo/hoxcore/blob/main/LICENSE" target="_blank" rel="noopener">License</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>&copy; <span class="footer-year">2024</span> HoxCore. Released under the MIT License.</span>
+      <span class="footer-version"></span>
+    </div>
+  </div>
+</footer>
+
+<button class="scroll-top" aria-label="Scroll to top">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>
+</button>
+
+<script src="js/version.js"></script>
+<script src="js/main.js"></script>
 </body>
 </html>

@@ -78,14 +78,21 @@ jobs:
           sed -i "s/^version = \"$OLD\"/version = \"$NEW\"/" pyproject.toml
           # Update __init__.py in-place
            sed -i "s/__version__ = '$OLD'/__version__ = '$NEW'/" src/hxc/__init__.py
+          # Update documentation webpage
+          sed -i "s/const HXC_VERSION = '$OLD'/const HXC_VERSION = '$NEW'/" docs/js/version.js
           echo "Bumped $OLD → $NEW"
 
       - name: Commit version bump
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add pyproject.toml
+          git add pyproject.toml src/hxc/__init__.py
           git commit -m "chore: bump version to ${{ steps.bump.outputs.new_version }} [skip ci]"
+
+          # Commit docs separately so the Pages deployment workflow triggers
+          git add docs/js/version.js
+          git commit -m "chore: update docs version to ${{ steps.bump.outputs.new_version }}"
+
           git push
 
       - name: Create and push tag
