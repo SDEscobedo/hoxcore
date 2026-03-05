@@ -137,7 +137,7 @@
     const btn = qs('.hero-install-copy');
     if (!btn) return;
     btn.addEventListener('click', () => {
-      const text = qs('.hero-install .cmd')?.textContent || 'pip install hxc';
+      const text = qs('.hero-install .cmd')?.textContent || 'pip install hoxcore';
       navigator.clipboard.writeText(text).catch(() => {});
       const icon = btn.querySelector('svg');
       if (icon) {
