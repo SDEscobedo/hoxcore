@@ -62,6 +62,6 @@ Use the @register_command decorator.
 Implement register_subparser and execute methods.
 
 ## 6. Security & Conduct
-Security: If you find a vulnerability, please do not open a public issue. Instead refer to our [security policy](security.md).
+Security: If you find a vulnerability, please do not open a public issue. Instead refer to our [security policy](SECURITY.md).
 
 Conduct: Be respectful. We follow standard Contributor Covenant expectations.
