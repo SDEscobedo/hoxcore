@@ -255,7 +255,7 @@ server.run_stdio()
 
 ## Contributing
 
-Contributions are welcome! Please see [CONTRIBUTING](./CONTRIBUTING) for details on our development workflow, including branch naming and test requirements.
+Contributions are welcome! Please see [CONTRIBUTING](CONTRIBUTING.md) for details on our development workflow, including branch naming and test requirements.
 
 
 MIT
