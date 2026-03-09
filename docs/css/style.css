@@ -474,6 +474,8 @@ html.dark .theme-toggle .icon-moon { display: none; }
   display: grid;
   grid-template-columns: var(--sidebar-w) 1fr;
   gap: 0;
+  max-width: var(--site-max);
+  margin: 0 auto;
   min-height: calc(100vh - var(--navbar-h));
   align-items: start;
 }
