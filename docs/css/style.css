@@ -474,6 +474,8 @@ html.dark .theme-toggle .icon-moon { display: none; }
   display: grid;
   grid-template-columns: var(--sidebar-w) 1fr;
   gap: 0;
+  max-width: var(--site-max);
+  margin: 0 auto;
   min-height: calc(100vh - var(--navbar-h));
   align-items: start;
 }
@@ -844,7 +846,7 @@ html.dark .success-box p, html.dark .success-box li { color: #a7f3d0; }
    ============================================ */
 .feature-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: var(--sp-4);
 }
 
@@ -910,7 +912,7 @@ html.dark .success-box p, html.dark .success-box li { color: #a7f3d0; }
    ============================================ */
 .concept-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(4, 1fr);
   gap: var(--sp-4);
 }
 
@@ -1140,7 +1142,7 @@ section.site-section:nth-child(even) { background: var(--color-surface); }
 /* Use case cards */
 .use-cases-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: var(--sp-4);
 }
 
@@ -1326,6 +1328,17 @@ section.site-section:nth-child(even) { background: var(--color-surface); }
   .doc-content-area { padding: var(--sp-6) var(--sp-4) var(--sp-12); }
 }
 
+/* Tablet — 2 columns */
+@media (max-width: 900px) {
+  .feature-grid,
+  .concept-grid,
+  .use-cases-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+
 @media (max-width: 480px) {
   .hero-cta { flex-direction: column; align-items: flex-start; }
   .hero h1 { font-size: var(--text-2xl); }
@@ -1333,6 +1346,7 @@ section.site-section:nth-child(even) { background: var(--color-surface); }
   .footer-grid { grid-template-columns: 1fr; }
   .section-title { font-size: var(--text-2xl); }
 }
+
 
 /* ============================================
    Print
