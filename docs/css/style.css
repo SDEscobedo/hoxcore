@@ -671,12 +671,23 @@ html.dark .callout-danger  .callout-body h4 { color: #fca5a5; }
 .info-box    { @apply-unused: 0; }
 .info-box, .warning-box, .success-box, .concept-box {
   display: flex;
+  flex-direction: column; 
   gap: var(--sp-4);
   padding: var(--sp-4) var(--sp-5);
   border-radius: var(--radius-md);
   border: 1px solid;
   margin-bottom: var(--sp-6);
+  overflow: hidden;
 }
+
+.info-box pre,
+.warning-box pre,
+.success-box pre,
+.concept-box pre {
+  margin-bottom: 0;
+  max-width: 100%;
+}
+
 .info-box    { background: var(--color-info-bg);    border-color: #93c5fd; }
 .warning-box { background: var(--color-warning-bg); border-color: #fcd34d; }
 .success-box { background: var(--color-success-bg); border-color: #6ee7b7; }
