@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AI Features — HoxCore Documentation</title>
-  <meta name="description" content="Integrate LLM models and knowledge bases with your HoxCore registry. Built for AI-native workflows from day one.">
+  <meta name="description" content="Connect LLMs to your HoxCore registry via the built-in MCP server. Expose tools, resources, and prompts to AI assistants like Claude.">
   <link rel="canonical" href="https://sdescobedo.github.io/hoxcore/ai-features.html">
   <meta property="og:title" content="AI Features — HoxCore Documentation">
-  <meta property="og:description" content="Integrate LLM models and knowledge bases with your HoxCore registry.">
+  <meta property="og:description" content="Connect LLMs to your HoxCore registry via the built-in MCP server.">
   <meta property="og:url" content="https://sdescobedo.github.io/hoxcore/ai-features.html">
   <link rel="stylesheet" href="css/style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -58,7 +58,7 @@
       <span>AI Features</span>
     </nav>
     <h1>AI Features</h1>
-    <p>HoxCore is built for the age of LLMs — from schema design to active model integration.</p>
+    <p>Give LLMs live access to your registry via the built-in MCP server.</p>
   </div>
 </header>
 
@@ -69,15 +69,14 @@
     <div class="sidebar-section">
       <span class="sidebar-label">On this page</span>
       <ul class="sidebar-nav">
-        <li><a href="#ai-first-design">AI-First Design</a></li>
-        <li><a href="#models-field">The models Field</a></li>
-        <li><a href="#knowledge-bases">Knowledge Bases</a></li>
-        <li><a href="#supported-providers">Supported Providers</a></li>
-        <li><a href="#ollama">Ollama (Local)</a></li>
-        <li><a href="#openai">OpenAI</a></li>
-        <li><a href="#anthropic">Anthropic</a></li>
-        <li><a href="#llm-context">Using Registry as LLM Context</a></li>
-        <li><a href="#ai-commands">AI CLI Commands</a></li>
+        <li><a href="#overview">Overview</a></li>
+        <li><a href="#starting-the-server">Starting the Server</a></li>
+        <li><a href="#connecting-to-claude">Connecting to Claude</a></li>
+        <li><a href="#tools">Available Tools</a></li>
+        <li><a href="#resources">Available Resources</a></li>
+        <li><a href="#prompts">Available Prompts</a></li>
+        <li><a href="#extending">Extending the Server</a></li>
+        <li><a href="#passive-context">Using YAML as LLM Context</a></li>
         <li><a href="#best-practices">Best Practices</a></li>
       </ul>
     </div>
@@ -86,245 +85,332 @@
   <div class="doc-content-area">
     <div class="doc-content">
 
-      <section id="ai-first-design" class="doc-section">
-        <h2>AI-First Design</h2>
-        <p>HoxCore was designed from the ground up to work with LLMs. Every design decision — YAML over proprietary formats, declarative over executable, human-readable schemas — reflects the goal of making registry data maximally useful as AI context.</p>
+      <!-- OVERVIEW -->
+      <section id="overview" class="doc-section">
+        <h2>Overview</h2>
+        <p>HoxCore's primary AI integration is a built-in <strong>MCP (Model Context Protocol) server</strong>. MCP is an open standard that lets LLM clients — such as Claude Desktop — connect to external tools and data sources. When the HoxCore MCP server is running, an AI assistant can query, search, and inspect your registry in real time, without you having to copy-paste YAML files manually.</p>
 
-        <p>There are two distinct ways HoxCore works with AI:</p>
+        <p>There are two ways HoxCore works with AI:</p>
         <ul>
-          <li><strong>Passive</strong> — Your YAML entity files are fed directly to LLMs as structured context. No special tooling required.</li>
-          <li><strong>Active</strong> — Entities reference specific LLM models and knowledge bases that HoxCore can invoke on your behalf.</li>
+          <li><strong>Active (MCP)</strong> — Start the MCP server and connect a compatible LLM client. The assistant can call tools, read resources, and use prompt templates to interact with your registry dynamically.</li>
+          <li><strong>Passive (YAML context)</strong> — Export entity YAML with <code>hxc show --raw</code> and paste it directly into any LLM chat window. No server required.</li>
         </ul>
 
         <div class="info-box">
-          <h4>YAML is naturally LLM-friendly</h4>
-          <p>YAML is structured, human-readable, and fits well within LLM context windows. A single HoxCore entity file gives an LLM all it needs to understand a project: its purpose, status, relationships, tools, and knowledge sources.</p>
+          <h4>What is MCP?</h4>
+          <p>The Model Context Protocol is an open standard created by Anthropic that allows AI assistants to securely connect to external data sources and tools through a standardized interface. Think of it as a plugin system for LLMs.</p>
         </div>
       </section>
 
-      <section id="models-field" class="doc-section">
-        <h2>The <code>models</code> Field</h2>
-        <p>Any entity can reference one or more LLM models. These define which AI systems are associated with this project and how to reach them:</p>
-        <pre><code class="language-yaml">models:
-  - id: assistant
-    provider: ollama
-    model: llama3
-    description: "General project assistant"
+      <!-- STARTING THE SERVER -->
+      <section id="starting-the-server" class="doc-section">
+        <h2>Starting the Server</h2>
+        <p>HoxCore ships with a dedicated MCP entry point: <code>hxc-mcp</code>. It communicates over <code>stdio</code>, which is what most MCP-compatible clients expect.</p>
 
-  - id: code-reviewer
-    provider: openai
-    model: gpt-4o
-    description: "Code review and refactoring suggestions"
+        <pre><code class="language-bash"># Start with the default or configured registry
+hxc-mcp
 
-  - id: doc-writer
-    provider: anthropic
-    model: claude-opus-4-5
-    description: "Documentation generation"</code></pre>
+# Start with a specific registry path
+hxc-mcp --registry /path/to/your/registry
+
+# Specify transport explicitly (only stdio is supported currently)
+hxc-mcp --transport stdio</code></pre>
+
+        <p>You can also start the server programmatically from Python:</p>
+        <pre><code class="language-python">from hxc.mcp.server import create_server
+
+server = create_server(registry_path="/path/to/registry")
+server.run_stdio()</code></pre>
+
+        <div class="info-box">
+          <h4>Registry discovery</h4>
+          <p>If <code>--registry</code> is not provided, the server resolves the registry path using the same order as the CLI: current directory → parent directories → <code>~/.hxc/registry</code>.</p>
+        </div>
+      </section>
+
+      <!-- CONNECTING TO CLAUDE -->
+      <section id="connecting-to-claude" class="doc-section">
+        <h2>Connecting to Claude</h2>
+        <p>To use HoxCore with Claude Desktop, add it to your MCP client configuration file (<code>claude_desktop_config.json</code>):</p>
+
+        <pre><code class="language-json">{
+  "mcpServers": {
+    "hoxcore": {
+      "command": "hxc-mcp",
+      "args": ["--registry", "/path/to/your/registry"]
+    }
+  }
+}</code></pre>
+
+        <p>After saving the config and restarting Claude Desktop, Claude will have access to all HoxCore tools, resources, and prompts. You can then ask questions like:</p>
+        <ul>
+          <li>"List all active projects in my registry."</li>
+          <li>"What is the status of project P-001?"</li>
+          <li>"Search for entities related to machine learning."</li>
+          <li>"Show me the tags on entity proj_abc123."</li>
+        </ul>
+
+        <div class="info-box">
+          <h4>Other MCP-compatible clients</h4>
+          <p>Any MCP-compatible client can connect to the HoxCore server using the same <code>stdio</code> transport. The server implements the <code>2024-11-05</code> version of the MCP protocol.</p>
+        </div>
+      </section>
+
+      <!-- TOOLS -->
+      <section id="tools" class="doc-section">
+        <h2>Available Tools</h2>
+        <p>Tools are callable functions that the LLM can invoke to interact with your registry. HoxCore exposes four tools:</p>
 
         <div class="table-wrap">
           <table class="doc-table">
-            <thead><tr><th>Field</th><th>Required</th><th>Description</th></tr></thead>
+            <thead>
+              <tr><th>Tool</th><th>Description</th></tr>
+            </thead>
             <tbody>
-              <tr><td><code>id</code></td><td>Yes</td><td>Local identifier for this model reference</td></tr>
-              <tr><td><code>provider</code></td><td>Yes</td><td>Model provider: ollama, openai, anthropic, mistral, etc.</td></tr>
-              <tr><td><code>model</code></td><td>Yes</td><td>Model name as used by the provider</td></tr>
-              <tr><td><code>description</code></td><td>No</td><td>Human note on this model's purpose for the project</td></tr>
-              <tr><td><code>base_url</code></td><td>No</td><td>Custom API endpoint (for self-hosted or proxy)</td></tr>
-              <tr><td><code>context</code></td><td>No</td><td>System prompt or context template for this model</td></tr>
+              <tr>
+                <td><code>list_entities</code></td>
+                <td>List entities in the registry with optional filters for type, status, tags, category, and parent. Supports sorting and pagination.</td>
+              </tr>
+              <tr>
+                <td><code>get_entity</code></td>
+                <td>Retrieve full details of a specific entity by its ID or UID.</td>
+              </tr>
+              <tr>
+                <td><code>search_entities</code></td>
+                <td>Full-text search across entity titles and descriptions, with optional filters for type, status, tags, and category.</td>
+              </tr>
+              <tr>
+                <td><code>get_entity_property</code></td>
+                <td>Fetch a specific property from an entity. Supports list indexing and key-based filtering for complex fields like <code>repositories</code> or <code>tools</code>.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>list_entities</h3>
+        <pre><code class="language-json">{
+  "entity_type": "project",
+  "status": "active",
+  "tags": ["python", "api"],
+  "sort_by": "title",
+  "descending": false,
+  "max_items": 20
+}</code></pre>
+
+        <h3>get_entity</h3>
+        <pre><code class="language-json">{
+  "identifier": "P-001"
+}</code></pre>
+        <p>Accepts both human-readable IDs (e.g. <code>P-001</code>) and system UIDs (e.g. <code>proj_abc123def456</code>).</p>
+
+        <h3>search_entities</h3>
+        <pre><code class="language-json">{
+  "query": "machine learning",
+  "entity_type": "all",
+  "status": "active"
+}</code></pre>
+        <p>Matches the query string against both <code>title</code> and <code>description</code> fields.</p>
+
+        <h3>get_entity_property</h3>
+        <pre><code class="language-json">{
+  "identifier": "P-001",
+  "property": "repositories",
+  "key": "name:github"
+}</code></pre>
+        <p>The <code>key</code> argument filters list properties using <code>key:value</code> syntax. The <code>index</code> argument retrieves a specific item by position. Pass <code>"property": "all"</code> to return the complete entity.</p>
+      </section>
+
+      <!-- RESOURCES -->
+      <section id="resources" class="doc-section">
+        <h2>Available Resources</h2>
+        <p>Resources are read-only data endpoints accessible via <code>hxc://</code> URIs. An MCP client can subscribe to these URIs to retrieve structured data from the registry.</p>
+
+        <div class="table-wrap">
+          <table class="doc-table">
+            <thead>
+              <tr><th>URI</th><th>MIME Type</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>hxc://entity/{identifier}</code></td>
+                <td><code>application/x-yaml</code></td>
+                <td>A specific entity by ID or UID, returned as YAML.</td>
+              </tr>
+              <tr>
+                <td><code>hxc://entities/{type}</code></td>
+                <td><code>application/json</code></td>
+                <td>All entities of a given type (<code>project</code>, <code>mission</code>, etc.), returned as JSON.</td>
+              </tr>
+              <tr>
+                <td><code>hxc://hierarchy/{identifier}</code></td>
+                <td><code>application/json</code></td>
+                <td>An entity together with its parent, children, and related entities.</td>
+              </tr>
+              <tr>
+                <td><code>hxc://registry/stats</code></td>
+                <td><code>application/json</code></td>
+                <td>Registry-wide statistics: entity counts by type, status, category, and tag frequency.</td>
+              </tr>
+              <tr>
+                <td><code>hxc://search?q={query}</code></td>
+                <td><code>application/json</code></td>
+                <td>Search results for a free-text query across all entity titles and descriptions.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Example — registry stats</h3>
+        <pre><code class="language-json">{
+  "total_entities": 39,
+  "by_type": {
+    "program": 4,
+    "project": 23,
+    "mission": 7,
+    "action": 5
+  },
+  "by_status": {
+    "active": 22,
+    "completed": 10,
+    "on_hold": 4,
+    "archived": 3
+  },
+  "tags": {
+    "python": 9,
+    "api": 7,
+    "backend": 6
+  }
+}</code></pre>
+
+        <h3>Example — entity hierarchy</h3>
+        <p>Reading <code>hxc://hierarchy/P-001</code> returns an object with three keys: <code>root</code> (the entity itself), <code>children</code> (child entities), and <code>related</code> (non-hierarchical references).</p>
+      </section>
+
+      <!-- PROMPTS -->
+      <section id="prompts" class="doc-section">
+        <h2>Available Prompts</h2>
+        <p>Prompts are reusable message templates that guide the LLM when working with the registry. They are surfaced via the <code>prompts/list</code> and <code>prompts/get</code> MCP methods.</p>
+
+        <div class="table-wrap">
+          <table class="doc-table">
+            <thead>
+              <tr><th>Prompt</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>get_entity</code></td><td>Retrieve detailed information about a specific entity.</td></tr>
+              <tr><td><code>search_entities</code></td><td>Search for entities using text, type, status, tags, or category filters.</td></tr>
+              <tr><td><code>list_entities</code></td><td>List entities with optional filtering and sorting.</td></tr>
+              <tr><td><code>get_entity_property</code></td><td>Retrieve a specific property value from an entity.</td></tr>
+              <tr><td><code>analyze_registry</code></td><td>Analyze registry structure, relationships, and statistics.</td></tr>
+              <tr><td><code>get_related_entities</code></td><td>Find parent, children, and related entities for a given entity.</td></tr>
+              <tr><td><code>query_by_date</code></td><td>Query entities based on date ranges (start date, due date, completion date).</td></tr>
             </tbody>
           </table>
         </div>
       </section>
 
-      <section id="knowledge-bases" class="doc-section">
-        <h2>Knowledge Bases</h2>
-        <p>Knowledge bases point to collections of documents, notes, or files that provide context for AI interactions with this entity:</p>
-        <pre><code class="language-yaml">knowledge_bases:
-  - id: kb-project-docs
-    path: ./docs/
-    description: "Project documentation and specs"
+      <!-- EXTENDING -->
+      <section id="extending" class="doc-section">
+        <h2>Extending the Server</h2>
+        <p>You can register custom tools, resources, and prompts at runtime by creating the server programmatically:</p>
 
-  - id: kb-codebase
-    path: /path/to/codebase/
-    description: "Source code for context"
+        <pre><code class="language-python">from hxc.mcp.server import create_server
 
-  - id: kb-papers
-    path: ~/research/papers/
-    description: "Reference literature"
+server = create_server(registry_path="/path/to/registry")
 
-  - id: kb-notes
-    path: ./notes/
-    description: "Meeting notes and decisions"</code></pre>
+# Register a custom tool
+def summarize_overdue(registry_path=None, **kwargs):
+    """Return all active projects that are past their due date."""
+    from datetime import date
+    from hxc.mcp.tools import list_entities_tool
+    result = list_entities_tool(entity_type="project", status="active", registry_path=registry_path)
+    today = date.today().isoformat()
+    overdue = [
+        e for e in result.get("entities", [])
+        if e.get("due_date") and str(e["due_date"]) < today
+    ]
+    return {"overdue": overdue, "count": len(overdue)}
 
-        <div class="table-wrap">
-          <table class="doc-table">
-            <thead><tr><th>Field</th><th>Required</th><th>Description</th></tr></thead>
-            <tbody>
-              <tr><td><code>id</code></td><td>Yes</td><td>Local identifier for this knowledge base</td></tr>
-              <tr><td><code>path</code></td><td>Yes</td><td>Filesystem path (relative to registry root or absolute)</td></tr>
-              <tr><td><code>description</code></td><td>No</td><td>Human description of the contents</td></tr>
-              <tr><td><code>include</code></td><td>No</td><td>Glob patterns to include (default: all)</td></tr>
-              <tr><td><code>exclude</code></td><td>No</td><td>Glob patterns to exclude</td></tr>
-            </tbody>
-          </table>
+server.register_tool("summarize_overdue", summarize_overdue)
+
+# Register a custom prompt
+server.register_prompt({
+    "name": "weekly_review",
+    "description": "Generate a weekly status summary across all active projects",
+    "arguments": [
+        {"name": "focus_tag", "description": "Optional tag to focus the review on", "required": False}
+    ]
+})
+
+server.run_stdio()</code></pre>
+
+        <div class="info-box">
+          <h4>Tool function signature</h4>
+          <p>Custom tool functions must accept a <code>registry_path</code> keyword argument. The server injects this automatically when calling any registered tool.</p>
         </div>
       </section>
 
-      <section id="supported-providers" class="doc-section">
-        <h2>Supported Providers</h2>
-        <div class="table-wrap">
-          <table class="doc-table">
-            <thead><tr><th>Provider</th><th>ID string</th><th>Notes</th></tr></thead>
-            <tbody>
-              <tr><td>Ollama (local)</td><td><code>ollama</code></td><td>Runs locally, no API key required</td></tr>
-              <tr><td>OpenAI</td><td><code>openai</code></td><td>Requires <code>OPENAI_API_KEY</code></td></tr>
-              <tr><td>Anthropic</td><td><code>anthropic</code></td><td>Requires <code>ANTHROPIC_API_KEY</code></td></tr>
-              <tr><td>Mistral</td><td><code>mistral</code></td><td>Requires <code>MISTRAL_API_KEY</code></td></tr>
-              <tr><td>Google (Gemini)</td><td><code>google</code></td><td>Requires <code>GOOGLE_API_KEY</code></td></tr>
-              <tr><td>Cohere</td><td><code>cohere</code></td><td>Requires <code>COHERE_API_KEY</code></td></tr>
-              <tr><td>Custom/OpenAI-compatible</td><td><code>openai-compat</code></td><td>Any OpenAI-compatible API; set <code>base_url</code></td></tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
+      <!-- PASSIVE CONTEXT -->
+      <section id="passive-context" class="doc-section">
+        <h2>Using YAML as LLM Context</h2>
+        <p>Even without running the MCP server, your HoxCore YAML files are immediately useful as LLM context. Because HoxCore stores everything as human-readable YAML, you can feed entity data directly into any chat interface.</p>
 
-      <section id="ollama" class="doc-section">
-        <h2>Ollama (Local Models)</h2>
-        <p>Ollama is the recommended provider for local, private AI assistance. No data leaves your machine.</p>
-        <pre><code class="language-bash"># Install Ollama
-curl -fsSL https://ollama.ai/install.sh | sh
+        <h3>Export a single entity</h3>
+        <pre><code class="language-bash"># Print raw YAML to the terminal (then copy into a chat)
+hxc show P-001 --raw
 
-# Pull a model
-ollama pull llama3
-ollama pull mistral
-ollama pull codellama</code></pre>
-
-        <pre><code class="language-yaml"># In your entity
-models:
-  - id: local-assistant
-    provider: ollama
-    model: llama3
-
-  - id: code-helper
-    provider: ollama
-    model: codellama
-    description: "Code generation and review"</code></pre>
-
-        <pre><code class="language-bash"># Ask project context
-hxc ai ask P-001 "Summarize this project's current status and blockers"
-hxc ai ask P-001 --model code-helper "Suggest improvements to the API design"</code></pre>
-      </section>
-
-      <section id="openai" class="doc-section">
-        <h2>OpenAI</h2>
-        <pre><code class="language-bash">export OPENAI_API_KEY="sk-..."</code></pre>
-        <pre><code class="language-yaml">models:
-  - id: gpt4
-    provider: openai
-    model: gpt-4o
-    description: "Primary reasoning model"
-
-  - id: gpt4-mini
-    provider: openai
-    model: gpt-4o-mini
-    description: "Fast, cost-effective tasks"</code></pre>
-      </section>
-
-      <section id="anthropic" class="doc-section">
-        <h2>Anthropic</h2>
-        <pre><code class="language-bash">export ANTHROPIC_API_KEY="sk-ant-..."</code></pre>
-        <pre><code class="language-yaml">models:
-  - id: claude
-    provider: anthropic
-    model: claude-opus-4-5
-    description: "Complex reasoning and writing"
-
-  - id: claude-fast
-    provider: anthropic
-    model: claude-haiku-4-5
-    description: "Fast summaries and classification"</code></pre>
-      </section>
-
-      <section id="llm-context" class="doc-section">
-        <h2>Using Registry as LLM Context</h2>
-        <p>Even without any active AI commands, your HoxCore registry is immediately useful as LLM context. Feed entity YAML directly to any LLM for instant project awareness:</p>
-
-        <h3>Export single entity for context</h3>
-        <pre><code class="language-bash"># Export raw YAML to clipboard or pipe to LLM
-hxc show P-001 --raw | pbcopy
-
-# Export as structured JSON for API use
+# Export as JSON for programmatic use
 hxc show P-001 --output json</code></pre>
 
-        <h3>Export project context bundle</h3>
-        <pre><code class="language-bash"># Generate a context document for an LLM
+        <h3>Export multiple entities</h3>
+        <pre><code class="language-bash"># Export all active projects as Markdown
 hxc export projects --format markdown --status active > context.md
 
-# Feed to an LLM via CLI tool (e.g. llm, aichat, etc.)
-hxc show P-001 --raw | llm "What are the critical risks in this project?"</code></pre>
+# Export everything as JSON
+hxc export all --format json --output registry.json</code></pre>
 
         <h3>Programmatic use</h3>
-        <pre><code class="language-python">import subprocess
-import json
+        <pre><code class="language-python">import subprocess, json
 
-# Load project as structured data
 result = subprocess.run(
     ["hxc", "show", "P-001", "--output", "json"],
     capture_output=True, text=True
 )
 project = json.loads(result.stdout)
 
-# Pass to your LLM of choice
 context = f"""
 Project: {project['title']}
-Status: {project['status']}
-Description: {project['description']}
-Tags: {', '.join(project.get('tags', []))}
-"""</code></pre>
-      </section>
+Status:  {project['status']}
+Tags:    {', '.join(project.get('tags', []))}
+Description:
+{project.get('description', '')}
+"""
+# Pass `context` to your LLM of choice</code></pre>
 
-      <section id="ai-commands" class="doc-section">
-        <h2>AI CLI Commands</h2>
-        <p>HoxCore provides <code>hxc ai</code> subcommands for active model interaction:</p>
-
-        <pre><code class="language-bash"># Ask a question in the context of a project
-hxc ai ask P-001 "What should I prioritize this week?"
-
-# Specify a model ID from the entity's models list
-hxc ai ask P-001 --model code-helper "Review this architecture decision"
-
-# Summarize a project
-hxc ai summarize P-001
-
-# Generate a status report
-hxc ai report P-001 --format markdown
-
-# Ask across multiple projects
-hxc ai ask --tags ai,active "What are the common blockers across these projects?"</code></pre>
-
-        <div class="warning-box">
-          <h4>Active AI commands — alpha feature</h4>
-          <p>The <code>hxc ai</code> command group is in active development. Features may change between releases. The reference model (storing <code>models</code> and <code>knowledge_bases</code> in YAML) is stable.</p>
+        <div class="info-box">
+          <h4>YAML is naturally LLM-friendly</h4>
+          <p>YAML is structured, concise, and fits well within LLM context windows. A single HoxCore entity file gives an LLM everything it needs to understand a project: purpose, status, relationships, tools, and dates — without any special tooling.</p>
         </div>
       </section>
 
+      <!-- BEST PRACTICES -->
       <section id="best-practices" class="doc-section">
         <h2>Best Practices</h2>
 
-        <h3>Keep knowledge bases focused</h3>
-        <p>Reference specific, relevant directories rather than your entire filesystem. An LLM context window is finite — focused knowledge bases produce better results than sprawling ones.</p>
+        <h3>Use UIDs for stable references</h3>
+        <p>When asking an LLM to reference a specific entity across multiple tool calls, prefer UIDs (e.g. <code>proj_abc123def456</code>) over human-readable IDs. UIDs are immutable and will never break if you rename an entity.</p>
 
-        <h3>Name models by role, not by provider</h3>
-        <p>Use descriptive IDs like <code>code-reviewer</code> or <code>doc-writer</code> rather than <code>gpt4</code> or <code>claude</code>. This makes it easy to swap providers without updating entity files.</p>
+        <h3>Start with list_entities, drill down with get_entity</h3>
+        <p>A natural conversation pattern is to first call <code>list_entities</code> to get an overview, then call <code>get_entity</code> or <code>get_entity_property</code> to retrieve specific details. This keeps token usage efficient.</p>
 
-        <h3>Use local models for sensitive data</h3>
-        <p>For entities containing confidential business context, configure Ollama local models. This ensures your project data never leaves your machine.</p>
+        <h3>Write rich descriptions</h3>
+        <p>The <code>search_entities</code> tool searches <code>title</code> and <code>description</code> fields. The more context you include in descriptions when creating entities, the more useful natural-language searches will be.</p>
 
-        <h3>Treat the entity YAML as a project brief</h3>
-        <p>Write your <code>description</code> fields as if you're briefing a new team member — or a new AI assistant. The more context you provide, the more useful the LLM responses will be.</p>
+        <h3>Keep registries focused</h3>
+        <p>The MCP server exposes your entire registry. Smaller, topic-focused registries produce better LLM interactions than one enormous registry covering unrelated domains. Consider maintaining separate registries for work, research, and personal projects.</p>
 
-        <h3>Consistent model IDs across templates</h3>
-        <p>If you use templates, standardize model IDs so your AI workflows work uniformly across all entities. Define a baseline set in your team templates.</p>
+        <h3>Validate before connecting</h3>
+        <p>Run <code>hxc validate</code> before starting the MCP server to ensure all entity files are well-formed. Malformed YAML files are silently skipped by the server, which can cause entities to appear missing.</p>
       </section>
 
     </div>
