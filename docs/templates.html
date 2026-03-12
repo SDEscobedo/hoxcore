@@ -84,6 +84,7 @@
   <div class="doc-content-area">
     <div class="doc-content">
 
+      <!-- WHAT ARE TEMPLATES -->
       <section id="what-are-templates" class="doc-section">
         <h2>What Are Templates?</h2>
         <p>Templates are reusable YAML scaffolds that pre-fill fields when creating new entities. They enforce consistency, reduce repetitive typing, and encode team conventions directly into the registry.</p>
@@ -102,6 +103,7 @@
         </div>
       </section>
 
+      <!-- TEMPLATE SCHEMA -->
       <section id="template-schema" class="doc-section">
         <h2>Template Schema</h2>
         <p>Templates live in the <code>templates/</code> directory of your registry as <code>.yaml</code> files.</p>
@@ -162,6 +164,7 @@ scaffold:
       path: ./docs/</code></pre>
       </section>
 
+      <!-- VARIABLES -->
       <section id="variables" class="doc-section">
         <h2>Variables</h2>
         <p>Templates use <code>{{variable_name}}</code> syntax for substitution. Variables are declared in the <code>variables</code> block:</p>
@@ -197,6 +200,7 @@ scaffold:
         </div>
       </section>
 
+      <!-- CREATING TEMPLATES -->
       <section id="creating-templates" class="doc-section">
         <h2>Creating Templates</h2>
 
@@ -205,41 +209,62 @@ scaffold:
         <pre><code class="language-bash">$EDITOR templates/my-template.yaml</code></pre>
 
         <h3>Method 2: From an existing entity</h3>
-        <pre><code class="language-bash"># Capture entity P-001 as a reusable template
-hxc template create --from P-001 --name my-project-template</code></pre>
-        <p>HoxCore extracts the entity structure, replaces concrete values with variables, and saves it to <code>templates/my-project-template.yaml</code>.</p>
+        <p>Export an entity's raw YAML with <code>hxc show</code>, then manually edit it into a template by replacing concrete values with <code>{{variable}}</code> placeholders:</p>
+        <pre><code class="language-bash"># Export the raw YAML of an existing entity
+hxc show P-001 --raw > templates/my-project-template.yaml
+
+# Open and edit: replace concrete values with {{variable}} placeholders
+$EDITOR templates/my-project-template.yaml</code></pre>
 
         <h3>Method 3: Copy and modify a built-in</h3>
-        <pre><code class="language-bash">hxc template show software-project --raw > templates/my-variant.yaml
+        <p>Inspect a built-in template's YAML with <code>hxc show</code> (they are stored as regular YAML files in <code>templates/</code>), then adapt it:</p>
+        <pre><code class="language-bash"># Show the raw YAML of a built-in template file
+hxc show software-project --raw > templates/my-variant.yaml
 $EDITOR templates/my-variant.yaml</code></pre>
       </section>
 
+      <!-- APPLYING TEMPLATES -->
       <section id="applying-templates" class="doc-section">
         <h2>Applying Templates</h2>
+        <p>Templates are applied at entity-creation time via the <code>--template</code> flag on <code>hxc create</code>. The template name corresponds to the <code>template.name</code> field in the template YAML file.</p>
 
-        <h3>Inline flags</h3>
-        <pre><code class="language-bash">hxc create project \
+        <h3>Basic usage</h3>
+        <pre><code class="language-bash"># Create an entity using a named template
+hxc create project "New API Service" --template software-project
+
+# Specify additional fields alongside the template
+hxc create project "GraphQL Migration" \
   --template software-project \
-  --title "New API Service" \
-  --set repo_url=https://github.com/sdescobedo/new-api \
-  --set team=backend</code></pre>
+  --description "Migrate legacy REST API to GraphQL" \
+  --tags graphql migration backend \
+  --due-date 2025-12-31</code></pre>
 
-        <h3>Interactive mode</h3>
-        <pre><code class="language-bash">hxc template apply software-project</code></pre>
-        <p>HoxCore prompts for each required variable and shows defaults for optional ones.</p>
+        <div class="info-box">
+          <h4>Template variables and entity fields</h4>
+          <p>Fields passed to <code>hxc create</code> (such as <code>--description</code>, <code>--tags</code>, <code>--due-date</code>) fill the corresponding built-in template variables (<code>{{description}}</code>, <code>{{tags}}</code>, etc.). Template-specific custom variables defined in the <code>variables</code> block are applied from the template's own <code>defaults</code> if not overridden.</p>
+        </div>
 
         <h3>From a values file</h3>
-        <pre><code class="language-bash">hxc template apply software-project --values values.yaml</code></pre>
+        <p>For templates with many custom variables, you can provide a YAML values file and pass it at creation time. The file maps variable names to values:</p>
         <pre><code class="language-yaml"># values.yaml
 title: "New API Service"
 repo_url: "https://github.com/sdescobedo/new-api"
 team: backend
 tags: [api, python, backend]</code></pre>
+        <pre><code class="language-bash">hxc create project "New API Service" \
+  --template software-project \
+  --registry /path/to/registry</code></pre>
+
+        <div class="info-box">
+          <h4>Template resolution</h4>
+          <p>HoxCore resolves templates from the <code>templates/</code> directory of the active registry. Use <code>--registry</code> to point to a different registry when applying templates from a shared template library.</p>
+        </div>
       </section>
 
+      <!-- BUILT-IN TEMPLATES -->
       <section id="built-in-templates" class="doc-section">
         <h2>Built-in Templates</h2>
-        <p>HoxCore ships with a set of default templates covering common patterns:</p>
+        <p>HoxCore ships with a set of default templates covering common patterns. They live in the <code>templates/</code> directory of a freshly initialized registry and can be inspected with <code>hxc show &lt;name&gt; --raw</code>:</p>
 
         <div class="table-wrap">
           <table class="doc-table">
@@ -255,10 +280,15 @@ tags: [api, python, backend]</code></pre>
           </table>
         </div>
 
-        <pre><code class="language-bash">hxc template list
-hxc template show research-project</code></pre>
+        <p>List all template files in the registry and inspect one:</p>
+        <pre><code class="language-bash"># List template YAML files directly
+ls templates/
+
+# Inspect a built-in template
+hxc show research-project --raw</code></pre>
       </section>
 
+      <!-- TEMPLATE EXAMPLES -->
       <section id="template-examples" class="doc-section">
         <h2>Template Examples</h2>
 
@@ -364,6 +394,7 @@ scaffold:
       status: planned</code></pre>
       </section>
 
+      <!-- SHARING TEMPLATES -->
       <section id="sharing-templates" class="doc-section">
         <h2>Sharing Templates</h2>
         <p>Templates are plain YAML files in the <code>templates/</code> directory — they're committed to Git and shared naturally through the repository.</p>
@@ -372,12 +403,10 @@ scaffold:
         <p>Commit your templates to a shared registry repository. Every team member who clones the registry gets the templates automatically.</p>
 
         <h3>Template-only repositories</h3>
-        <p>You can maintain a dedicated registry that contains only templates. Use it as a reference library:</p>
-        <pre><code class="language-bash"># List templates from a remote registry
-hxc template list --registry /path/to/template-library
-
-# Apply a template from a remote registry
-hxc template apply research-project \
+        <p>You can maintain a dedicated registry that contains only templates. Use it as a reference library and apply its templates by pointing <code>hxc create</code> at that registry:</p>
+        <pre><code class="language-bash"># Apply a template stored in a separate template library
+hxc create project "My New Project" \
+  --template research-project \
   --registry /path/to/template-library</code></pre>
 
         <div class="info-box">

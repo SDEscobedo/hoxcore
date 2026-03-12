@@ -85,6 +85,7 @@
   <div class="doc-content-area">
     <div class="doc-content">
 
+      <!-- INTEGRATION MODEL -->
       <section id="integration-model" class="doc-section">
         <h2>Integration Model</h2>
         <p>HoxCore's philosophy is <strong>reference, don't replicate</strong>. Rather than syncing data from external tools into the registry, HoxCore stores authoritative links to where data lives in your existing tools.</p>
@@ -103,6 +104,7 @@
         </div>
       </section>
 
+      <!-- TOOLS FIELD -->
       <section id="tools-field" class="doc-section">
         <h2>The <code>tools</code> Field</h2>
         <p>Any entity can include a <code>tools</code> list. Each entry specifies a name, provider, and URL:</p>
@@ -136,9 +138,10 @@
         </div>
       </section>
 
+      <!-- REPOSITORIES FIELD -->
       <section id="repositories-field" class="doc-section">
         <h2>The <code>repositories</code> Field</h2>
-        <p>Source code repositories get a dedicated field (separate from <code>tools</code>) to make them easily queryable:</p>
+        <p>Source code repositories get a dedicated field (separate from <code>tools</code>) to make them easily identifiable at a glance:</p>
         <pre><code class="language-yaml">repositories:
   - name: main
     url: https://github.com/sdescobedo/hoxcore
@@ -152,10 +155,15 @@
     url: https://gitlab.com/team/infrastructure
     provider: gitlab</code></pre>
 
-        <pre><code class="language-bash"># Find all projects with GitHub repos
-hxc query projects --has-tool github</code></pre>
+        <p>To find entities associated with a particular provider, use <code>hxc list</code> with full-text search:</p>
+        <pre><code class="language-bash"># Search for entities mentioning github in title or description
+hxc list project --query github
+
+# Or inspect an entity's raw YAML to see its repositories
+hxc show P-001 --raw</code></pre>
       </section>
 
+      <!-- GITHUB -->
       <section id="github" class="doc-section">
         <h2>GitHub</h2>
         <p>HoxCore integrates deeply with GitHub as a reference provider:</p>
@@ -185,6 +193,7 @@ tools:
     url: https://github.com/sdescobedo/hoxcore/discussions</code></pre>
       </section>
 
+      <!-- AZURE DEVOPS -->
       <section id="azure-devops" class="doc-section">
         <h2>Azure DevOps</h2>
         <pre><code class="language-yaml">repositories:
@@ -208,6 +217,7 @@ tools:
     url: https://dev.azure.com/myorg/myproject/_wiki</code></pre>
       </section>
 
+      <!-- NOTION -->
       <section id="notion" class="doc-section">
         <h2>Notion</h2>
         <pre><code class="language-yaml">tools:
@@ -227,6 +237,7 @@ tools:
     description: "Product roadmap page"</code></pre>
       </section>
 
+      <!-- OVERLEAF -->
       <section id="overleaf" class="doc-section">
         <h2>Overleaf</h2>
         <p>Particularly useful for academic research projects and papers:</p>
@@ -242,6 +253,7 @@ tools:
     description: "Supplementary materials"</code></pre>
       </section>
 
+      <!-- TRELLO -->
       <section id="trello" class="doc-section">
         <h2>Trello</h2>
         <pre><code class="language-yaml">tools:
@@ -256,6 +268,7 @@ tools:
     description: "Product backlog"</code></pre>
       </section>
 
+      <!-- GOOGLE WORKSPACE -->
       <section id="google-workspace" class="doc-section">
         <h2>Google Workspace</h2>
         <pre><code class="language-yaml">tools:
@@ -280,6 +293,7 @@ tools:
     description: "Weekly standup link"</code></pre>
       </section>
 
+      <!-- CUSTOM INTEGRATIONS -->
       <section id="custom" class="doc-section">
         <h2>Custom Integrations</h2>
         <p>The <code>tools</code> field is fully open-ended. Any URL-addressable resource can be referenced:</p>
@@ -312,7 +326,7 @@ tools:
 
         <div class="info-box">
           <h4>Provider naming convention</h4>
-          <p>Provider names are arbitrary strings. Use lowercase with hyphens for consistency: <code>github</code>, <code>azure-devops</code>, <code>google-docs</code>. This enables future filtering by <code>hxc query --has-tool github</code>.</p>
+          <p>Provider names are arbitrary strings. Use lowercase with hyphens for consistency: <code>github</code>, <code>azure-devops</code>, <code>google-docs</code>. Consistent naming makes it easier to grep or search your raw YAML files by provider name.</p>
         </div>
       </section>
 
