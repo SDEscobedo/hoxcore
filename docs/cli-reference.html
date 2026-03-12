@@ -72,16 +72,13 @@
         <li><a href="#global-options">Global Options</a></li>
         <li><a href="#init">hxc init</a></li>
         <li><a href="#create">hxc create</a></li>
+        <li><a href="#delete">hxc delete</a></li>
         <li><a href="#list">hxc list</a></li>
         <li><a href="#show">hxc show</a></li>
         <li><a href="#edit">hxc edit</a></li>
         <li><a href="#get">hxc get</a></li>
-        <li><a href="#delete">hxc delete</a></li>
-        <li><a href="#template">hxc template</a></li>
         <li><a href="#registry">hxc registry</a></li>
         <li><a href="#validate">hxc validate</a></li>
-        <li><a href="#export">hxc export</a></li>
-        <li><a href="#stats">hxc stats</a></li>
       </ul>
     </div>
   </aside>
@@ -198,6 +195,48 @@ hxc create mission "Q4 Launch" --template software.dev/cli-tool.default
  
 # Target a specific registry
 hxc create program "Platform Team" --registry ~/registries/work</code></pre>
+      </section>
+
+      <section id="delete" class="doc-section">
+        <h2>hxc delete</h2>
+        <p>Delete an entity from the registry. The file is removed and the deletion is committed to Git.</p>
+        <pre><code class="language-bash">hxc delete identifier [OPTIONS]</code></pre>
+        <div class="warning-box">
+          <h4>Prefer archiving over deletion</h4>
+          <p>Deleting an entity removes its UID from the registry, which may break references in other entities. Consider setting the status to <code>cancelled</code> or <code>completed</code> instead to preserve history and referential integrity.</p>
+        </div>
+        <h3>Arguments</h3>
+        <div class="table-wrap">
+          <table class="doc-table">
+            <thead><tr><th>Argument</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>identifier</code></td><td>ID or UID of the entity to delete</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3>Options</h3>
+        <div class="table-wrap">
+          <table class="doc-table">
+            <thead><tr><th>Flag</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>--type, -t {program,project,mission,action}</code></td><td>Type of entity to delete — only needed if the identifier is ambiguous</td></tr>
+              <tr><td><code>--force, -f</code></td><td>Skip confirmation prompt</td></tr>
+              <tr><td><code>--registry REGISTRY</code></td><td>Path to registry (defaults to current or configured registry)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3>Examples</h3>
+        <pre><code class="language-bash"># Delete by ID (with confirmation prompt)
+hxc delete P-001
+ 
+# Delete by UID, skip confirmation
+hxc delete proj_abc123 --force
+ 
+# Disambiguate when the same ID exists across types
+hxc delete P-001 --type project
+ 
+# Target a specific registry
+hxc delete P-001 --force --registry ~/registries/work</code></pre>
       </section>
 
       <section id="list" class="doc-section">
@@ -463,29 +502,6 @@ hxc get P-001 repositories --key name:github
 hxc get P-001 title --type project --registry ~/registries/work</code></pre>
       </section>
 
-      <section id="template" class="doc-section">
-        <h2>hxc template</h2>
-        <p>Manage and apply entity templates.</p>
-        <pre><code class="language-bash">hxc template {list|show|apply|create} [OPTIONS]</code></pre>
-        <h3>Subcommands</h3>
-        <div class="table-wrap">
-          <table class="doc-table">
-            <thead><tr><th>Subcommand</th><th>Description</th></tr></thead>
-            <tbody>
-              <tr><td><code>hxc template list</code></td><td>List available templates</td></tr>
-              <tr><td><code>hxc template show NAME</code></td><td>Display template definition</td></tr>
-              <tr><td><code>hxc template apply NAME</code></td><td>Apply template to create entity</td></tr>
-              <tr><td><code>hxc template create --from UID</code></td><td>Create template from existing entity</td></tr>
-            </tbody>
-          </table>
-        </div>
-        <h3>Examples</h3>
-        <pre><code class="language-bash">hxc template list
-hxc template show software-project
-hxc template apply software-project --title "New Service"
-hxc template create --from P-001 --name my-project-template</code></pre>
-      </section>
-
       <section id="registry" class="doc-section">
         <h2>hxc registry</h2>
         <p>Manage registry locations.</p>
@@ -522,58 +538,32 @@ hxc registry list</code></pre>
 
       <section id="validate" class="doc-section">
         <h2>hxc validate</h2>
-        <p>Validate entity YAML files against the schema.</p>
-        <pre><code class="language-bash">hxc validate [PATH] [OPTIONS]</code></pre>
+        <p>Validate registry integrity and consistency — checks required fields, UID uniqueness, relationships, status values, and entity types.</p>
+        <pre><code class="language-bash">hxc validate [OPTIONS]</code></pre>
+        <div class="info-box">
+          <h4>Read-only operation</h4>
+          <p><code>hxc validate</code> never modifies any files. The <code>--fix</code> flag is accepted but not yet implemented.</p>
+        </div>
         <h3>Options</h3>
         <div class="table-wrap">
           <table class="doc-table">
             <thead><tr><th>Flag</th><th>Description</th></tr></thead>
             <tbody>
-              <tr><td><code>--strict</code></td><td>Treat warnings as errors</td></tr>
-              <tr><td><code>--fix</code></td><td>Auto-fix safe issues (e.g. missing updated_at)</td></tr>
+              <tr><td><code>--verbose, -v</code></td><td>Show detailed validation information for each check</td></tr>
+              <tr><td><code>--fix</code></td><td>Not yet implemented — accepted but has no effect</td></tr>
+              <tr><td><code>--registry REGISTRY</code></td><td>Path to registry (defaults to current or configured registry)</td></tr>
             </tbody>
           </table>
         </div>
-        <pre><code class="language-bash">hxc validate
-hxc validate projects/P-001.yaml
-hxc validate --strict</code></pre>
-      </section>
-
-      <section id="export" class="doc-section">
-        <h2>hxc export</h2>
-        <p>Export registry data to various formats.</p>
-        <pre><code class="language-bash">hxc export [TYPE] [OPTIONS]</code></pre>
-        <h3>Options</h3>
-        <div class="table-wrap">
-          <table class="doc-table">
-            <thead><tr><th>Flag</th><th>Description</th></tr></thead>
-            <tbody>
-              <tr><td><code>--format json|csv|markdown</code></td><td>Export format</td></tr>
-              <tr><td><code>--output FILE</code></td><td>Write to file (default: stdout)</td></tr>
-              <tr><td><code>--status STATUS</code></td><td>Filter by status before export</td></tr>
-              <tr><td><code>--tags TEXT</code></td><td>Filter by tags before export</td></tr>
-            </tbody>
-          </table>
-        </div>
-        <pre><code class="language-bash">hxc export projects --format json --output projects.json
-hxc export all --format csv --output registry.csv
-hxc export projects --format markdown --status active</code></pre>
-      </section>
-
-      <section id="stats" class="doc-section">
-        <h2>hxc stats</h2>
-        <p>Show summary statistics for the registry.</p>
-        <pre><code class="language-bash">hxc stats [OPTIONS]</code></pre>
-        <pre><code class="language-text">HoxCore Registry — my-registry
-─────────────────────────────────────────
-Programs :  4   (2 active, 2 archived)
-Projects : 23   (14 active, 6 completed, 3 on_hold)
-Missions :  7   (3 active, 4 completed)
-Actions  :  5   (5 active)
-─────────────────────────────────────────
-Total    : 39   entities
-Tags     : 87   unique
-Last updated: 2024-07-15</code></pre>
+        <h3>Examples</h3>
+        <pre><code class="language-bash"># Validate the current or configured registry
+hxc validate
+ 
+# Show detailed output for each check
+hxc validate --verbose
+ 
+# Validate a specific registry
+hxc validate --registry ~/registries/work</code></pre>
       </section>
 
     </div>
