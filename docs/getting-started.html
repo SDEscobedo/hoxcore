@@ -187,67 +187,67 @@ hxc init .</code></pre>
       <section id="create-project" class="doc-section">
         <h2>Create a Project</h2>
         <pre><code class="language-bash"># Minimal
-hxc create project --title "My First Project"
+hxc create project "My First Project"
 
 # With details
 hxc create project \
-  --title "AI-Powered CLI Tool" \
+  "AI-Powered CLI Tool" \
   --description "Building an intelligent command-line interface" \
   --category software.dev/cli-tool \
   --id P-001 \
   --tags cli,ai,python \
   --due-date 2024-12-31
 
-# Interactive mode
-hxc create project --interactive</code></pre>
-        <p>HoxCore automatically assigns an immutable UID (e.g. <code>proj_abc123def456</code>), sets the status to <code>active</code>, and creates a YAML file in <code>projects/</code>.</p>
+</code></pre>
+        <p>HoxCore automatically assigns an immutable UID (e.g. <code>abc123def456</code>), sets the status to <code>active</code>, and creates a YAML file in <code>projects/</code>.</p>
       </section>
 
       <section id="list-entities" class="doc-section">
         <h2>List Entities</h2>
-        <pre><code class="language-bash">hxc list projects
-hxc list programs
+        <pre><code class="language-bash">hxc list project
+hxc list program
 hxc list all
 
 # Filter
-hxc list projects --status active
-hxc list projects --category software.dev
-hxc list projects --tags ai,cli</code></pre>
-        <pre><code class="language-text">UID                    ID      Title                 Status    Category
-proj_abc123def456      P-001   My First Project      active    software.dev/cli-tool
-proj_xyz789ghi012      P-002   Backend API           active    software.dev/api</code></pre>
+hxc list project --status active
+hxc list project --category software.dev/cli-tool
+hxc list project --tags cli,ai,python</code></pre>
+        <pre><code class="language-text">TTYPE    ID       TITLE               STATUS
+-------------------------------------------
+project P-001    AI-Powered CLI Tool active
+project d6e80843 My First Project    active
+</code></pre>
       </section>
 
       <section id="view-entity" class="doc-section">
         <h2>View Entity Details</h2>
         <pre><code class="language-bash"># By UID or ID
-hxc show proj_abc123def456
+hxc show d6e80843
 hxc show P-001
 
 # Show raw YAML
 hxc show P-001 --raw
 
-# Show Git history
-hxc show P-001 --history</code></pre>
+# Show as json
+hxc show P-001 --format json</code></pre>
       </section>
 
       <section id="update-entity" class="doc-section">
         <h2>Update an Entity</h2>
         <pre><code class="language-bash"># Update status
-hxc update P-001 --status completed
+hxc edit P-001 --set-status completed
 
 # Multiple fields
-hxc update P-001 \
-  --status completed \
-  --completion-date 2024-06-30 \
-  --add-tags finished,deployed
+hxc edit P-001 \
+  --set-status completed \
+  --set-completion-date 2024-06-30 \
+  --add-tag finished \
+  --add-tag experimental
 
 # Tag management
-hxc update P-001 --add-tags production
-hxc update P-001 --remove-tags experimental
-
-# Open in $EDITOR
-hxc update P-001 --edit</code></pre>
+hxc edit P-001 --add-tag production
+hxc edit P-001 --remove-tag experimental
+</code></pre>
         <div class="warning-box">
           <h4>UIDs are immutable</h4>
           <p>The <code>uid</code> field cannot be changed after creation. This guarantees referential integrity across all relationships.</p>
@@ -256,24 +256,15 @@ hxc update P-001 --edit</code></pre>
 
       <section id="query-entities" class="doc-section">
         <h2>Query Entities</h2>
-        <pre><code class="language-bash"># Full-text search
-hxc query --search "machine learning"
+        <pre><code class="language-bash"># Full-text search in title and description
+hxc list --query "AI-Powered"
 
-# Tag filters (AND logic)
-hxc query --tags ai,python
+# Tag filters
+hxc list --tag production
 
-# Tag filters (OR logic)
-hxc query --any-tags ai,ml,data
-
-# Date range
-hxc query projects \
-  --status active \
-  --due-before 2024-12-31
 
 # Overdue projects
-hxc query projects \
-  --status active \
-  --due-before $(date +%Y-%m-%d)</code></pre>
+hxc list project --status active </code></pre>
       </section>
 
       <section id="registry-path" class="doc-section">
@@ -283,17 +274,8 @@ hxc registry path --set /path/to/my-registry
 
 # View current registry
 hxc registry path
-
-# Override per-command
-hxc list projects --registry /path/to/other-registry</code></pre>
-        <div class="info-box">
-          <h4>Registry discovery order</h4>
-          <ol>
-            <li>Current directory</li>
-            <li>Parent directories (up to filesystem root)</li>
-            <li><code>~/.hxc/registry</code></li>
-          </ol>
-        </div>
+</code></pre>
+      
       </section>
 
       <section id="next-steps" class="doc-section">
