@@ -193,29 +193,57 @@ hxc create project --template software-project</code></pre>
       <section id="list" class="doc-section">
         <h2>hxc list</h2>
         <p>List entities in the registry.</p>
-        <pre><code class="language-bash">hxc list {programs|projects|missions|actions|all} [OPTIONS]</code></pre>
+        <pre><code class="language-bash">hxc list [{program|project|mission|action|all}] [OPTIONS]</code></pre>
+        <h3>Arguments</h3>
+        <div class="table-wrap">
+          <table class="doc-table">
+            <thead><tr><th>Argument</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>type</code></td><td>Type of items to list: <code>program</code>, <code>project</code>, <code>mission</code>, <code>action</code>, or <code>all</code> (default: <code>project</code>)</td></tr>
+            </tbody>
+          </table>
+        </div>
         <h3>Options</h3>
         <div class="table-wrap">
           <table class="doc-table">
             <thead><tr><th>Flag</th><th>Description</th></tr></thead>
             <tbody>
-              <tr><td><code>--status STATUS</code></td><td>Filter by status</td></tr>
-              <tr><td><code>--tags TEXT</code></td><td>Filter: all listed tags must be present (AND)</td></tr>
-              <tr><td><code>--any-tags TEXT</code></td><td>Filter: any listed tag present (OR)</td></tr>
-              <tr><td><code>--category TEXT</code></td><td>Filter by category prefix</td></tr>
-              <tr><td><code>--parent UID</code></td><td>Filter by parent entity</td></tr>
-              <tr><td><code>--sort FIELD</code></td><td>Sort by field: title, status, created, updated, due</td></tr>
-              <tr><td><code>--desc</code></td><td>Reverse sort order</td></tr>
-              <tr><td><code>--limit N</code></td><td>Maximum results to return</td></tr>
-              <tr><td><code>--output json|yaml|table</code></td><td>Output format</td></tr>
+              <tr><td><code>--status {active,completed,on-hold,cancelled,planned,any}</code></td><td>Filter by status (default: any)</td></tr>
+              <tr><td><code>--tag, --tags TAGS</code></td><td>Filter by tag — can be used multiple times</td></tr>
+              <tr><td><code>--category CATEGORY</code></td><td>Filter by category</td></tr>
+              <tr><td><code>--parent PARENT</code></td><td>Filter by parent ID</td></tr>
+              <tr><td><code>--id ID</code></td><td>Filter by ID or UID</td></tr>
+              <tr><td><code>--query, -q QUERY</code></td><td>Search in title and description</td></tr>
+              <tr><td><code>--before BEFORE</code></td><td>Filter items with due date before YYYY-MM-DD</td></tr>
+              <tr><td><code>--after AFTER</code></td><td>Filter items with due date after YYYY-MM-DD</td></tr>
+              <tr><td><code>--max, -m MAX</code></td><td>Maximum number of items to show (0 for all)</td></tr>
+              <tr><td><code>--sort {title,id,due_date,status,created,modified}</code></td><td>Sort items by field (default: title)</td></tr>
+              <tr><td><code>--desc</code></td><td>Sort in descending order</td></tr>
+              <tr><td><code>--format {table,yaml,json,id,pretty}</code></td><td>Output format (default: table)</td></tr>
             </tbody>
           </table>
         </div>
         <h3>Examples</h3>
-        <pre><code class="language-bash">hxc list projects
-hxc list all --status active
-hxc list projects --tags ai,python --sort due
-hxc list projects --category software.dev --output json</code></pre>
+        <pre><code class="language-bash"># List all projects (default type)
+hxc list
+ 
+# List all programs
+hxc list program
+ 
+# List active projects
+hxc list project --status active
+ 
+# Filter by tag (repeatable)
+hxc list project --tag ai --tag python
+ 
+# Search in title and description
+hxc list all --query "machine learning"
+ 
+# Filter by due date range and sort
+hxc list project --before 2024-12-31 --sort due_date
+ 
+# Output as JSON, limit to 10 results
+hxc list all --format json --max 10</code></pre>
       </section>
 
       <section id="show" class="doc-section">
