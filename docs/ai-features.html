@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AI Features — HoxCore Documentation</title>
-  <meta name="description" content="Connect LLMs to your HoxCore registry via the built-in MCP server. Expose tools, resources, and prompts to AI assistants like Claude.">
+  <meta name="description" content="Connect LLMs to your HoxCore registry via the built-in MCP server. Expose tools, resources, and prompts to AI assistants.">
   <link rel="canonical" href="https://sdescobedo.github.io/hoxcore/ai-features.html">
   <meta property="og:title" content="AI Features — HoxCore Documentation">
   <meta property="og:description" content="Connect LLMs to your HoxCore registry via the built-in MCP server.">
@@ -71,7 +71,7 @@
       <ul class="sidebar-nav">
         <li><a href="#overview">Overview</a></li>
         <li><a href="#starting-the-server">Starting the Server</a></li>
-        <li><a href="#connecting-to-claude">Connecting to Claude</a></li>
+        <li><a href="#connecting-clients">Connecting MCP Clients</a></li>
         <li><a href="#tools">Available Tools</a></li>
         <li><a href="#resources">Available Resources</a></li>
         <li><a href="#prompts">Available Prompts</a></li>
@@ -88,33 +88,36 @@
       <!-- OVERVIEW -->
       <section id="overview" class="doc-section">
         <h2>Overview</h2>
-        <p>HoxCore's primary AI integration is a built-in <strong>MCP (Model Context Protocol) server</strong>. MCP is an open standard that lets LLM clients — such as Claude Desktop — connect to external tools and data sources. When the HoxCore MCP server is running, an AI assistant can query, search, and inspect your registry in real time, without you having to copy-paste YAML files manually.</p>
+        <p>HoxCore's primary AI integration is a built-in <strong>MCP (Model Context Protocol) server</strong>. MCP is an open standard that lets LLM clients connect to external tools and data sources. When the HoxCore MCP server is running, an AI assistant can query, search, and inspect your registry in real time, without you having to copy-paste YAML files manually.</p>
 
         <p>There are two ways HoxCore works with AI:</p>
         <ul>
           <li><strong>Active (MCP)</strong> — Start the MCP server and connect a compatible LLM client. The assistant can call tools, read resources, and use prompt templates to interact with your registry dynamically.</li>
-          <li><strong>Passive (YAML context)</strong> — Export entity YAML with <code>hxc show --raw</code> and paste it directly into any LLM chat window. No server required.</li>
+          <li><strong>Passive (YAML context)</strong> — Export entity YAML with <code>hxc show &lt;identifier&gt; --raw</code> and paste it directly into any LLM chat window. No server required.</li>
         </ul>
 
         <div class="info-box">
           <h4>What is MCP?</h4>
-          <p>The Model Context Protocol is an open standard created by Anthropic that allows AI assistants to securely connect to external data sources and tools through a standardized interface. Think of it as a plugin system for LLMs.</p>
+          <p>The Model Context Protocol is an open standard that allows AI assistants to securely connect to external data sources and tools through a standardized interface. Think of it as a plugin system for LLMs. Any MCP-compatible client — Claude Desktop, LM Studio, Cursor, Continue, and others — can connect to the HoxCore server using the same interface.</p>
         </div>
       </section>
 
       <!-- STARTING THE SERVER -->
       <section id="starting-the-server" class="doc-section">
         <h2>Starting the Server</h2>
-        <p>HoxCore ships with a dedicated MCP entry point: <code>hxc-mcp</code>. It communicates over <code>stdio</code>, which is what most MCP-compatible clients expect.</p>
+        <p>The MCP server is started with the <code>hxc mcp</code> subcommand. It communicates over <code>stdio</code>, the transport expected by most MCP-compatible clients. A standalone alias <code>hxc-mcp</code> is also installed and behaves identically.</p>
 
         <pre><code class="language-bash"># Start with the default or configured registry
-hxc-mcp
+hxc mcp
 
 # Start with a specific registry path
-hxc-mcp --registry /path/to/your/registry
+hxc mcp --registry /path/to/your/registry
 
 # Specify transport explicitly (only stdio is supported currently)
-hxc-mcp --transport stdio</code></pre>
+hxc mcp --transport stdio
+
+# Show server capabilities (tools, resources, prompts) and exit without starting
+hxc mcp --capabilities</code></pre>
 
         <p>You can also start the server programmatically from Python:</p>
         <pre><code class="language-python">from hxc.mcp.server import create_server
@@ -124,36 +127,70 @@ server.run_stdio()</code></pre>
 
         <div class="info-box">
           <h4>Registry discovery</h4>
-          <p>If <code>--registry</code> is not provided, the server resolves the registry path using the same order as the CLI: current directory → parent directories → <code>~/.hxc/registry</code>.</p>
+          <p>If <code>--registry</code> is not provided, the server resolves the registry path using the same order as the CLI: current directory → parent directories → configured default.</p>
         </div>
       </section>
 
-      <!-- CONNECTING TO CLAUDE -->
-      <section id="connecting-to-claude" class="doc-section">
-        <h2>Connecting to Claude</h2>
-        <p>To use HoxCore with Claude Desktop, add it to your MCP client configuration file (<code>claude_desktop_config.json</code>):</p>
+      <!-- CONNECTING MCP CLIENTS -->
+      <section id="connecting-clients" class="doc-section">
+        <h2>Connecting MCP Clients</h2>
+        <p>Any MCP-compatible client can connect to the HoxCore server using <code>stdio</code> transport. The server implements the <code>2024-11-05</code> version of the MCP protocol. Below are configuration examples for common clients.</p>
 
+        <h3>Claude Desktop</h3>
+        <p>Add HoxCore to your <code>claude_desktop_config.json</code>:</p>
         <pre><code class="language-json">{
   "mcpServers": {
     "hoxcore": {
-      "command": "hxc-mcp",
-      "args": ["--registry", "/path/to/your/registry"]
+      "command": "hxc",
+      "args": ["mcp", "--registry", "/path/to/your/registry"]
+    }
+  }
+}</code></pre>
+        <p>Restart Claude Desktop after saving. Claude will then have access to all HoxCore tools, resources, and prompts.</p>
+
+        <h3>LM Studio</h3>
+        <p>In LM Studio's Developer settings, add a new MCP server entry:</p>
+        <pre><code class="language-json">{
+  "name": "hoxcore",
+  "command": "hxc",
+  "args": ["mcp", "--registry", "/path/to/your/registry"],
+  "transport": "stdio"
+}</code></pre>
+
+        <h3>Cursor</h3>
+        <p>In your project's <code>.cursor/mcp.json</code> (or the global Cursor MCP config), add:</p>
+        <pre><code class="language-json">{
+  "mcpServers": {
+    "hoxcore": {
+      "command": "hxc",
+      "args": ["mcp", "--registry", "/path/to/your/registry"]
     }
   }
 }</code></pre>
 
-        <p>After saving the config and restarting Claude Desktop, Claude will have access to all HoxCore tools, resources, and prompts. You can then ask questions like:</p>
+        <h3>Continue (VS Code / JetBrains)</h3>
+        <p>In your <code>~/.continue/config.json</code>, add HoxCore under <code>mcpServers</code>:</p>
+        <pre><code class="language-json">{
+  "mcpServers": [
+    {
+      "name": "hoxcore",
+      "command": "hxc",
+      "args": ["mcp", "--registry", "/path/to/your/registry"],
+      "transport": "stdio"
+    }
+  ]
+}</code></pre>
+
+        <h3>Example prompts</h3>
+        <p>Once connected, you can ask your LLM assistant things like:</p>
         <ul>
           <li>"List all active projects in my registry."</li>
           <li>"What is the status of project P-001?"</li>
           <li>"Search for entities related to machine learning."</li>
-          <li>"Show me the tags on entity proj_abc123."</li>
+          <li>"Show me all projects due before the end of the month."</li>
+          <li>"What are the tags on entity proj_abc123?"</li>
+          <li>"Which projects are children of program prog_abc123?"</li>
         </ul>
-
-        <div class="info-box">
-          <h4>Other MCP-compatible clients</h4>
-          <p>Any MCP-compatible client can connect to the HoxCore server using the same <code>stdio</code> transport. The server implements the <code>2024-11-05</code> version of the MCP protocol.</p>
-        </div>
       </section>
 
       <!-- TOOLS -->
@@ -272,8 +309,8 @@ server.run_stdio()</code></pre>
   "by_status": {
     "active": 22,
     "completed": 10,
-    "on_hold": 4,
-    "archived": 3
+    "on-hold": 4,
+    "cancelled": 3
   },
   "tags": {
     "python": 9,
@@ -356,24 +393,30 @@ server.run_stdio()</code></pre>
         <p>Even without running the MCP server, your HoxCore YAML files are immediately useful as LLM context. Because HoxCore stores everything as human-readable YAML, you can feed entity data directly into any chat interface.</p>
 
         <h3>Export a single entity</h3>
-        <pre><code class="language-bash"># Print raw YAML to the terminal (then copy into a chat)
+        <pre><code class="language-bash"># Print raw YAML to the terminal, then copy into a chat
 hxc show P-001 --raw
 
-# Export as JSON for programmatic use
-hxc show P-001 --output json</code></pre>
+# Output as JSON
+hxc show P-001 --format json
 
-        <h3>Export multiple entities</h3>
-        <pre><code class="language-bash"># Export all active projects as Markdown
-hxc export projects --format markdown --status active > context.md
+# Output as YAML (structured, same as --raw but parsed and re-serialised)
+hxc show P-001 --format yaml</code></pre>
 
-# Export everything as JSON
-hxc export all --format json --output registry.json</code></pre>
+        <h3>Collect multiple entities</h3>
+        <pre><code class="language-bash"># List all active projects as JSON and redirect to a file
+hxc list project --status active --format json > context.json
+
+# List all entities as YAML
+hxc list all --format yaml > registry-snapshot.yml
+
+# Narrow by tag, output JSON
+hxc list project --tag ml --format json</code></pre>
 
         <h3>Programmatic use</h3>
         <pre><code class="language-python">import subprocess, json
 
 result = subprocess.run(
-    ["hxc", "show", "P-001", "--output", "json"],
+    ["hxc", "show", "P-001", "--format", "json"],
     capture_output=True, text=True
 )
 project = json.loads(result.stdout)
