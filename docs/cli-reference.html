@@ -96,10 +96,6 @@
           <table class="doc-table">
             <thead><tr><th>Flag</th><th>Description</th></tr></thead>
             <tbody>
-              <tr><td><code>--registry PATH</code></td><td>Override registry path for this command</td></tr>
-              <tr><td><code>--output json|yaml|table</code></td><td>Output format (default: table)</td></tr>
-              <tr><td><code>--no-color</code></td><td>Disable colored output</td></tr>
-              <tr><td><code>--quiet, -q</code></td><td>Suppress non-essential output</td></tr>
               <tr><td><code>--verbose, -v</code></td><td>Enable verbose output</td></tr>
               <tr><td><code>--version</code></td><td>Print version and exit</td></tr>
               <tr><td><code>--help, -h</code></td><td>Show help for command</td></tr>
@@ -111,13 +107,13 @@
       <section id="init" class="doc-section">
         <h2>hxc init</h2>
         <p>Initialize a new HoxCore registry in the specified directory.</p>
-        <pre><code class="language-bash">hxc init [PATH] [OPTIONS]</code></pre>
+        <pre><code class="language-bash">hxc init [path] [OPTIONS]</code></pre>
         <h3>Arguments</h3>
         <div class="table-wrap">
           <table class="doc-table">
             <thead><tr><th>Argument</th><th>Description</th></tr></thead>
             <tbody>
-              <tr><td><code>PATH</code></td><td>Directory to initialize (default: current directory)</td></tr>
+              <tr><td><code>path</code></td><td>Path to initialize registry (default: current directory)</td></tr>
             </tbody>
           </table>
         </div>
@@ -126,16 +122,28 @@
           <table class="doc-table">
             <thead><tr><th>Flag</th><th>Description</th></tr></thead>
             <tbody>
-              <tr><td><code>--name NAME</code></td><td>Registry name (used in config.yml)</td></tr>
-              <tr><td><code>--no-git</code></td><td>Skip Git initialization</td></tr>
-              <tr><td><code>--template NAME</code></td><td>Bootstrap from a registry template</td></tr>
+              <tr><td><code>--no-git</code></td><td>Skip Git repository initialization</td></tr>
+              <tr><td><code>--no-commit</code></td><td>Skip initial Git commit</td></tr>
+              <tr><td><code>--remote URL</code></td><td>Set Git remote repository URL</td></tr>
+              <tr><td><code>--no-set-default</code></td><td>Do not set this registry as the default</td></tr>
             </tbody>
           </table>
         </div>
         <h3>Examples</h3>
-        <pre><code class="language-bash">hxc init my-registry
-hxc init . --name "Personal Registry"
-hxc init work-projects --no-git</code></pre>
+        <pre><code class="language-bash"># Initialize in the current directory
+hxc init
+ 
+# Initialize in a specific path
+hxc init my-registry
+ 
+# Skip Git setup entirely
+hxc init ~/work-projects --no-git
+ 
+# Initialize with a remote and skip the initial commit
+hxc init . --remote https://github.com/user/registry.git --no-commit
+ 
+# Initialize without setting this registry as the default
+hxc init my-registry --no-set-default</code></pre>
       </section>
 
       <section id="create" class="doc-section">
