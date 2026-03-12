@@ -72,16 +72,14 @@
         <li><a href="#global-options">Global Options</a></li>
         <li><a href="#init">hxc init</a></li>
         <li><a href="#create">hxc create</a></li>
+        <li><a href="#delete">hxc delete</a></li>
         <li><a href="#list">hxc list</a></li>
         <li><a href="#show">hxc show</a></li>
-        <li><a href="#update">hxc update</a></li>
-        <li><a href="#delete">hxc delete</a></li>
-        <li><a href="#query">hxc query</a></li>
-        <li><a href="#template">hxc template</a></li>
+        <li><a href="#edit">hxc edit</a></li>
+        <li><a href="#get">hxc get</a></li>
         <li><a href="#registry">hxc registry</a></li>
         <li><a href="#validate">hxc validate</a></li>
-        <li><a href="#export">hxc export</a></li>
-        <li><a href="#stats">hxc stats</a></li>
+        <li><a href="#mcp">hxc mcp</a></li>
       </ul>
     </div>
   </aside>
@@ -149,287 +147,468 @@ hxc init my-registry --no-set-default</code></pre>
       <section id="create" class="doc-section">
         <h2>hxc create</h2>
         <p>Create a new entity in the registry.</p>
-        <pre><code class="language-bash">hxc create {program|project|mission|action} [OPTIONS]</code></pre>
+        <pre><code class="language-bash">hxc create {program|project|mission|action} title [OPTIONS]</code></pre>
+        <h3>Arguments</h3>
+        <div class="table-wrap">
+          <table class="doc-table">
+            <thead><tr><th>Argument</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>type</code></td><td>Type of entity to create: <code>program</code>, <code>project</code>, <code>mission</code>, or <code>action</code></td></tr>
+              <tr><td><code>title</code></td><td>Title of the entity (required)</td></tr>
+            </tbody>
+          </table>
+        </div>
         <h3>Options</h3>
         <div class="table-wrap">
           <table class="doc-table">
             <thead><tr><th>Flag</th><th>Description</th></tr></thead>
             <tbody>
-              <tr><td><code>--title TEXT</code></td><td>Entity title (required unless --interactive)</td></tr>
-              <tr><td><code>--id TEXT</code></td><td>Human-readable ID (e.g. P-001). Auto-generated if omitted.</td></tr>
-              <tr><td><code>--description TEXT</code></td><td>Description text</td></tr>
-              <tr><td><code>--status STATUS</code></td><td>Initial status (default: active)</td></tr>
-              <tr><td><code>--category TEXT</code></td><td>Category string</td></tr>
-              <tr><td><code>--tags TEXT</code></td><td>Comma-separated tags</td></tr>
-              <tr><td><code>--parent UID</code></td><td>Parent entity UID</td></tr>
-              <tr><td><code>--start-date DATE</code></td><td>Start date (YYYY-MM-DD)</td></tr>
-              <tr><td><code>--due-date DATE</code></td><td>Due date (projects only)</td></tr>
-              <tr><td><code>--template NAME</code></td><td>Bootstrap from a named template</td></tr>
-              <tr><td><code>--interactive, -i</code></td><td>Interactive prompt mode</td></tr>
-              <tr><td><code>--edit</code></td><td>Open in $EDITOR after creation</td></tr>
+              <tr><td><code>--id CUSTOM_ID</code></td><td>Custom ID for the entity (e.g., P-001). Auto-generated if omitted.</td></tr>
+              <tr><td><code>--description, -d DESCRIPTION</code></td><td>Description of the entity</td></tr>
+              <tr><td><code>--status {active,completed,on-hold,cancelled,planned}</code></td><td>Status of the entity (default: active)</td></tr>
+              <tr><td><code>--start-date START_DATE</code></td><td>Start date in YYYY-MM-DD format (default: today)</td></tr>
+              <tr><td><code>--due-date DUE_DATE</code></td><td>Due date in YYYY-MM-DD format</td></tr>
+              <tr><td><code>--category CATEGORY</code></td><td>Category path (e.g., software.dev/cli-tool)</td></tr>
+              <tr><td><code>--tags TAGS [TAGS ...]</code></td><td>List of tags (space-separated)</td></tr>
+              <tr><td><code>--parent PARENT</code></td><td>Parent entity UID or ID</td></tr>
+              <tr><td><code>--template TEMPLATE</code></td><td>Template to use (e.g., software.dev/cli-tool.default)</td></tr>
+              <tr><td><code>--registry REGISTRY</code></td><td>Path to registry (defaults to current or configured registry)</td></tr>
             </tbody>
           </table>
         </div>
         <h3>Examples</h3>
         <pre><code class="language-bash"># Minimal project
-hxc create project --title "New API"
-
+hxc create project "New API"
+ 
+# With custom ID and description
+hxc create project "GraphQL Migration" --id P-042 -d "Migrate REST endpoints to GraphQL"
+ 
 # Fully specified
-hxc create project \
-  --title "GraphQL Migration" \
+hxc create project "GraphQL Migration" \
   --id P-042 \
   --category software.dev/api \
-  --tags graphql,migration,backend \
+  --tags graphql migration backend \
   --parent prog_abc123 \
   --due-date 2024-12-31
-
-# Interactive mode
-hxc create project --interactive
-
-# From template
-hxc create project --template software-project</code></pre>
-      </section>
-
-      <section id="list" class="doc-section">
-        <h2>hxc list</h2>
-        <p>List entities in the registry.</p>
-        <pre><code class="language-bash">hxc list {programs|projects|missions|actions|all} [OPTIONS]</code></pre>
-        <h3>Options</h3>
-        <div class="table-wrap">
-          <table class="doc-table">
-            <thead><tr><th>Flag</th><th>Description</th></tr></thead>
-            <tbody>
-              <tr><td><code>--status STATUS</code></td><td>Filter by status</td></tr>
-              <tr><td><code>--tags TEXT</code></td><td>Filter: all listed tags must be present (AND)</td></tr>
-              <tr><td><code>--any-tags TEXT</code></td><td>Filter: any listed tag present (OR)</td></tr>
-              <tr><td><code>--category TEXT</code></td><td>Filter by category prefix</td></tr>
-              <tr><td><code>--parent UID</code></td><td>Filter by parent entity</td></tr>
-              <tr><td><code>--sort FIELD</code></td><td>Sort by field: title, status, created, updated, due</td></tr>
-              <tr><td><code>--desc</code></td><td>Reverse sort order</td></tr>
-              <tr><td><code>--limit N</code></td><td>Maximum results to return</td></tr>
-              <tr><td><code>--output json|yaml|table</code></td><td>Output format</td></tr>
-            </tbody>
-          </table>
-        </div>
-        <h3>Examples</h3>
-        <pre><code class="language-bash">hxc list projects
-hxc list all --status active
-hxc list projects --tags ai,python --sort due
-hxc list projects --category software.dev --output json</code></pre>
-      </section>
-
-      <section id="show" class="doc-section">
-        <h2>hxc show</h2>
-        <p>Display full details of a single entity.</p>
-        <pre><code class="language-bash">hxc show {UID|ID} [OPTIONS]</code></pre>
-        <h3>Options</h3>
-        <div class="table-wrap">
-          <table class="doc-table">
-            <thead><tr><th>Flag</th><th>Description</th></tr></thead>
-            <tbody>
-              <tr><td><code>--raw</code></td><td>Print raw YAML file contents</td></tr>
-              <tr><td><code>--history</code></td><td>Show Git commit history for this entity</td></tr>
-              <tr><td><code>--diff REF</code></td><td>Show diff against a Git ref (commit, branch, tag)</td></tr>
-            </tbody>
-          </table>
-        </div>
-        <h3>Examples</h3>
-        <pre><code class="language-bash">hxc show P-001
-hxc show proj_abc123def456
-hxc show P-001 --raw
-hxc show P-001 --history
-hxc show P-001 --diff HEAD~3</code></pre>
-      </section>
-
-      <section id="update" class="doc-section">
-        <h2>hxc update</h2>
-        <p>Update fields on an existing entity.</p>
-        <pre><code class="language-bash">hxc update {UID|ID} [OPTIONS]</code></pre>
-        <h3>Options</h3>
-        <div class="table-wrap">
-          <table class="doc-table">
-            <thead><tr><th>Flag</th><th>Description</th></tr></thead>
-            <tbody>
-              <tr><td><code>--title TEXT</code></td><td>New title</td></tr>
-              <tr><td><code>--description TEXT</code></td><td>New description</td></tr>
-              <tr><td><code>--status STATUS</code></td><td>New status</td></tr>
-              <tr><td><code>--category TEXT</code></td><td>New category</td></tr>
-              <tr><td><code>--add-tags TEXT</code></td><td>Comma-separated tags to add</td></tr>
-              <tr><td><code>--remove-tags TEXT</code></td><td>Comma-separated tags to remove</td></tr>
-              <tr><td><code>--set-tags TEXT</code></td><td>Replace all tags with this list</td></tr>
-              <tr><td><code>--parent UID</code></td><td>Set parent entity UID</td></tr>
-              <tr><td><code>--due-date DATE</code></td><td>Set due date</td></tr>
-              <tr><td><code>--completion-date DATE</code></td><td>Set completion date</td></tr>
-              <tr><td><code>--edit</code></td><td>Open in $EDITOR</td></tr>
-            </tbody>
-          </table>
-        </div>
-        <h3>Examples</h3>
-        <pre><code class="language-bash">hxc update P-001 --status completed
-hxc update P-001 --add-tags production,deployed
-hxc update P-001 --edit
-hxc update P-001 --status completed --completion-date 2024-06-30</code></pre>
+ 
+# Create a mission from a template
+hxc create mission "Q4 Launch" --template software.dev/cli-tool.default
+ 
+# Target a specific registry
+hxc create program "Platform Team" --registry ~/registries/work</code></pre>
       </section>
 
       <section id="delete" class="doc-section">
         <h2>hxc delete</h2>
         <p>Delete an entity from the registry. The file is removed and the deletion is committed to Git.</p>
-        <pre><code class="language-bash">hxc delete {UID|ID} [OPTIONS]</code></pre>
+        <pre><code class="language-bash">hxc delete identifier [OPTIONS]</code></pre>
         <div class="warning-box">
           <h4>Prefer archiving over deletion</h4>
-          <p>Deleting an entity removes its UID from the registry, which may break references in other entities. Consider <code>hxc update P-001 --status archived</code> instead to preserve history and referential integrity.</p>
+          <p>Deleting an entity removes its UID from the registry, which may break references in other entities. Consider setting the status to <code>cancelled</code> or <code>completed</code> instead to preserve history and referential integrity.</p>
+        </div>
+        <h3>Arguments</h3>
+        <div class="table-wrap">
+          <table class="doc-table">
+            <thead><tr><th>Argument</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>identifier</code></td><td>ID or UID of the entity to delete</td></tr>
+            </tbody>
+          </table>
         </div>
         <h3>Options</h3>
         <div class="table-wrap">
           <table class="doc-table">
             <thead><tr><th>Flag</th><th>Description</th></tr></thead>
             <tbody>
+              <tr><td><code>--type, -t {program,project,mission,action}</code></td><td>Type of entity to delete — only needed if the identifier is ambiguous</td></tr>
               <tr><td><code>--force, -f</code></td><td>Skip confirmation prompt</td></tr>
-              <tr><td><code>--message TEXT</code></td><td>Custom Git commit message</td></tr>
+              <tr><td><code>--registry REGISTRY</code></td><td>Path to registry (defaults to current or configured registry)</td></tr>
             </tbody>
           </table>
         </div>
         <h3>Examples</h3>
-        <pre><code class="language-bash">hxc delete P-001
-hxc delete proj_abc123 --force</code></pre>
+        <pre><code class="language-bash"># Delete by ID (with confirmation prompt)
+hxc delete P-001
+ 
+# Delete by UID, skip confirmation
+hxc delete proj_abc123 --force
+ 
+# Disambiguate when the same ID exists across types
+hxc delete P-001 --type project
+ 
+# Target a specific registry
+hxc delete P-001 --force --registry ~/registries/work</code></pre>
       </section>
 
-      <section id="query" class="doc-section">
-        <h2>hxc query</h2>
-        <p>Advanced search and filtering across all entities.</p>
-        <pre><code class="language-bash">hxc query [TYPE] [OPTIONS]</code></pre>
+      <section id="list" class="doc-section">
+        <h2>hxc list</h2>
+        <p>List entities in the registry.</p>
+        <pre><code class="language-bash">hxc list [{program|project|mission|action|all}] [OPTIONS]</code></pre>
+        <h3>Arguments</h3>
+        <div class="table-wrap">
+          <table class="doc-table">
+            <thead><tr><th>Argument</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>type</code></td><td>Type of items to list: <code>program</code>, <code>project</code>, <code>mission</code>, <code>action</code>, or <code>all</code> (default: <code>project</code>)</td></tr>
+            </tbody>
+          </table>
+        </div>
         <h3>Options</h3>
         <div class="table-wrap">
           <table class="doc-table">
             <thead><tr><th>Flag</th><th>Description</th></tr></thead>
             <tbody>
-              <tr><td><code>--search TEXT</code></td><td>Full-text search across title, description, tags</td></tr>
-              <tr><td><code>--tags TEXT</code></td><td>All tags must match (AND)</td></tr>
-              <tr><td><code>--any-tags TEXT</code></td><td>Any tag must match (OR)</td></tr>
-              <tr><td><code>--status STATUS</code></td><td>Status filter</td></tr>
-              <tr><td><code>--category TEXT</code></td><td>Category prefix filter</td></tr>
-              <tr><td><code>--due-before DATE</code></td><td>Due date before (YYYY-MM-DD)</td></tr>
-              <tr><td><code>--due-after DATE</code></td><td>Due date after (YYYY-MM-DD)</td></tr>
-              <tr><td><code>--created-before DATE</code></td><td>Created before date</td></tr>
-              <tr><td><code>--created-after DATE</code></td><td>Created after date</td></tr>
-              <tr><td><code>--has-tag TEXT</code></td><td>Entity has this specific tag</td></tr>
-              <tr><td><code>--parent UID</code></td><td>Entities with this parent</td></tr>
+              <tr><td><code>--status {active,completed,on-hold,cancelled,planned,any}</code></td><td>Filter by status (default: any)</td></tr>
+              <tr><td><code>--tag, --tags TAGS</code></td><td>Filter by tag — can be used multiple times</td></tr>
+              <tr><td><code>--category CATEGORY</code></td><td>Filter by category</td></tr>
+              <tr><td><code>--parent PARENT</code></td><td>Filter by parent ID</td></tr>
+              <tr><td><code>--id ID</code></td><td>Filter by ID or UID</td></tr>
+              <tr><td><code>--query, -q QUERY</code></td><td>Search in title and description</td></tr>
+              <tr><td><code>--before BEFORE</code></td><td>Filter items with due date before YYYY-MM-DD</td></tr>
+              <tr><td><code>--after AFTER</code></td><td>Filter items with due date after YYYY-MM-DD</td></tr>
+              <tr><td><code>--max, -m MAX</code></td><td>Maximum number of items to show (0 for all)</td></tr>
+              <tr><td><code>--sort {title,id,due_date,status,created,modified}</code></td><td>Sort items by field (default: title)</td></tr>
+              <tr><td><code>--desc</code></td><td>Sort in descending order</td></tr>
+              <tr><td><code>--format {table,yaml,json,id,pretty}</code></td><td>Output format (default: table)</td></tr>
             </tbody>
           </table>
         </div>
         <h3>Examples</h3>
-        <pre><code class="language-bash"># Find all active AI projects
-hxc query projects --tags ai --status active
-
-# Find overdue items
-hxc query --status active --due-before $(date +%Y-%m-%d)
-
-# Full-text search
-hxc query --search "machine learning"
-
-# Combine filters
-hxc query projects \
-  --status active \
-  --category software.dev \
-  --due-before 2024-12-31 \
-  --output json</code></pre>
+        <pre><code class="language-bash"># List all projects (default type)
+hxc list
+ 
+# List all programs
+hxc list program
+ 
+# List active projects
+hxc list project --status active
+ 
+# Filter by tag (repeatable)
+hxc list project --tag ai --tag python
+ 
+# Search in title and description
+hxc list all --query "machine learning"
+ 
+# Filter by due date range and sort
+hxc list project --before 2024-12-31 --sort due_date
+ 
+# Output as JSON, limit to 10 results
+hxc list all --format json --max 10</code></pre>
       </section>
 
-      <section id="template" class="doc-section">
-        <h2>hxc template</h2>
-        <p>Manage and apply entity templates.</p>
-        <pre><code class="language-bash">hxc template {list|show|apply|create} [OPTIONS]</code></pre>
-        <h3>Subcommands</h3>
+      <section id="show" class="doc-section">
+        <h2>hxc show</h2>
+        <p>Display the full details of a single entity.</p>
+        <pre><code class="language-bash">hxc show identifier [OPTIONS]</code></pre>
+        <h3>Arguments</h3>
         <div class="table-wrap">
           <table class="doc-table">
-            <thead><tr><th>Subcommand</th><th>Description</th></tr></thead>
+            <thead><tr><th>Argument</th><th>Description</th></tr></thead>
             <tbody>
-              <tr><td><code>hxc template list</code></td><td>List available templates</td></tr>
-              <tr><td><code>hxc template show NAME</code></td><td>Display template definition</td></tr>
-              <tr><td><code>hxc template apply NAME</code></td><td>Apply template to create entity</td></tr>
-              <tr><td><code>hxc template create --from UID</code></td><td>Create template from existing entity</td></tr>
+              <tr><td><code>identifier</code></td><td>ID or UID of the entity to show</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3>Options</h3>
+        <div class="table-wrap">
+          <table class="doc-table">
+            <thead><tr><th>Flag</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>--type {program,project,mission,action}</code></td><td>Entity type — if not specified, all types will be searched</td></tr>
+              <tr><td><code>--format {pretty,yaml,json}</code></td><td>Output format (default: pretty)</td></tr>
+              <tr><td><code>--raw</code></td><td>Display raw file content without processing</td></tr>
+              <tr><td><code>--registry REGISTRY</code></td><td>Path to registry (defaults to current or configured registry)</td></tr>
             </tbody>
           </table>
         </div>
         <h3>Examples</h3>
-        <pre><code class="language-bash">hxc template list
-hxc template show software-project
-hxc template apply software-project --title "New Service"
-hxc template create --from P-001 --name my-project-template</code></pre>
+        <pre><code class="language-bash"># Show entity with default pretty formatting
+hxc show P-001
+hxc show proj_abc123def456
+ 
+# Output as YAML or JSON
+hxc show P-001 --format yaml
+hxc show P-001 --format json
+ 
+# Display raw file content
+hxc show P-001 --raw
+ 
+# Disambiguate type and target a specific registry
+hxc show P-001 --type project --registry ~/registries/work</code></pre>
+      </section>
+
+      <section id="edit" class="doc-section">
+        <h2>hxc edit</h2>
+        <p>Edit properties of an existing entity. All changes are applied atomically and committed to Git.</p>
+        <pre><code class="language-bash">hxc edit identifier [OPTIONS]</code></pre>
+        <h3>Arguments</h3>
+        <div class="table-wrap">
+          <table class="doc-table">
+            <thead><tr><th>Argument</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>identifier</code></td><td>ID or UID of the entity to edit</td></tr>
+            </tbody>
+          </table>
+        </div>
+ 
+        <h3>General options</h3>
+        <div class="table-wrap">
+          <table class="doc-table">
+            <thead><tr><th>Flag</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>--type, -t {program,project,mission,action}</code></td><td>Entity type — only needed if the identifier is ambiguous</td></tr>
+              <tr><td><code>--registry REGISTRY</code></td><td>Path to registry (defaults to current or configured registry)</td></tr>
+              <tr><td><code>--dry-run</code></td><td>Show what would be changed without modifying the file</td></tr>
+            </tbody>
+          </table>
+        </div>
+ 
+        <h3>Scalar fields</h3>
+        <div class="table-wrap">
+          <table class="doc-table">
+            <thead><tr><th>Flag</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>--set-title VALUE</code></td><td>Set title</td></tr>
+              <tr><td><code>--set-description VALUE</code></td><td>Set description</td></tr>
+              <tr><td><code>--set-status VALUE</code></td><td>Set status</td></tr>
+              <tr><td><code>--set-id VALUE</code></td><td>Set custom ID</td></tr>
+              <tr><td><code>--set-start-date YYYY-MM-DD</code></td><td>Set start date</td></tr>
+              <tr><td><code>--set-due-date YYYY-MM-DD</code></td><td>Set due date</td></tr>
+              <tr><td><code>--set-completion-date YYYY-MM-DD</code></td><td>Set completion date</td></tr>
+              <tr><td><code>--set-duration-estimate VALUE</code></td><td>Set duration estimate (e.g., 90d, 3w)</td></tr>
+              <tr><td><code>--set-category VALUE</code></td><td>Set category</td></tr>
+              <tr><td><code>--set-parent UID</code></td><td>Set parent UID</td></tr>
+              <tr><td><code>--set-template VALUE</code></td><td>Set template</td></tr>
+            </tbody>
+          </table>
+        </div>
+ 
+        <h3>Tags</h3>
+        <div class="table-wrap">
+          <table class="doc-table">
+            <thead><tr><th>Flag</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>--add-tag TAG</code></td><td>Add a tag (can be used multiple times)</td></tr>
+              <tr><td><code>--remove-tag TAG</code></td><td>Remove a tag (can be used multiple times)</td></tr>
+              <tr><td><code>--set-tags TAG [TAG ...]</code></td><td>Replace all existing tags</td></tr>
+            </tbody>
+          </table>
+        </div>
+ 
+        <h3>Relationships</h3>
+        <div class="table-wrap">
+          <table class="doc-table">
+            <thead><tr><th>Flag</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>--add-child UID</code></td><td>Add a child UID</td></tr>
+              <tr><td><code>--remove-child UID</code></td><td>Remove a child UID</td></tr>
+              <tr><td><code>--set-children UID [UID ...]</code></td><td>Replace all child UIDs</td></tr>
+              <tr><td><code>--add-related UID</code></td><td>Add a related UID</td></tr>
+              <tr><td><code>--remove-related UID</code></td><td>Remove a related UID</td></tr>
+              <tr><td><code>--set-related UID [UID ...]</code></td><td>Replace all related UIDs</td></tr>
+            </tbody>
+          </table>
+        </div>
+ 
+        <h3>Integrations</h3>
+        <div class="table-wrap">
+          <table class="doc-table">
+            <thead><tr><th>Flag</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>--add-repository NAME:URL</code></td><td>Add a repository (format: name:url)</td></tr>
+              <tr><td><code>--remove-repository NAME</code></td><td>Remove a repository by name</td></tr>
+              <tr><td><code>--add-storage NAME:PROVIDER:URL</code></td><td>Add a storage entry (format: name:provider:url)</td></tr>
+              <tr><td><code>--remove-storage NAME</code></td><td>Remove a storage entry by name</td></tr>
+              <tr><td><code>--add-database NAME:TYPE:URL</code></td><td>Add a database (format: name:type:url)</td></tr>
+              <tr><td><code>--remove-database NAME</code></td><td>Remove a database by name</td></tr>
+              <tr><td><code>--add-tool NAME:PROVIDER:URL</code></td><td>Add a tool (format: name:provider:url)</td></tr>
+              <tr><td><code>--remove-tool NAME</code></td><td>Remove a tool by name</td></tr>
+              <tr><td><code>--add-model ID:PROVIDER:URL</code></td><td>Add a model (format: id:provider:url)</td></tr>
+              <tr><td><code>--remove-model ID</code></td><td>Remove a model by ID</td></tr>
+              <tr><td><code>--add-kb ID:URL</code></td><td>Add a knowledge base (format: id:url)</td></tr>
+              <tr><td><code>--remove-kb ID</code></td><td>Remove a knowledge base by ID</td></tr>
+            </tbody>
+          </table>
+        </div>
+ 
+        <h3>Examples</h3>
+        <pre><code class="language-bash"># Set scalar fields
+hxc edit P-001 --set-status completed --set-completion-date 2024-06-30
+ 
+# Preview changes without saving
+hxc edit P-001 --set-title "Revised Title" --dry-run
+ 
+# Tag operations
+hxc edit P-001 --add-tag production --add-tag deployed
+hxc edit P-001 --remove-tag wip
+hxc edit P-001 --set-tags python cli backend
+ 
+# Relationship operations
+hxc edit P-001 --add-child proj_abc123 --add-related proj_def456
+ 
+# Integration operations
+hxc edit P-001 --add-repository main:https://github.com/org/repo
+hxc edit P-001 --add-tool jira:atlassian:https://org.atlassian.net
+hxc edit P-001 --remove-repository legacy
+ 
+# Disambiguate type and target a specific registry
+hxc edit P-001 --type project --registry ~/registries/work</code></pre>
+      </section>
+
+      <section id="get" class="doc-section">
+        <h2>hxc get</h2>
+        <p>Retrieve a specific property value from an entity. Useful for scripting and piping output.</p>
+        <pre><code class="language-bash">hxc get identifier property [OPTIONS]</code></pre>
+        <h3>Arguments</h3>
+        <div class="table-wrap">
+          <table class="doc-table">
+            <thead><tr><th>Argument</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>identifier</code></td><td>ID or UID of the entity</td></tr>
+              <tr><td><code>property</code></td><td>Property name to retrieve (e.g., <code>title</code>, <code>status</code>, <code>tags</code>, <code>all</code>)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3>Options</h3>
+        <div class="table-wrap">
+          <table class="doc-table">
+            <thead><tr><th>Flag</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>--type, -t {program,project,mission,action}</code></td><td>Entity type — only needed if the identifier is ambiguous</td></tr>
+              <tr><td><code>--format, -f {raw,yaml,json,pretty}</code></td><td>Output format (default: raw)</td></tr>
+              <tr><td><code>--index INDEX</code></td><td>For list properties, get the item at a specific index</td></tr>
+              <tr><td><code>--key KEY</code></td><td>For complex properties, filter by key:value (e.g., <code>name:github</code>)</td></tr>
+              <tr><td><code>--registry REGISTRY</code></td><td>Path to registry (defaults to current or configured registry)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3>Examples</h3>
+        <pre><code class="language-bash"># Get a scalar property
+hxc get P-001 title
+hxc get P-001 status
+ 
+# Get all properties as YAML
+hxc get P-001 all --format yaml
+ 
+# Get a list property as JSON
+hxc get P-001 tags --format json
+ 
+# Get the first tag by index
+hxc get P-001 tags --index 0
+ 
+# Filter a complex list property by key
+hxc get P-001 repositories --key name:github
+ 
+# Disambiguate type and target a specific registry
+hxc get P-001 title --type project --registry ~/registries/work</code></pre>
       </section>
 
       <section id="registry" class="doc-section">
         <h2>hxc registry</h2>
-        <p>Manage registry configuration and paths.</p>
-        <pre><code class="language-bash">hxc registry {path|config|validate} [OPTIONS]</code></pre>
+        <p>Manage registry locations.</p>
+        <pre><code class="language-bash">hxc registry {path|list} [OPTIONS]</code></pre>
         <h3>Subcommands</h3>
         <div class="table-wrap">
           <table class="doc-table">
             <thead><tr><th>Subcommand</th><th>Description</th></tr></thead>
             <tbody>
-              <tr><td><code>hxc registry path</code></td><td>Show current registry path</td></tr>
-              <tr><td><code>hxc registry path --set PATH</code></td><td>Set default registry path in ~/.hxc/config</td></tr>
-              <tr><td><code>hxc registry config</code></td><td>Show registry config.yml</td></tr>
-              <tr><td><code>hxc registry validate</code></td><td>Validate all entity files</td></tr>
+              <tr><td><code>hxc registry path</code></td><td>Get or set the registry path</td></tr>
+              <tr><td><code>hxc registry list</code></td><td>List all known registries</td></tr>
             </tbody>
           </table>
         </div>
+        <h3>hxc registry path options</h3>
+        <div class="table-wrap">
+          <table class="doc-table">
+            <thead><tr><th>Flag</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>--set PATH</code></td><td>Set the registry path</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3>Examples</h3>
+        <pre><code class="language-bash"># Show the current registry path
+hxc registry path
+ 
+# Set the default registry path
+hxc registry path --set /path/to/my-registry
+ 
+# List all known registries
+hxc registry list</code></pre>
       </section>
 
       <section id="validate" class="doc-section">
         <h2>hxc validate</h2>
-        <p>Validate entity YAML files against the schema.</p>
-        <pre><code class="language-bash">hxc validate [PATH] [OPTIONS]</code></pre>
+        <p>Validate registry integrity and consistency — checks required fields, UID uniqueness, relationships, status values, and entity types.</p>
+        <pre><code class="language-bash">hxc validate [OPTIONS]</code></pre>
+        <div class="info-box">
+          <h4>Read-only operation</h4>
+          <p><code>hxc validate</code> never modifies any files. The <code>--fix</code> flag is accepted but not yet implemented.</p>
+        </div>
         <h3>Options</h3>
         <div class="table-wrap">
           <table class="doc-table">
             <thead><tr><th>Flag</th><th>Description</th></tr></thead>
             <tbody>
-              <tr><td><code>--strict</code></td><td>Treat warnings as errors</td></tr>
-              <tr><td><code>--fix</code></td><td>Auto-fix safe issues (e.g. missing updated_at)</td></tr>
+              <tr><td><code>--verbose, -v</code></td><td>Show detailed validation information for each check</td></tr>
+              <tr><td><code>--fix</code></td><td>Not yet implemented — accepted but has no effect</td></tr>
+              <tr><td><code>--registry REGISTRY</code></td><td>Path to registry (defaults to current or configured registry)</td></tr>
             </tbody>
           </table>
         </div>
-        <pre><code class="language-bash">hxc validate
-hxc validate projects/P-001.yaml
-hxc validate --strict</code></pre>
+        <h3>Examples</h3>
+        <pre><code class="language-bash"># Validate the current or configured registry
+hxc validate
+ 
+# Show detailed output for each check
+hxc validate --verbose
+ 
+# Validate a specific registry
+hxc validate --registry ~/registries/work</code></pre>
       </section>
 
-      <section id="export" class="doc-section">
-        <h2>hxc export</h2>
-        <p>Export registry data to various formats.</p>
-        <pre><code class="language-bash">hxc export [TYPE] [OPTIONS]</code></pre>
+
+      <section id="mcp" class="doc-section">
+        <h2>hxc mcp</h2>
+        <p>Start the Model Context Protocol (MCP) server, giving compatible LLM clients — such as Claude Desktop — live read access to your registry.</p>
+        <pre><code class="language-bash">hxc mcp [OPTIONS]</code></pre>
+        <div class="info-box">
+          <h4>stdio transport</h4>
+          <p>The server communicates over <code>stdio</code>, which is the standard expected by MCP-compatible clients. Only <code>stdio</code> is currently supported.</p>
+        </div>
         <h3>Options</h3>
         <div class="table-wrap">
           <table class="doc-table">
             <thead><tr><th>Flag</th><th>Description</th></tr></thead>
             <tbody>
-              <tr><td><code>--format json|csv|markdown</code></td><td>Export format</td></tr>
-              <tr><td><code>--output FILE</code></td><td>Write to file (default: stdout)</td></tr>
-              <tr><td><code>--status STATUS</code></td><td>Filter by status before export</td></tr>
-              <tr><td><code>--tags TEXT</code></td><td>Filter by tags before export</td></tr>
+              <tr><td><code>--registry REGISTRY</code></td><td>Path to the registry (defaults to current or configured registry)</td></tr>
+              <tr><td><code>--transport {stdio}</code></td><td>Transport protocol (default: stdio)</td></tr>
+              <tr><td><code>--capabilities</code></td><td>Show server capabilities and exit</td></tr>
             </tbody>
           </table>
         </div>
-        <pre><code class="language-bash">hxc export projects --format json --output projects.json
-hxc export all --format csv --output registry.csv
-hxc export projects --format markdown --status active</code></pre>
-      </section>
-
-      <section id="stats" class="doc-section">
-        <h2>hxc stats</h2>
-        <p>Show summary statistics for the registry.</p>
-        <pre><code class="language-bash">hxc stats [OPTIONS]</code></pre>
-        <pre><code class="language-text">HoxCore Registry — my-registry
-─────────────────────────────────────────
-Programs :  4   (2 active, 2 archived)
-Projects : 23   (14 active, 6 completed, 3 on_hold)
-Missions :  7   (3 active, 4 completed)
-Actions  :  5   (5 active)
-─────────────────────────────────────────
-Total    : 39   entities
-Tags     : 87   unique
-Last updated: 2024-07-15</code></pre>
+        <h3>Examples</h3>
+        <pre><code class="language-bash"># Start the MCP server using the default or configured registry
+hxc mcp
+ 
+# Start with a specific registry
+hxc mcp --registry ~/registries/work
+ 
+# Inspect available tools, resources, and prompts without starting
+hxc mcp --capabilities</code></pre>
+        <div class="info-box">
+          <h4>Connecting to Claude Desktop</h4>
+          <p>Add HoxCore to your <code>claude_desktop_config.json</code> to give Claude live access to your registry:</p>
+          <pre><code class="language-json">{
+  "mcpServers": {
+    "hoxcore": {
+      "command": "hxc",
+      "args": ["mcp", "--registry", "/path/to/your/registry"]
+    }
+  }
+}</code></pre>
+          <p>See the <a href="ai-features.html">AI Features</a> page for full integration details.</p>
+        </div>
       </section>
 
     </div>
