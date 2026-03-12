@@ -79,6 +79,7 @@
         <li><a href="#get">hxc get</a></li>
         <li><a href="#registry">hxc registry</a></li>
         <li><a href="#validate">hxc validate</a></li>
+        <li><a href="#mcp">hxc mcp</a></li>
       </ul>
     </div>
   </aside>
@@ -564,6 +565,50 @@ hxc validate --verbose
  
 # Validate a specific registry
 hxc validate --registry ~/registries/work</code></pre>
+      </section>
+
+
+      <section id="mcp" class="doc-section">
+        <h2>hxc mcp</h2>
+        <p>Start the Model Context Protocol (MCP) server, giving compatible LLM clients — such as Claude Desktop — live read access to your registry.</p>
+        <pre><code class="language-bash">hxc mcp [OPTIONS]</code></pre>
+        <div class="info-box">
+          <h4>stdio transport</h4>
+          <p>The server communicates over <code>stdio</code>, which is the standard expected by MCP-compatible clients. Only <code>stdio</code> is currently supported.</p>
+        </div>
+        <h3>Options</h3>
+        <div class="table-wrap">
+          <table class="doc-table">
+            <thead><tr><th>Flag</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>--registry REGISTRY</code></td><td>Path to the registry (defaults to current or configured registry)</td></tr>
+              <tr><td><code>--transport {stdio}</code></td><td>Transport protocol (default: stdio)</td></tr>
+              <tr><td><code>--capabilities</code></td><td>Show server capabilities and exit</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3>Examples</h3>
+        <pre><code class="language-bash"># Start the MCP server using the default or configured registry
+hxc mcp
+ 
+# Start with a specific registry
+hxc mcp --registry ~/registries/work
+ 
+# Inspect available tools, resources, and prompts without starting
+hxc mcp --capabilities</code></pre>
+        <div class="info-box">
+          <h4>Connecting to Claude Desktop</h4>
+          <p>Add HoxCore to your <code>claude_desktop_config.json</code> to give Claude live access to your registry:</p>
+          <pre><code class="language-json">{
+  "mcpServers": {
+    "hoxcore": {
+      "command": "hxc",
+      "args": ["mcp", "--registry", "/path/to/your/registry"]
+    }
+  }
+}</code></pre>
+          <p>See the <a href="ai-features.html">AI Features</a> page for full integration details.</p>
+        </div>
       </section>
 
     </div>
