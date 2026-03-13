@@ -167,21 +167,31 @@ HoxCore includes a built-in MCP server that exposes registry functionality to LL
 
 ```bash
 # Start with the default or configured registry
-hxc-mcp
+hxc mcp
 
 # Start with a specific registry path
-hxc-mcp --registry /path/to/your/registry
+hxc mcp --registry /path/to/your/registry
 
 # Specify transport (currently only stdio is supported)
-hxc-mcp --transport stdio
-```
+hxc mcp --transport stdio
 
+# Show server capabilities (tools, resources, prompts) without starting
+hxc mcp --capabilities
+
+# Start in read-only mode — write tools are not exposed to the LLM
+hxc mcp --read-only
+```
 You can also start the server programmatically:
 
 ```python
 from hxc.mcp.server import create_server
 
+# Normal mode (all tools)
 server = create_server(registry_path="/path/to/registry")
+server.run_stdio()
+
+# Read-only mode (write tools omitted)
+server = create_server(registry_path="/path/to/registry", read_only=True)
 server.run_stdio()
 ```
 
@@ -193,8 +203,20 @@ Add HoxCore to your MCP client configuration. For Claude Desktop, update your `c
 {
   "mcpServers": {
     "hoxcore": {
-      "command": "hxc-mcp",
-      "args": ["--registry", "/path/to/your/registry"]
+      "command": "hxc",
+      "args": ["mcp", "--registry", "/path/to/your/registry"]
+    }
+  }
+}
+```
+To restrict the assistant to read-only access, add `"--read-only"` to the args list:
+
+```json
+{
+  "mcpServers": {
+    "hoxcore": {
+      "command": "hxc",
+      "args": ["mcp", "--registry", "/path/to/your/registry", "--read-only"]
     }
   }
 }
@@ -202,14 +224,17 @@ Add HoxCore to your MCP client configuration. For Claude Desktop, update your `c
 
 ### Available Tools
 
-The MCP server exposes four tools that an LLM can call:
-
-| Tool | Description |
-|---|---|
-| `list_entities` | List entities in the registry, with optional filters for type, status, tags, category, and parent |
-| `get_entity` | Retrieve a specific entity by its ID or UID |
-| `search_entities` | Full-text search across entity titles and descriptions |
-| `get_entity_property` | Fetch a specific property from an entity, with support for list indexing and key filtering |
+The MCP server exposes tools that an LLM can call. By default all seven tools are available; start with `--read-only` to expose only the four read tools.
+ 
+| Tool | Type | Description |
+|---|---|---|
+| `list_entities` | Read | List entities in the registry, with optional filters for type, status, tags, category, and parent |
+| `get_entity` | Read | Retrieve a specific entity by its ID or UID |
+| `search_entities` | Read | Full-text search across entity titles and descriptions |
+| `get_entity_property` | Read | Fetch a specific property from an entity, with support for list indexing and key filtering |
+| `create_entity` | Write | Create a new entity (program, project, mission, or action) in the registry |
+| `edit_entity` | Write | Update scalar fields or incrementally add/remove tags on an existing entity |
+| `delete_entity` | Write | Delete an entity; requires a two-step confirmation (`force=false` first, then `force=true`) |
 
 ### Available Resources
 
