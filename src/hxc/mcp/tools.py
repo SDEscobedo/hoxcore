@@ -10,7 +10,7 @@ import yaml
 
 from hxc.commands.registry import RegistryCommand
 from hxc.utils.helpers import get_project_root
-from hxc.utils.path_security import resolve_safe_path, PathSecurityError
+from hxc.utils.path_security import get_safe_entity_path, resolve_safe_path, PathSecurityError
 from hxc.core.enums import EntityType, EntityStatus, SortField
 
 
@@ -511,6 +511,343 @@ def get_registry_stats_tool(
             "stats": None
         }
 
+
+# ─── WRITE TOOLS ────────────────────────────────────────────────────────────
+ 
+def create_entity_tool(
+    type: str,
+    title: str,
+    description: Optional[str] = None,
+    status: str = "active",
+    id: Optional[str] = None,
+    category: Optional[str] = None,
+    tags: Optional[List[str]] = None,
+    parent: Optional[str] = None,
+    start_date: Optional[str] = None,
+    due_date: Optional[str] = None,
+    registry_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Create a new entity (program, project, mission, or action) in the registry.
+ 
+    Args:
+        type: Entity type — one of program | project | mission | action
+        title: Human-readable title for the entity
+        description: Optional description
+        status: Initial status (default: active)
+        id: Optional custom human-readable ID (e.g. P-042)
+        category: Optional category path (e.g. software.dev/cli-tool)
+        tags: Optional list of tags
+        parent: Optional parent entity UID or ID
+        start_date: Optional start date in YYYY-MM-DD format (default: today)
+        due_date: Optional due date in YYYY-MM-DD format
+        registry_path: Optional registry path (uses default if not provided)
+ 
+    Returns:
+        Dictionary with uid, id, and file_path on success; error message on failure.
+    """
+    import uuid
+    import datetime
+    from hxc.utils.path_security import get_safe_entity_path
+ 
+    try:
+        entity_type = EntityType.from_string(type)
+        entity_status = EntityStatus.from_string(status)
+    except ValueError as e:
+        return {"success": False, "error": str(e)}
+ 
+    try:
+        reg_path = _get_registry_path(registry_path)
+        if not reg_path:
+            return {"success": False, "error": "No registry found"}
+ 
+        uid = str(uuid.uuid4())[:8]
+        today = datetime.date.today().isoformat()
+ 
+        entity_data: Dict[str, Any] = {
+            "type": entity_type.value,
+            "uid": uid,
+            "title": title,
+            "status": entity_status.value,
+            "start_date": start_date or today,
+        }
+ 
+        if id is not None:
+            entity_data["id"] = id
+        if description is not None:
+            entity_data["description"] = description
+        if category is not None:
+            entity_data["category"] = category
+        if tags:
+            entity_data["tags"] = tags
+        if parent is not None:
+            entity_data["parent"] = parent
+        if due_date is not None:
+            entity_data["due_date"] = due_date
+ 
+        file_prefix = entity_type.get_file_prefix()
+        file_name = f"{file_prefix}-{uid}.yml"
+ 
+        try:
+            file_path = get_safe_entity_path(reg_path, entity_type.value, file_name)
+        except PathSecurityError as e:
+            return {"success": False, "error": f"Security error: {e}"}
+        except ValueError as e:
+            return {"success": False, "error": f"Invalid entity type: {e}"}
+ 
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+ 
+        with open(file_path, "w") as f:
+            yaml.dump(entity_data, f, default_flow_style=False, sort_keys=False)
+ 
+        return {
+            "success": True,
+            "uid": uid,
+            "id": entity_data.get("id"),
+            "file_path": str(file_path),
+            "entity": entity_data,
+        }
+ 
+    except PathSecurityError as e:
+        return {"success": False, "error": f"Security error: {e}"}
+    except Exception as e:
+        return {"success": False, "error": f"Unexpected error: {e}"}
+ 
+ 
+def edit_entity_tool(
+    identifier: str,
+    set_title: Optional[str] = None,
+    set_description: Optional[str] = None,
+    set_status: Optional[str] = None,
+    set_id: Optional[str] = None,
+    set_category: Optional[str] = None,
+    set_parent: Optional[str] = None,
+    set_start_date: Optional[str] = None,
+    set_due_date: Optional[str] = None,
+    set_completion_date: Optional[str] = None,
+    add_tags: Optional[List[str]] = None,
+    remove_tags: Optional[List[str]] = None,
+    entity_type: Optional[str] = None,
+    registry_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Edit properties of an existing registry entity.
+ 
+    Args:
+        identifier: UID or human-readable ID of the entity to edit
+        set_title: New title value
+        set_description: New description value
+        set_status: New status value
+        set_id: New human-readable ID
+        set_category: New category path
+        set_parent: New parent UID or ID
+        set_start_date: New start date (YYYY-MM-DD)
+        set_due_date: New due date (YYYY-MM-DD)
+        set_completion_date: New completion date (YYYY-MM-DD)
+        add_tags: Tags to add
+        remove_tags: Tags to remove
+        entity_type: Optional type filter to disambiguate the identifier
+        registry_path: Optional registry path (uses default if not provided)
+ 
+    Returns:
+        Dictionary with updated entity on success; error message on failure.
+    """
+    try:
+        reg_path = _get_registry_path(registry_path)
+        if not reg_path:
+            return {"success": False, "error": "No registry found", "identifier": identifier}
+ 
+        entity_type_enum = None
+        if entity_type:
+            try:
+                entity_type_enum = EntityType.from_string(entity_type)
+            except ValueError as e:
+                return {"success": False, "error": str(e), "identifier": identifier}
+ 
+        file_path = _find_entity_file(reg_path, identifier, entity_type_enum)
+        if not file_path:
+            return {
+                "success": False,
+                "error": f"Entity not found: {identifier}",
+                "identifier": identifier,
+            }
+ 
+        try:
+            secure_file_path = resolve_safe_path(reg_path, file_path)
+            with open(secure_file_path, "r") as f:
+                entity_data = yaml.safe_load(f)
+        except PathSecurityError as e:
+            return {"success": False, "error": f"Security error: {e}", "identifier": identifier}
+ 
+        if not entity_data or not isinstance(entity_data, dict):
+            return {
+                "success": False,
+                "error": f"Invalid entity data for {identifier}",
+                "identifier": identifier,
+            }
+ 
+        changes: List[str] = []
+        # Track whether the caller specified any arguments at all (even no-ops)
+        anything_specified = False
+ 
+        # Scalar fields
+        scalar_mappings = {
+            "title": set_title,
+            "description": set_description,
+            "status": set_status,
+            "id": set_id,
+            "category": set_category,
+            "parent": set_parent,
+            "start_date": set_start_date,
+            "due_date": set_due_date,
+            "completion_date": set_completion_date,
+        }
+        for field, value in scalar_mappings.items():
+            if value is not None:
+                anything_specified = True
+                if field == "status":
+                    try:
+                        value = EntityStatus.from_string(value).value
+                    except ValueError as e:
+                        return {"success": False, "error": str(e), "identifier": identifier}
+                old = entity_data.get(field)
+                entity_data[field] = value
+                changes.append(f"Set {field}: {old!r} → {value!r}")
+ 
+        # Tag operations
+        if add_tags:
+            anything_specified = True
+            tags = entity_data.get("tags") or []
+            for tag in add_tags:
+                if tag not in tags:
+                    tags.append(tag)
+                    changes.append(f"Added tag: {tag!r}")
+            entity_data["tags"] = tags
+ 
+        if remove_tags:
+            anything_specified = True
+            tags = entity_data.get("tags") or []
+            for tag in remove_tags:
+                if tag in tags:
+                    tags.remove(tag)
+                    changes.append(f"Removed tag: {tag!r}")
+            entity_data["tags"] = tags
+ 
+        if not anything_specified:
+            return {
+                "success": False,
+                "error": "No changes specified",
+                "identifier": identifier,
+            }
+ 
+        try:
+            with open(secure_file_path, "w") as f:
+                yaml.dump(entity_data, f, default_flow_style=False, sort_keys=False)
+        except Exception as e:
+            return {"success": False, "error": f"Error writing changes: {e}", "identifier": identifier}
+ 
+        return {
+            "success": True,
+            "identifier": identifier,
+            "changes": changes,
+            "entity": entity_data,
+            "file_path": str(secure_file_path),
+        }
+ 
+    except PathSecurityError as e:
+        return {"success": False, "error": f"Security error: {e}", "identifier": identifier}
+    except Exception as e:
+        return {"success": False, "error": f"Unexpected error: {e}", "identifier": identifier}
+ 
+ 
+def delete_entity_tool(
+    identifier: str,
+    force: bool = False,
+    entity_type: Optional[str] = None,
+    registry_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Delete an entity from the registry.
+ 
+    When force is False (the default), returns a confirmation prompt and takes no
+    action. Call again with force=True to proceed with deletion.
+ 
+    Args:
+        identifier: UID or human-readable ID of the entity to delete
+        force: If False, returns a confirmation prompt without deleting.
+               Set True to confirm deletion.
+        entity_type: Optional type filter to disambiguate the identifier
+        registry_path: Optional registry path (uses default if not provided)
+ 
+    Returns:
+        Dictionary indicating success, or a confirmation_required flag when force is False.
+    """
+    import os
+ 
+    try:
+        reg_path = _get_registry_path(registry_path)
+        if not reg_path:
+            return {"success": False, "error": "No registry found", "identifier": identifier}
+ 
+        entity_type_enum = None
+        if entity_type:
+            try:
+                entity_type_enum = EntityType.from_string(entity_type)
+            except ValueError as e:
+                return {"success": False, "error": str(e), "identifier": identifier}
+ 
+        file_path = _find_entity_file(reg_path, identifier, entity_type_enum)
+        if not file_path:
+            return {
+                "success": False,
+                "error": f"Entity not found: {identifier}",
+                "identifier": identifier,
+            }
+ 
+        try:
+            secure_file_path = resolve_safe_path(reg_path, file_path)
+            with open(secure_file_path, "r") as f:
+                entity_data = yaml.safe_load(f) or {}
+        except PathSecurityError as e:
+            return {"success": False, "error": f"Security error: {e}", "identifier": identifier}
+ 
+        entity_title = entity_data.get("title", identifier)
+        entity_type_value = entity_data.get("type", "entity")
+ 
+        if not force:
+            return {
+                "success": False,
+                "confirmation_required": True,
+                "identifier": identifier,
+                "entity_title": entity_title,
+                "entity_type": entity_type_value,
+                "file_path": str(secure_file_path),
+                "message": (
+                    f"Confirmation required: about to permanently delete {entity_type_value} "
+                    f"'{entity_title}' at {secure_file_path}. "
+                    "Call delete_entity_tool again with force=True to proceed."
+                ),
+            }
+ 
+        try:
+            os.remove(str(secure_file_path))
+        except Exception as e:
+            return {"success": False, "error": f"Error deleting entity: {e}", "identifier": identifier}
+ 
+        return {
+            "success": True,
+            "identifier": identifier,
+            "deleted_title": entity_title,
+            "deleted_type": entity_type_value,
+            "file_path": str(secure_file_path),
+        }
+ 
+    except PathSecurityError as e:
+        return {"success": False, "error": f"Security error: {e}", "identifier": identifier}
+    except Exception as e:
+        return {"success": False, "error": f"Unexpected error: {e}", "identifier": identifier}
+
+# ─── READ TOOLS ────────────────────────────────────────────────────────────
 
 def _get_registry_path(specified_path: Optional[str] = None) -> Optional[str]:
     """Get registry path from specified path or config"""
