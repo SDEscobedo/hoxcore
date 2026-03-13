@@ -582,8 +582,9 @@ hxc validate --registry ~/registries/work</code></pre>
             <thead><tr><th>Flag</th><th>Description</th></tr></thead>
             <tbody>
               <tr><td><code>--registry REGISTRY</code></td><td>Path to the registry (defaults to current or configured registry)</td></tr>
-              <tr><td><code>--transport {stdio}</code></td><td>Transport protocol (default: stdio)</td></tr>
-              <tr><td><code>--capabilities</code></td><td>Show server capabilities and exit</td></tr>
+              <tr><td><code>--transport {stdio}</code></td><td>Transport protocol (default: stdio). Only <code>stdio</code> is currently supported.</td></tr>
+              <tr><td><code>--capabilities</code></td><td>Show server capabilities (tools, resources, prompts) and exit without starting</td></tr>
+              <tr><td><code>--read-only</code></td><td>Start in read-only mode — only read tools are registered. Write tools (<code>create_entity</code>, <code>edit_entity</code>, <code>delete_entity</code>) are omitted from the server's capabilities.</td></tr>
             </tbody>
           </table>
         </div>
@@ -595,7 +596,13 @@ hxc mcp
 hxc mcp --registry ~/registries/work
  
 # Inspect available tools, resources, and prompts without starting
-hxc mcp --capabilities</code></pre>
+hxc mcp --capabilities
+ 
+# Start in read-only mode (write tools are not exposed to the LLM)
+hxc mcp --read-only
+ 
+# Read-only with explicit registry
+hxc mcp --registry ~/registries/work --read-only</code></pre>
         <div class="info-box">
           <h4>Connecting to Claude Desktop</h4>
           <p>Add HoxCore to your <code>claude_desktop_config.json</code> to give Claude live access to your registry:</p>

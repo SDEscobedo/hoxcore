@@ -17,6 +17,9 @@ from hxc.mcp.tools import (
     get_entity_property_tool,
     get_entity_hierarchy_tool,
     get_registry_stats_tool,
+    create_entity_tool,
+    edit_entity_tool,
+    delete_entity_tool,
 )
 from hxc.core.enums import EntityType
 
@@ -1108,3 +1111,558 @@ class TestToolsErrorHandling:
         
         assert result["success"] is False
         assert "not found" in result["error"].lower() or "not set" in result["error"].lower()
+
+class TestCreateEntityTool:
+    """Tests for create_entity_tool"""
+ 
+    def test_create_project(self, temp_registry):
+        """Test creating a project entity"""
+        result = create_entity_tool(
+            type="project",
+            title="New Test Project",
+            registry_path=temp_registry,
+        )
+ 
+        assert result["success"] is True
+        assert "uid" in result
+        assert "file_path" in result
+ 
+        # Verify file was created
+        from pathlib import Path
+        file_path = Path(result["file_path"])
+        assert file_path.exists()
+ 
+        import yaml
+        with open(file_path) as f:
+            data = yaml.safe_load(f)
+ 
+        assert data["type"] == "project"
+        assert data["title"] == "New Test Project"
+        assert data["status"] == "active"
+ 
+    def test_create_with_all_optional_fields(self, temp_registry):
+        """Test creating an entity with all optional fields populated"""
+        result = create_entity_tool(
+            type="project",
+            title="Full Project",
+            description="A fully specified project",
+            status="on-hold",
+            id="P-999",
+            category="software.dev/api",
+            tags=["python", "api"],
+            parent="prog-test-001",
+            start_date="2025-01-01",
+            due_date="2025-12-31",
+            registry_path=temp_registry,
+        )
+ 
+        assert result["success"] is True
+        entity = result["entity"]
+        assert entity["title"] == "Full Project"
+        assert entity["description"] == "A fully specified project"
+        assert entity["status"] == "on-hold"
+        assert entity["id"] == "P-999"
+        assert entity["category"] == "software.dev/api"
+        assert entity["tags"] == ["python", "api"]
+        assert entity["parent"] == "prog-test-001"
+        assert entity["start_date"] == "2025-01-01"
+        assert entity["due_date"] == "2025-12-31"
+ 
+    def test_create_all_entity_types(self, temp_registry):
+        """Test creating each entity type"""
+        for entity_type in ["program", "project", "mission", "action"]:
+            result = create_entity_tool(
+                type=entity_type,
+                title=f"Test {entity_type.title()}",
+                registry_path=temp_registry,
+            )
+            assert result["success"] is True, f"Failed for type {entity_type}: {result.get('error')}"
+ 
+    def test_create_default_start_date_is_today(self, temp_registry):
+        """Test that start_date defaults to today"""
+        import datetime
+        today = datetime.date.today().isoformat()
+ 
+        result = create_entity_tool(
+            type="project",
+            title="Date Test",
+            registry_path=temp_registry,
+        )
+ 
+        assert result["success"] is True
+        assert result["entity"]["start_date"] == today
+ 
+    def test_create_invalid_type(self, temp_registry):
+        """Test creating with an invalid entity type"""
+        result = create_entity_tool(
+            type="invalid_type",
+            title="Should Fail",
+            registry_path=temp_registry,
+        )
+ 
+        assert result["success"] is False
+        assert "error" in result
+ 
+    def test_create_invalid_status(self, temp_registry):
+        """Test creating with an invalid status"""
+        result = create_entity_tool(
+            type="project",
+            title="Bad Status",
+            status="not-a-status",
+            registry_path=temp_registry,
+        )
+ 
+        assert result["success"] is False
+        assert "error" in result
+ 
+    def test_create_with_no_registry(self):
+        """Test creating with a nonexistent registry path"""
+        result = create_entity_tool(
+            type="project",
+            title="No Registry",
+            registry_path="/nonexistent/path",
+        )
+ 
+        assert result["success"] is False
+        assert "error" in result
+ 
+    def test_create_file_in_correct_subfolder(self, temp_registry):
+        """Test that each entity type lands in its correct subfolder"""
+        from pathlib import Path
+ 
+        type_folder_map = {
+            "program": "programs",
+            "project": "projects",
+            "mission": "missions",
+            "action": "actions",
+        }
+ 
+        for entity_type, folder in type_folder_map.items():
+            result = create_entity_tool(
+                type=entity_type,
+                title=f"Folder Test {entity_type}",
+                registry_path=temp_registry,
+            )
+ 
+            assert result["success"] is True
+            file_path = Path(result["file_path"])
+            assert file_path.parent.name == folder, (
+                f"Expected {folder}, got {file_path.parent.name}"
+            )
+ 
+    def test_create_returns_uid_and_file_path(self, temp_registry):
+        """Test that create returns uid and file_path"""
+        result = create_entity_tool(
+            type="project",
+            title="Return Fields Test",
+            registry_path=temp_registry,
+        )
+ 
+        assert result["success"] is True
+        assert isinstance(result["uid"], str)
+        assert len(result["uid"]) > 0
+        assert isinstance(result["file_path"], str)
+ 
+ 
+class TestEditEntityTool:
+    """Tests for edit_entity_tool"""
+ 
+    def test_edit_title(self, temp_registry):
+        """Test editing an entity's title"""
+        result = edit_entity_tool(
+            identifier="P-001",
+            set_title="Renamed Project",
+            registry_path=temp_registry,
+        )
+ 
+        assert result["success"] is True
+        assert result["entity"]["title"] == "Renamed Project"
+        assert any("title" in c for c in result["changes"])
+ 
+    def test_edit_status(self, temp_registry):
+        """Test editing an entity's status"""
+        result = edit_entity_tool(
+            identifier="P-001",
+            set_status="completed",
+            registry_path=temp_registry,
+        )
+ 
+        assert result["success"] is True
+        assert result["entity"]["status"] == "completed"
+ 
+    def test_edit_add_tags(self, temp_registry):
+        """Test adding tags to an entity"""
+        result = edit_entity_tool(
+            identifier="P-001",
+            add_tags=["new-tag", "another-tag"],
+            registry_path=temp_registry,
+        )
+ 
+        assert result["success"] is True
+        tags = result["entity"]["tags"]
+        assert "new-tag" in tags
+        assert "another-tag" in tags
+ 
+    def test_edit_remove_tags(self, temp_registry):
+        """Test removing tags from an entity"""
+        # First confirm the tag exists (fixture project has "mcp" tag)
+        result = edit_entity_tool(
+            identifier="P-001",
+            remove_tags=["mcp"],
+            registry_path=temp_registry,
+        )
+ 
+        assert result["success"] is True
+        assert "mcp" not in result["entity"].get("tags", [])
+ 
+    def test_edit_add_duplicate_tag_is_idempotent(self, temp_registry):
+        """Test that adding an existing tag doesn't duplicate it"""
+        result = edit_entity_tool(
+            identifier="P-001",
+            add_tags=["test"],  # "test" already exists in fixture
+            registry_path=temp_registry,
+        )
+ 
+        assert result["success"] is True
+        tags = result["entity"]["tags"]
+        assert tags.count("test") == 1
+ 
+    def test_edit_multiple_scalar_fields(self, temp_registry):
+        """Test editing multiple scalar fields at once"""
+        result = edit_entity_tool(
+            identifier="P-001",
+            set_title="Updated Title",
+            set_description="Updated description",
+            set_category="research/new",
+            registry_path=temp_registry,
+        )
+ 
+        assert result["success"] is True
+        entity = result["entity"]
+        assert entity["title"] == "Updated Title"
+        assert entity["description"] == "Updated description"
+        assert entity["category"] == "research/new"
+        assert len(result["changes"]) == 3
+ 
+    def test_edit_invalid_status(self, temp_registry):
+        """Test editing with an invalid status value"""
+        result = edit_entity_tool(
+            identifier="P-001",
+            set_status="not-valid",
+            registry_path=temp_registry,
+        )
+ 
+        assert result["success"] is False
+        assert "error" in result
+ 
+    def test_edit_no_changes_specified(self, temp_registry):
+        """Test that providing no changes returns an error"""
+        result = edit_entity_tool(
+            identifier="P-001",
+            registry_path=temp_registry,
+        )
+ 
+        assert result["success"] is False
+        assert "no changes" in result["error"].lower()
+ 
+    def test_edit_nonexistent_entity(self, temp_registry):
+        """Test editing an entity that does not exist"""
+        result = edit_entity_tool(
+            identifier="P-DOES-NOT-EXIST",
+            set_title="Ghost",
+            registry_path=temp_registry,
+        )
+ 
+        assert result["success"] is False
+        assert "not found" in result["error"].lower()
+ 
+    def test_edit_persists_to_file(self, temp_registry):
+        """Test that edits are actually written to disk"""
+        import yaml
+        from pathlib import Path
+ 
+        edit_result = edit_entity_tool(
+            identifier="P-001",
+            set_title="Persisted Title",
+            registry_path=temp_registry,
+        )
+ 
+        assert edit_result["success"] is True
+ 
+        file_path = edit_result["file_path"]
+        with open(file_path) as f:
+            on_disk = yaml.safe_load(f)
+ 
+        assert on_disk["title"] == "Persisted Title"
+ 
+    def test_edit_by_uid(self, temp_registry):
+        """Test editing an entity by its UID"""
+        result = edit_entity_tool(
+            identifier="proj-test-001",
+            set_title="UID Edit Test",
+            registry_path=temp_registry,
+        )
+ 
+        assert result["success"] is True
+        assert result["entity"]["title"] == "UID Edit Test"
+ 
+    def test_edit_returns_updated_entity(self, temp_registry):
+        """Test that edit returns the full updated entity"""
+        result = edit_entity_tool(
+            identifier="P-001",
+            set_due_date="2026-06-30",
+            registry_path=temp_registry,
+        )
+ 
+        assert result["success"] is True
+        assert "entity" in result
+        assert result["entity"]["due_date"] == "2026-06-30"
+        assert "identifier" in result
+        assert "file_path" in result
+ 
+ 
+class TestDeleteEntityTool:
+    """Tests for delete_entity_tool"""
+ 
+    def test_delete_without_force_returns_confirmation(self, temp_registry):
+        """Test that calling without force=True returns a confirmation prompt"""
+        result = delete_entity_tool(
+            identifier="P-001",
+            force=False,
+            registry_path=temp_registry,
+        )
+ 
+        assert result["success"] is False
+        assert result.get("confirmation_required") is True
+        assert "message" in result
+        assert "force=True" in result["message"]
+ 
+        # File must still exist
+        from pathlib import Path
+        assert Path(temp_registry, "projects", "proj-test-001.yml").exists()
+ 
+    def test_delete_without_force_does_not_delete(self, temp_registry):
+        """Test that the entity file is NOT removed when force is False"""
+        from pathlib import Path
+ 
+        delete_entity_tool(identifier="P-001", force=False, registry_path=temp_registry)
+ 
+        assert Path(temp_registry, "projects", "proj-test-001.yml").exists()
+ 
+    def test_delete_with_force_removes_file(self, temp_registry):
+        """Test that force=True actually deletes the file"""
+        from pathlib import Path
+ 
+        result = delete_entity_tool(
+            identifier="P-001",
+            force=True,
+            registry_path=temp_registry,
+        )
+ 
+        assert result["success"] is True
+        assert not Path(temp_registry, "projects", "proj-test-001.yml").exists()
+ 
+    def test_delete_returns_entity_info(self, temp_registry):
+        """Test that delete returns the deleted entity's title and type"""
+        result = delete_entity_tool(
+            identifier="P-001",
+            force=True,
+            registry_path=temp_registry,
+        )
+ 
+        assert result["success"] is True
+        assert result["deleted_title"] == "Test Project One"
+        assert result["deleted_type"] == "project"
+        assert "file_path" in result
+ 
+    def test_delete_nonexistent_entity(self, temp_registry):
+        """Test deleting an entity that does not exist"""
+        result = delete_entity_tool(
+            identifier="P-DOES-NOT-EXIST",
+            force=True,
+            registry_path=temp_registry,
+        )
+ 
+        assert result["success"] is False
+        assert "not found" in result["error"].lower()
+ 
+    def test_delete_by_uid(self, temp_registry):
+        """Test deleting an entity by UID"""
+        from pathlib import Path
+ 
+        result = delete_entity_tool(
+            identifier="proj-test-002",
+            force=True,
+            registry_path=temp_registry,
+        )
+ 
+        assert result["success"] is True
+        assert not Path(temp_registry, "projects", "proj-test-002.yml").exists()
+ 
+    def test_delete_with_no_registry(self):
+        """Test delete with a nonexistent registry path"""
+        result = delete_entity_tool(
+            identifier="P-001",
+            force=True,
+            registry_path="/nonexistent/path",
+        )
+ 
+        assert result["success"] is False
+        assert "error" in result
+ 
+    def test_delete_confirmation_includes_entity_details(self, temp_registry):
+        """Test that the confirmation response includes entity details"""
+        result = delete_entity_tool(
+            identifier="P-001",
+            force=False,
+            registry_path=temp_registry,
+        )
+ 
+        assert result.get("confirmation_required") is True
+        assert result["entity_title"] == "Test Project One"
+        assert result["entity_type"] == "project"
+        assert "file_path" in result
+ 
+ 
+class TestReadOnlyServer:
+    """Tests for the --read-only server mode"""
+ 
+    def test_read_only_server_omits_write_tools(self, temp_registry):
+        """Test that a read-only server does not expose write tools"""
+        from hxc.mcp.server import create_server
+ 
+        server = create_server(registry_path=temp_registry, read_only=True)
+        capabilities = server.get_capabilities()
+        tools = capabilities["tools"]
+ 
+        assert "list_entities" in tools
+        assert "get_entity" in tools
+        assert "search_entities" in tools
+        assert "get_entity_property" in tools
+ 
+        assert "create_entity" not in tools
+        assert "edit_entity" not in tools
+        assert "delete_entity" not in tools
+ 
+    def test_read_only_server_capabilities_flag(self, temp_registry):
+        """Test that read_only is reflected in capabilities"""
+        from hxc.mcp.server import create_server
+ 
+        server = create_server(registry_path=temp_registry, read_only=True)
+        assert server.get_capabilities()["read_only"] is True
+ 
+    def test_non_read_only_server_exposes_write_tools(self, temp_registry):
+        """Test that a normal server does expose write tools"""
+        from hxc.mcp.server import create_server
+ 
+        server = create_server(registry_path=temp_registry, read_only=False)
+        tools = server.get_capabilities()["tools"]
+ 
+        assert "create_entity" in tools
+        assert "edit_entity" in tools
+        assert "delete_entity" in tools
+ 
+    def test_read_only_server_rejects_write_tool_call(self, temp_registry):
+        """Test that calling a write tool on a read-only server returns an error"""
+        from hxc.mcp.server import create_server
+ 
+        server = create_server(registry_path=temp_registry, read_only=True)
+ 
+        request = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "tools/call",
+            "params": {
+                "name": "create_entity",
+                "arguments": {"type": "project", "title": "Blocked"}
+            }
+        }
+ 
+        response = server.handle_request(request)
+        # Should return an error because the tool is not registered
+        assert "error" in response
+ 
+ 
+class TestWriteToolsIntegration:
+    """Integration tests for the full create → edit → delete lifecycle"""
+ 
+    def test_create_then_get(self, temp_registry):
+        """Test creating an entity and then retrieving it"""
+        create_result = create_entity_tool(
+            type="project",
+            title="Integration Project",
+            registry_path=temp_registry,
+        )
+ 
+        assert create_result["success"] is True
+        uid = create_result["uid"]
+ 
+        get_result = get_entity_tool(
+            identifier=uid,
+            registry_path=temp_registry,
+        )
+ 
+        assert get_result["success"] is True
+        assert get_result["entity"]["title"] == "Integration Project"
+ 
+    def test_create_then_edit(self, temp_registry):
+        """Test creating an entity and then editing it"""
+        create_result = create_entity_tool(
+            type="mission",
+            title="Original Mission",
+            registry_path=temp_registry,
+        )
+        assert create_result["success"] is True
+        uid = create_result["uid"]
+ 
+        edit_result = edit_entity_tool(
+            identifier=uid,
+            set_title="Updated Mission",
+            add_tags=["important"],
+            registry_path=temp_registry,
+        )
+ 
+        assert edit_result["success"] is True
+        assert edit_result["entity"]["title"] == "Updated Mission"
+        assert "important" in edit_result["entity"]["tags"]
+ 
+    def test_create_edit_delete_lifecycle(self, temp_registry):
+        """Test the full entity lifecycle"""
+        from pathlib import Path
+ 
+        # Create
+        create_result = create_entity_tool(
+            type="action",
+            title="Lifecycle Action",
+            registry_path=temp_registry,
+        )
+        assert create_result["success"] is True
+        uid = create_result["uid"]
+        file_path = Path(create_result["file_path"])
+        assert file_path.exists()
+ 
+        # Edit
+        edit_result = edit_entity_tool(
+            identifier=uid,
+            set_status="completed",
+            registry_path=temp_registry,
+        )
+        assert edit_result["success"] is True
+ 
+        # Confirm before delete
+        confirm_result = delete_entity_tool(
+            identifier=uid,
+            force=False,
+            registry_path=temp_registry,
+        )
+        assert confirm_result.get("confirmation_required") is True
+        assert file_path.exists()  # not deleted yet
+ 
+        # Delete with force
+        delete_result = delete_entity_tool(
+            identifier=uid,
+            force=True,
+            registry_path=temp_registry,
+        )
+        assert delete_result["success"] is True
+        assert not file_path.exists()

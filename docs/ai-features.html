@@ -117,7 +117,10 @@ hxc mcp --registry /path/to/your/registry
 hxc mcp --transport stdio
 
 # Show server capabilities (tools, resources, prompts) and exit without starting
-hxc mcp --capabilities</code></pre>
+hxc mcp --capabilities
+
+# Start in read-only mode — expose only read tools to the LLM
+hxc mcp --read-only</code></pre>
 
         <p>You can also start the server programmatically from Python:</p>
         <pre><code class="language-python">from hxc.mcp.server import create_server
@@ -196,35 +199,61 @@ server.run_stdio()</code></pre>
       <!-- TOOLS -->
       <section id="tools" class="doc-section">
         <h2>Available Tools</h2>
-        <p>Tools are callable functions that the LLM can invoke to interact with your registry. HoxCore exposes four tools:</p>
-
+        <p>Tools are callable functions that the LLM can invoke to interact with your registry. HoxCore exposes seven tools: four read-only and three write tools.</p>
+ 
         <div class="table-wrap">
           <table class="doc-table">
             <thead>
-              <tr><th>Tool</th><th>Description</th></tr>
+              <tr><th>Tool</th><th>Type</th><th>Description</th></tr>
             </thead>
             <tbody>
               <tr>
                 <td><code>list_entities</code></td>
+                <td>Read</td>
                 <td>List entities in the registry with optional filters for type, status, tags, category, and parent. Supports sorting and pagination.</td>
               </tr>
               <tr>
                 <td><code>get_entity</code></td>
+                <td>Read</td>
                 <td>Retrieve full details of a specific entity by its ID or UID.</td>
               </tr>
               <tr>
                 <td><code>search_entities</code></td>
+                <td>Read</td>
                 <td>Full-text search across entity titles and descriptions, with optional filters for type, status, tags, and category.</td>
               </tr>
               <tr>
                 <td><code>get_entity_property</code></td>
+                <td>Read</td>
                 <td>Fetch a specific property from an entity. Supports list indexing and key-based filtering for complex fields like <code>repositories</code> or <code>tools</code>.</td>
+              </tr>
+              <tr>
+                <td><code>create_entity</code></td>
+                <td>Write</td>
+                <td>Create a new entity (program, project, mission, or action) in the registry. Returns the new entity's UID and file path.</td>
+              </tr>
+              <tr>
+                <td><code>edit_entity</code></td>
+                <td>Write</td>
+                <td>Edit scalar fields and tags on an existing entity. Returns the updated entity.</td>
+              </tr>
+              <tr>
+                <td><code>delete_entity</code></td>
+                <td>Write</td>
+                <td>Delete an entity from the registry. Returns a confirmation prompt when <code>force</code> is <code>false</code> (the default); set <code>force: true</code> to confirm.</td>
               </tr>
             </tbody>
           </table>
         </div>
-
-        <h3>list_entities</h3>
+ 
+        <div class="info-box">
+          <h4>Read-only mode</h4>
+          <p>Start the server with <code>hxc mcp --read-only</code> to expose only the four read tools. Write tools (<code>create_entity</code>, <code>edit_entity</code>, <code>delete_entity</code>) are not registered and do not appear in the server's capabilities response. Use this when you want an LLM to observe your registry without being able to modify it.</p>
+        </div>
+ 
+        <h3 id="read-tools">Read tools</h3>
+ 
+        <h4>list_entities</h4>
         <pre><code class="language-json">{
   "entity_type": "project",
   "status": "active",
@@ -233,28 +262,79 @@ server.run_stdio()</code></pre>
   "descending": false,
   "max_items": 20
 }</code></pre>
-
-        <h3>get_entity</h3>
+ 
+        <h4>get_entity</h4>
         <pre><code class="language-json">{
   "identifier": "P-001"
 }</code></pre>
         <p>Accepts both human-readable IDs (e.g. <code>P-001</code>) and system UIDs (e.g. <code>proj_abc123def456</code>).</p>
-
-        <h3>search_entities</h3>
+ 
+        <h4>search_entities</h4>
         <pre><code class="language-json">{
   "query": "machine learning",
   "entity_type": "all",
   "status": "active"
 }</code></pre>
         <p>Matches the query string against both <code>title</code> and <code>description</code> fields.</p>
-
-        <h3>get_entity_property</h3>
+ 
+        <h4>get_entity_property</h4>
         <pre><code class="language-json">{
   "identifier": "P-001",
   "property": "repositories",
   "key": "name:github"
 }</code></pre>
         <p>The <code>key</code> argument filters list properties using <code>key:value</code> syntax. The <code>index</code> argument retrieves a specific item by position. Pass <code>"property": "all"</code> to return the complete entity.</p>
+ 
+        <h3 id="write-tools">Write tools</h3>
+ 
+        <div class="warning-box">
+          <h4>Registry mutations</h4>
+          <p>Write tools create, modify, or remove YAML files in your registry. Consider using <code>--read-only</code> mode when you only need the LLM to query the registry.</p>
+        </div>
+ 
+        <h4>create_entity</h4>
+        <p>Create a new entity. <code>type</code> and <code>title</code> are required. All other fields are optional; <code>status</code> defaults to <code>active</code> and <code>start_date</code> defaults to today.</p>
+        <pre><code class="language-json">{
+  "type": "project",
+  "title": "New API Service",
+  "description": "Internal REST API for the billing system.",
+  "status": "active",
+  "id": "P-042",
+  "category": "software.dev/api",
+  "tags": ["python", "api"],
+  "parent": "prog_abc123",
+  "start_date": "2025-03-01",
+  "due_date": "2025-12-31"
+}</code></pre>
+        <p>On success, the tool returns the new entity's <code>uid</code>, <code>id</code>, <code>file_path</code>, and the full <code>entity</code> object.</p>
+ 
+        <h4>edit_entity</h4>
+        <p>Modify an existing entity. <code>identifier</code> accepts either a UID or a human-readable ID. Scalar fields are updated with <code>set_*</code> arguments. Tags can be incrementally added or removed.</p>
+        <pre><code class="language-json">{
+  "identifier": "P-042",
+  "set_title": "Billing API Service",
+  "set_status": "completed",
+  "add_tags": ["deployed"],
+  "remove_tags": ["wip"]
+}</code></pre>
+        <p>On success, the tool returns the updated entity, a list of <code>changes</code>, and the <code>file_path</code>.</p>
+ 
+        <h4>delete_entity</h4>
+        <p>Delete an entity from the registry. Because deletion is irreversible, a two-step confirmation guard is enforced:</p>
+        <ol>
+          <li>Call <code>delete_entity</code> with <code>"force": false</code> (the default). The tool returns a <code>confirmation_required</code> response describing which entity would be deleted — no file is removed.</li>
+          <li>Call again with <code>"force": true</code> to proceed with deletion.</li>
+        </ol>
+        <pre><code class="language-json">// Step 1 — inspect
+{ "identifier": "P-042", "force": false }
+ 
+// Step 2 — confirm
+{ "identifier": "P-042", "force": true }</code></pre>
+ 
+        <div class="info-box">
+          <h4>Prefer archiving over deletion</h4>
+          <p>Deleting an entity removes its UID from the registry, which may break references in other entities. In most cases it is safer to set <code>status</code> to <code>cancelled</code> or <code>completed</code> with <code>edit_entity</code> to preserve history and referential integrity.</p>
+        </div>
       </section>
 
       <!-- RESOURCES -->
