@@ -11,6 +11,9 @@ from hxc.mcp.tools import (
     get_entity_tool,
     search_entities_tool,
     get_entity_property_tool,
+    create_entity_tool,
+    edit_entity_tool,
+    delete_entity_tool,
 )
 from hxc.mcp.resources import (
     get_entity_resource,
@@ -23,12 +26,19 @@ from hxc.mcp.prompts import (
 
 __all__ = [
     'MCPServer',
+    # Read tools
     'list_entities_tool',
     'get_entity_tool',
     'search_entities_tool',
     'get_entity_property_tool',
+    # Write tools
+    'create_entity_tool',
+    'edit_entity_tool',
+    'delete_entity_tool',
+    # Resources
     'get_entity_resource',
     'list_entities_resource',
+    # Prompts
     'get_entity_prompt',
     'search_entities_prompt',
 ]
