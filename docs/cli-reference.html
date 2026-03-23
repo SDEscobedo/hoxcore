@@ -359,6 +359,7 @@ hxc show P-001 --type project --registry ~/registries/work</code></pre>
               <tr><td><code>--type, -t {program,project,mission,action}</code></td><td>Entity type — only needed if the identifier is ambiguous</td></tr>
               <tr><td><code>--registry REGISTRY</code></td><td>Path to registry (defaults to current or configured registry)</td></tr>
               <tr><td><code>--dry-run</code></td><td>Show what would be changed without modifying the file</td></tr>
+              <tr><td><code>--no-commit</code></td><td>Skip automatic Git commit after a successful edit</td></tr>
             </tbody>
           </table>
         </div>
@@ -432,11 +433,14 @@ hxc show P-001 --type project --registry ~/registries/work</code></pre>
         </div>
  
         <h3>Examples</h3>
-        <pre><code class="language-bash"># Set scalar fields
-hxc edit P-001 --set-status completed --set-completion-date 2024-06-30
+        <pre><code class="language-bash"># Set scalar fields (automatically creates a Git commit)
+hxc edit P-001 --set-status completed --set-completion-date 2026-06-30
  
-# Preview changes without saving
+# Preview changes without saving or committing
 hxc edit P-001 --set-title "Revised Title" --dry-run
+
+# Update properties without creating a Git commit
+hxc edit P-001 --add-tag "manual-update" --no-commit
  
 # Tag operations
 hxc edit P-001 --add-tag production --add-tag deployed
