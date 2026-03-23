@@ -10,6 +10,7 @@ from unittest.mock import patch, MagicMock
 
 from hxc.cli import main
 from hxc.commands.create import CreateCommand
+from hxc.commands.create import title_to_id
 from hxc.commands.registry import RegistryCommand
 from hxc.utils.path_security import PathSecurityError
 from hxc.core.enums import EntityType, EntityStatus
@@ -183,6 +184,88 @@ def test_create_project_full(mock_get_registry_path, temp_registry):
         assert project_data["tags"] == ["cli", "test", "yaml"]
         assert project_data["parent"] == "P-000"
         assert project_data["template"] == "software.dev/cli-tool.default"
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_create_custom_id_overrides_auto_generation(
+    mock_get_registry_path, temp_registry
+):
+    """Custom `--id` should override the auto-generated title-based id."""
+    mock_get_registry_path.return_value = str(temp_registry)
+
+    title = "My Project"
+    auto_id = title_to_id(title, "project")
+    custom_id = "P-CUSTOM-123"
+
+    with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
+        result = main(["create", "project", title, "--id", custom_id])
+        assert result == 0
+
+    project_file = temp_registry / "projects" / "proj-12345678.yml"
+    assert project_file.exists()
+
+    with open(project_file, "r") as f:
+        project_data = yaml.safe_load(f)
+
+    assert project_data["uid"] == "12345678"
+    assert project_data["id"] == custom_id
+    assert project_data["id"] != auto_id
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_create_custom_id_used_exactly_as_provided(
+    mock_get_registry_path, temp_registry
+):
+    """Custom `--id` should be written to YAML exactly as provided."""
+    mock_get_registry_path.return_value = str(temp_registry)
+
+    title = "Test Action"
+    custom_id = "my.Custom-ID_123"
+
+    with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
+        result = main(["create", "action", title, "--id", custom_id])
+        assert result == 0
+
+    action_file = temp_registry / "actions" / "act-12345678.yml"
+    assert action_file.exists()
+
+    with open(action_file, "r") as f:
+        action_data = yaml.safe_load(f)
+
+    assert action_data["uid"] == "12345678"
+    assert action_data["id"] == custom_id
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_create_all_entity_types_include_auto_generated_ids_and_uid(
+    mock_get_registry_path, temp_registry
+):
+    """Each entity type should write `uid` and auto-generated `id` to YAML."""
+    mock_get_registry_path.return_value = str(temp_registry)
+
+    for entity_type in EntityType:
+        folder_name = entity_type.get_folder_name()
+        file_prefix = entity_type.get_file_prefix()
+        title = f"Test {entity_type.value.title()}"
+
+        with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
+            result = main(["create", entity_type.value, title])
+            assert result == 0
+
+        entity_file = temp_registry / folder_name / f"{file_prefix}-12345678.yml"
+        assert entity_file.exists()
+
+        with open(entity_file, "r") as f:
+            entity_data = yaml.safe_load(f)
+
+        assert entity_data["uid"] == "12345678"
+        assert "id" in entity_data
+        assert entity_data["id"] == title_to_id(title, entity_type.value)
+        assert entity_data["title"] == title
+        assert entity_data["type"] == entity_type.value
+
+        # Clean up to keep the registry empty for the next entity_type iteration.
+        entity_file.unlink()
 
 
 @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
@@ -528,3 +611,46 @@ def test_create_validates_status_early(mock_get_registry_path, temp_registry):
             # No files should be created
             project_files = list((temp_registry / "projects").glob("*.yml"))
             assert len(project_files) == 0
+
+
+def test_create_title_to_id_basic_spaces():
+    assert title_to_id("my project", "project") == "my_project"
+
+
+def test_create_title_to_id_multiple_words():
+    assert title_to_id("my awesome project", "project") == "my_awesome_project"
+
+
+def test_create_title_to_id_very_long_title_exceeds_max_length():
+    long_title = "a" * 300
+    out = title_to_id(long_title, "project")
+    assert len(out) == 255
+    assert out == "a" * 255
+
+
+def test_create_title_to_id_special_characters():
+    assert title_to_id("my-project!", "project") == "my_project"
+
+
+def test_create_title_to_id_non_ascii_characters():
+    assert title_to_id("cäfé pròjěčt", "project") == "cafe_project"
+
+
+def test_create_title_to_id_empty_title():
+    assert title_to_id("", "project") == "project"
+
+
+def test_create_title_to_id_whitespace_only_title():
+    assert title_to_id("   ", "project") == "project"
+
+
+def test_create_title_to_id_leading_trailing_whitespace():
+    assert title_to_id("  my project  ", "project") == "my_project"
+
+
+def test_create_title_to_id_consecutive_spaces_collapse():
+    assert title_to_id("my    project", "project") == "my_project"
+
+
+def test_create_title_to_id_mixed_case_is_lowercased():
+    assert title_to_id("My Project", "project") == "my_project"

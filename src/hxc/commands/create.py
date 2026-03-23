@@ -8,14 +8,56 @@ import datetime
 from pathlib import Path
 import argparse
 from typing import Dict, Any, List, Optional
+import re
+import unicodedata
+import random
+import string
 
 from hxc.commands import register_command
 from hxc.commands.base import BaseCommand
 from hxc.commands.registry import RegistryCommand
 from hxc.utils.helpers import get_project_root
-from hxc.utils.path_security import get_safe_entity_path, PathSecurityError
+from hxc.utils.path_security import get_safe_entity_path, resolve_safe_path, PathSecurityError
 from hxc.core.enums import EntityType, EntityStatus
 
+
+MAX_ID_LENGTH = 255
+_ID_ALLOWED_RE = re.compile(r"[^a-z0-9_]+")
+_ID_SPACES_RE = re.compile(r"\s+")
+_UNDERSCORE_RE = re.compile(r"_+")
+
+
+def _transliterate_to_ascii(text: str) -> str:
+    """
+    Convert non-ASCII characters to their closest ASCII representation (or drop them).
+    """
+    normalized = unicodedata.normalize("NFKD", text)
+    return normalized.encode("ascii", "ignore").decode("ascii")
+
+
+def title_to_id(title: str, entity_type:str) -> str:
+    """
+    Deterministically generate a human-readable, filesystem/URL-safe base ID from a title.
+
+    Rules:
+    - Allowed characters: [a-z0-9_]
+    - Spaces/special characters become underscores
+    - Consecutive underscores collapse; leading/trailing underscores removed
+    - Non-ASCII is transliterated/removal via NFKD -> ascii ignore
+    - Result length is capped to 255 chars
+    """
+    raw_title = title if title is not None else ""
+    canonical = _transliterate_to_ascii(raw_title.strip()).lower()
+
+    # Human-readable slug base: map spaces/special chars to underscores, keep [a-z0-9_]
+    slug = _ID_SPACES_RE.sub("_", canonical)
+    slug = _ID_ALLOWED_RE.sub("_", slug)
+    slug = _UNDERSCORE_RE.sub("_", slug).strip("_")
+
+    if not slug:
+        slug = entity_type
+
+    return slug[:MAX_ID_LENGTH]
 
 @register_command
 class CreateCommand(BaseCommand):
@@ -74,10 +116,35 @@ class CreateCommand(BaseCommand):
         if not registry_path:
             print("❌ No registry found. Please specify with --registry or initialize one with 'hxc init'")
             return 1
-            
-        # Generate entity data based on arguments
+
+        # Load all existing IDs for this entity type once.
+        # This avoids re-opening multiple YAML files during suffix resolution.
+        existing_ids = cls._load_existing_ids(registry_path, entity_type)
+
+        # Generate entity data based on arguments (includes uid and base id).
         entity_data = cls._build_entity_data(args, entity_type, entity_status)
-        
+
+        # Resolve ID uniqueness.
+        # - If --id is provided: preserve it, but fail if it already exists.
+        # - If --id is omitted: try base id; if taken use uid3; if still taken use random letter.
+        if args.custom_id:
+            candidate = entity_data.get("id")
+            if isinstance(candidate, str) and candidate in existing_ids:
+                print(
+                    f"❌ {entity_type.value} with id '{candidate}' already exists in this registry"
+                )
+                return 1
+        else:
+            base_id = entity_data.get("id", "")
+            uid = entity_data.get("uid", "")
+            resolved = cls._resolve_auto_id(existing_ids, base_id, uid)
+            if not resolved:
+                print(
+                    f"❌ Could not generate a unique {entity_type.value} id for title '{entity_data.get('title', '')}'"
+                )
+                return 1
+            entity_data["id"] = resolved
+
         # Determine file name
         uid = entity_data.get('uid', str(uuid.uuid4())[:8])
         file_prefix = entity_type.get_file_prefix()
@@ -145,6 +212,8 @@ class CreateCommand(BaseCommand):
         # Add optional fields if provided
         if args.custom_id:
             entity["id"] = args.custom_id
+        else:
+            entity["id"] = title_to_id(args.title, entity_type.value)
         
         if args.description:
             entity["description"] = args.description
@@ -175,3 +244,66 @@ class CreateCommand(BaseCommand):
         entity["knowledge_bases"] = []
         
         return entity
+
+    @classmethod
+    def _load_existing_ids(cls, registry_path: str, entity_type: EntityType) -> set:
+        """
+        Load all `id` fields for existing entities of this type into a set.
+
+        Returns:
+            Set of existing IDs (strings). Missing/invalid ids are ignored.
+        """
+        ids = set()
+        type_dir = resolve_safe_path(registry_path, entity_type.get_folder_name())
+        if not type_dir.exists():
+            return ids
+
+        file_prefix = entity_type.get_file_prefix()
+        for file_path in type_dir.glob(f"{file_prefix}-*.yml"):
+            try:
+                secure_file_path = resolve_safe_path(registry_path, file_path)
+                with open(secure_file_path, "r") as f:
+                    data = yaml.safe_load(f)
+                if isinstance(data, dict):
+                    existing_id = data.get("id")
+                    if isinstance(existing_id, str):
+                        ids.add(existing_id)
+            except PathSecurityError:
+                continue
+            except Exception:
+                continue
+
+        return ids
+
+    @classmethod
+    def _truncate_base_for_suffix(cls, base_id: str, suffix_len: int) -> str:
+        """
+        Truncate base_id to ensure (base_id + suffix) stays within MAX_ID_LENGTH.
+        """
+        max_base_len = MAX_ID_LENGTH - suffix_len
+        return base_id[:max_base_len]
+
+    @classmethod
+    def _resolve_auto_id(cls, existing_ids: set, base_id: str, uid: str) -> Optional[str]:
+        """
+        Resolve a unique ID using the requested collision strategy:
+        1. base_id (no suffix) if unique
+        2. base_id + '_' + first 3 chars of uid
+        3. if still not unique: increase the chars of uid to append
+        4. if still not unique: return None (caller prints an error)
+        """
+        base_id = base_id or "untitled"
+
+        if base_id not in existing_ids:
+            return base_id
+
+        for i in range(3, len(uid)):
+            partial_uid = uid[:i]
+            suffix = f"_{partial_uid}"
+            truncated_base = cls._truncate_base_for_suffix(base_id, len(suffix))
+            candidate = f"{truncated_base}{suffix}"
+
+            if candidate not in existing_ids:
+                return candidate
+
+        return None
