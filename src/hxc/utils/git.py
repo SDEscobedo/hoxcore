@@ -60,7 +60,7 @@ def git_available() -> bool:
             capture_output=True,
         )
         return True
-    except (subprocess.CalledProcessError, FileNotFoundError):
+    except (subprocess.CalledProcessError, FileNotFoundError, PermissionError):
         return False
 
 
