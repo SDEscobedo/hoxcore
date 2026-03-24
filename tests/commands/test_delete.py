@@ -13,6 +13,7 @@ from hxc.cli import main
 from hxc.commands.delete import DeleteCommand
 from hxc.commands.registry import RegistryCommand
 from hxc.utils.path_security import PathSecurityError
+from hxc.utils.git import GitOperationResult
 
 
 @pytest.fixture
@@ -105,6 +106,29 @@ def test_delete_command_parser():
     assert "type" in actions
     assert "force" in actions
     assert "registry" in actions
+    assert "no_commit" in actions
+
+
+def test_delete_command_parser_no_commit_flag():
+    """Test that --no-commit flag is properly configured"""
+    from argparse import ArgumentParser
+    
+    parser = ArgumentParser()
+    subparsers = parser.add_subparsers()
+    
+    cmd_parser = DeleteCommand.register_subparser(subparsers)
+    
+    # Find the 'no_commit' argument
+    no_commit_action = None
+    for action in cmd_parser._actions:
+        if action.dest == "no_commit":
+            no_commit_action = action
+            break
+    
+    assert no_commit_action is not None
+    # Verify it's a store_true action (flag)
+    assert no_commit_action.const is True
+    assert no_commit_action.default is False
 
 
 @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
@@ -115,14 +139,16 @@ def test_delete_by_uid_with_confirmation(mock_get_registry_path, temp_registry):
     
     # Mock the input function to simulate user confirmation
     with patch("builtins.input", return_value="y"):
-        result = main(["delete", "12345678"])
-        
-        # Check result
-        assert result == 0
-        
-        # Check that file was deleted
-        project_file = temp_registry / "projects" / "proj-12345678.yml"
-        assert not project_file.exists()
+        with patch("hxc.commands.delete.commit_entity_change") as mock_commit:
+            mock_commit.return_value = GitOperationResult(success=True, commit_hash="abc1234", message="test")
+            result = main(["delete", "12345678"])
+            
+            # Check result
+            assert result == 0
+            
+            # Check that file was deleted
+            project_file = temp_registry / "projects" / "proj-12345678.yml"
+            assert not project_file.exists()
 
 
 @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
@@ -149,14 +175,16 @@ def test_delete_by_uid_force(mock_get_registry_path, temp_registry):
     # Configure mock to return the temp registry
     mock_get_registry_path.return_value = str(temp_registry)
     
-    result = main(["delete", "12345678", "--force"])
-    
-    # Check result
-    assert result == 0
-    
-    # Check that file was deleted
-    project_file = temp_registry / "projects" / "proj-12345678.yml"
-    assert not project_file.exists()
+    with patch("hxc.commands.delete.commit_entity_change") as mock_commit:
+        mock_commit.return_value = GitOperationResult(success=True, commit_hash="abc1234", message="test")
+        result = main(["delete", "12345678", "--force"])
+        
+        # Check result
+        assert result == 0
+        
+        # Check that file was deleted
+        project_file = temp_registry / "projects" / "proj-12345678.yml"
+        assert not project_file.exists()
 
 
 @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
@@ -167,14 +195,16 @@ def test_delete_by_id(mock_get_registry_path, temp_registry):
     
     # Mock the input function to simulate user confirmation
     with patch("builtins.input", return_value="y"):
-        result = main(["delete", "P-ID-ONLY"])
-        
-        # Check result
-        assert result == 0
-        
-        # Check that file was deleted
-        project_file = temp_registry / "projects" / "proj-87654321.yml"
-        assert not project_file.exists()
+        with patch("hxc.commands.delete.commit_entity_change") as mock_commit:
+            mock_commit.return_value = GitOperationResult(success=True, commit_hash="abc1234", message="test")
+            result = main(["delete", "P-ID-ONLY"])
+            
+            # Check result
+            assert result == 0
+            
+            # Check that file was deleted
+            project_file = temp_registry / "projects" / "proj-87654321.yml"
+            assert not project_file.exists()
 
 
 @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
@@ -185,14 +215,16 @@ def test_delete_with_type_filter(mock_get_registry_path, temp_registry):
     
     # Mock the input function to simulate user confirmation
     with patch("builtins.input", return_value="y"):
-        result = main(["delete", "12345678", "--type", "project"])
-        
-        # Check result
-        assert result == 0
-        
-        # Check that file was deleted
-        project_file = temp_registry / "projects" / "proj-12345678.yml"
-        assert not project_file.exists()
+        with patch("hxc.commands.delete.commit_entity_change") as mock_commit:
+            mock_commit.return_value = GitOperationResult(success=True, commit_hash="abc1234", message="test")
+            result = main(["delete", "12345678", "--type", "project"])
+            
+            # Check result
+            assert result == 0
+            
+            # Check that file was deleted
+            project_file = temp_registry / "projects" / "proj-12345678.yml"
+            assert not project_file.exists()
 
 
 @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
@@ -334,19 +366,21 @@ def test_delete_all_entity_types_within_registry(mock_get_registry_path, temp_re
         assert entity_file.exists()
         
         # Delete with force flag
-        result = main(["delete", uid, "--force"])
-        
-        # Check result
-        assert result == 0
-        
-        # Verify file was deleted
-        assert not entity_file.exists()
-        
-        # Verify deletion stayed within registry
-        assert not any(
-            f.exists() for f in temp_registry.parent.rglob(filename)
-            if temp_registry not in f.parents
-        )
+        with patch("hxc.commands.delete.commit_entity_change") as mock_commit:
+            mock_commit.return_value = GitOperationResult(success=True, commit_hash="abc1234", message="test")
+            result = main(["delete", uid, "--force"])
+            
+            # Check result
+            assert result == 0
+            
+            # Verify file was deleted
+            assert not entity_file.exists()
+            
+            # Verify deletion stayed within registry
+            assert not any(
+                f.exists() for f in temp_registry.parent.rglob(filename)
+                if temp_registry not in f.parents
+            )
 
 
 @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
@@ -410,17 +444,19 @@ def test_delete_respects_registry_boundaries(mock_get_registry_path, temp_regist
     external_project.write_text("type: project\nuid: 12345678\ntitle: External Project")
     
     # Delete the internal project
-    result = main(["delete", "12345678", "--force"])
-    
-    # Check result
-    assert result == 0
-    
-    # Verify internal file was deleted
-    internal_file = temp_registry / "projects" / "proj-12345678.yml"
-    assert not internal_file.exists()
-    
-    # Verify external file still exists
-    assert external_project.exists()
+    with patch("hxc.commands.delete.commit_entity_change") as mock_commit:
+        mock_commit.return_value = GitOperationResult(success=True, commit_hash="abc1234", message="test")
+        result = main(["delete", "12345678", "--force"])
+        
+        # Check result
+        assert result == 0
+        
+        # Verify internal file was deleted
+        internal_file = temp_registry / "projects" / "proj-12345678.yml"
+        assert not internal_file.exists()
+        
+        # Verify external file still exists
+        assert external_project.exists()
 
 
 @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
@@ -465,9 +501,205 @@ def test_delete_multiple_matches_with_type_filter(mock_get_registry_path, temp_r
         assert any("Multiple entities found" in call[0][0] for call in mock_print.call_args_list)
     
     # Delete with type filter (should succeed)
-    result = main(["delete", "duplicate", "--type", "mission", "--force"])
-    assert result == 0
+    with patch("hxc.commands.delete.commit_entity_change") as mock_commit:
+        mock_commit.return_value = GitOperationResult(success=True, commit_hash="abc1234", message="test")
+        result = main(["delete", "duplicate", "--type", "mission", "--force"])
+        assert result == 0
+        
+        # Verify only mission was deleted
+        assert not (mission_dir / "miss-duplicate.yml").exists()
+        assert (action_dir / "act-duplicate.yml").exists()
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_delete_with_no_commit_flag(mock_get_registry_path, temp_registry):
+    """Test that --no-commit flag prevents git commit"""
+    mock_get_registry_path.return_value = str(temp_registry)
     
-    # Verify only mission was deleted
-    assert not (mission_dir / "miss-duplicate.yml").exists()
-    assert (action_dir / "act-duplicate.yml").exists()
+    with patch("hxc.commands.delete.commit_entity_change") as mock_commit:
+        with patch("builtins.print") as mock_print:
+            result = main(["delete", "12345678", "--force", "--no-commit"])
+            
+            # Check result
+            assert result == 0
+            
+            # Check that commit was NOT called
+            mock_commit.assert_not_called()
+            
+            # Check that file was still deleted
+            project_file = temp_registry / "projects" / "proj-12345678.yml"
+            assert not project_file.exists()
+            
+            # Check warning message about --no-commit
+            assert any("--no-commit" in call[0][0] for call in mock_print.call_args_list)
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_delete_without_no_commit_flag_calls_commit(mock_get_registry_path, temp_registry):
+    """Test that git commit is called when --no-commit is not used"""
+    mock_get_registry_path.return_value = str(temp_registry)
+    
+    with patch("hxc.commands.delete.commit_entity_change") as mock_commit:
+        mock_commit.return_value = GitOperationResult(success=True, commit_hash="abc1234", message="test")
+        result = main(["delete", "12345678", "--force"])
+        
+        # Check result
+        assert result == 0
+        
+        # Check that commit was called
+        mock_commit.assert_called_once()
+        
+        # Verify commit was called with correct action
+        call_kwargs = mock_commit.call_args.kwargs
+        assert call_kwargs["action"] == "Delete"
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_delete_commit_includes_entity_data(mock_get_registry_path, temp_registry):
+    """Test that git commit receives entity data"""
+    mock_get_registry_path.return_value = str(temp_registry)
+    
+    with patch("hxc.commands.delete.commit_entity_change") as mock_commit:
+        mock_commit.return_value = GitOperationResult(success=True, commit_hash="abc1234", message="test")
+        result = main(["delete", "12345678", "--force"])
+        
+        # Check result
+        assert result == 0
+        
+        # Check that commit was called with entity_data containing expected fields
+        call_kwargs = mock_commit.call_args.kwargs
+        entity_data = call_kwargs["entity_data"]
+        
+        assert entity_data["title"] == "Test Project"
+        assert entity_data["id"] == "P-001"
+        assert entity_data["type"] == "project"
+        assert entity_data["uid"] == "12345678"
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_delete_commit_called_after_user_confirmation(mock_get_registry_path, temp_registry):
+    """Test that git commit is called after user confirms deletion"""
+    mock_get_registry_path.return_value = str(temp_registry)
+    
+    with patch("builtins.input", return_value="y"):
+        with patch("hxc.commands.delete.commit_entity_change") as mock_commit:
+            mock_commit.return_value = GitOperationResult(success=True, commit_hash="abc1234", message="test")
+            result = main(["delete", "12345678"])
+            
+            # Check result
+            assert result == 0
+            
+            # Check that commit was called
+            mock_commit.assert_called_once()
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_delete_no_commit_when_user_cancels(mock_get_registry_path, temp_registry):
+    """Test that git commit is not called when user cancels deletion"""
+    mock_get_registry_path.return_value = str(temp_registry)
+    
+    with patch("builtins.input", return_value="n"):
+        with patch("hxc.commands.delete.commit_entity_change") as mock_commit:
+            result = main(["delete", "12345678"])
+            
+            # Check result indicates cancellation
+            assert result == 1
+            
+            # Check that commit was NOT called
+            mock_commit.assert_not_called()
+            
+            # Check that file was not deleted
+            project_file = temp_registry / "projects" / "proj-12345678.yml"
+            assert project_file.exists()
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_delete_git_error_does_not_fail_deletion(mock_get_registry_path, temp_registry, capsys):
+    """Test that git commit errors don't prevent successful deletion"""
+    mock_get_registry_path.return_value = str(temp_registry)
+    
+    with patch("hxc.commands.delete.commit_entity_change") as mock_commit:
+        mock_commit.return_value = GitOperationResult(
+            success=False,
+            error="Simulated git error"
+        )
+        result = main(["delete", "12345678", "--force"])
+        
+        # Delete should still succeed
+        assert result == 0
+        
+        # File should be deleted
+        project_file = temp_registry / "projects" / "proj-12345678.yml"
+        assert not project_file.exists()
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_delete_reads_entity_data_before_deletion(mock_get_registry_path, temp_registry):
+    """Test that entity data is read before the file is deleted"""
+    mock_get_registry_path.return_value = str(temp_registry)
+    
+    captured_entity_data = {}
+    
+    def capture_entity_data(**kwargs):
+        captured_entity_data.update(kwargs.get('entity_data', {}))
+        return GitOperationResult(success=True, commit_hash="abc1234", message="test")
+    
+    with patch("hxc.commands.delete.commit_entity_change", side_effect=capture_entity_data) as mock_commit:
+        result = main(["delete", "12345678", "--force"])
+        
+        # Check result
+        assert result == 0
+        
+        # Verify entity data was captured with correct values
+        assert captured_entity_data.get("title") == "Test Project"
+        assert captured_entity_data.get("uid") == "12345678"
+        assert captured_entity_data.get("type") == "project"
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_delete_all_entity_types_call_commit(mock_get_registry_path, temp_registry):
+    """Test that commit is called for deletion of all entity types"""
+    mock_get_registry_path.return_value = str(temp_registry)
+    
+    # Create additional entity types for testing
+    mission_data = {
+        "type": "mission",
+        "uid": "misstest",
+        "id": "M-TEST",
+        "title": "Test Mission",
+        "status": "active",
+        "start_date": "2024-01-01"
+    }
+    with open(temp_registry / "missions" / "miss-misstest.yml", 'w') as f:
+        yaml.dump(mission_data, f)
+    
+    action_data = {
+        "type": "action",
+        "uid": "acttest1",
+        "id": "A-TEST",
+        "title": "Test Action",
+        "status": "active",
+        "start_date": "2024-01-01"
+    }
+    with open(temp_registry / "actions" / "act-acttest1.yml", 'w') as f:
+        yaml.dump(action_data, f)
+    
+    test_cases = [
+        ("12345678", "project"),
+        ("abcdef12", "program"),
+        ("misstest", "mission"),
+        ("acttest1", "action"),
+    ]
+    
+    for uid, expected_type in test_cases:
+        with patch("hxc.commands.delete.commit_entity_change") as mock_commit:
+            mock_commit.return_value = GitOperationResult(success=True, commit_hash="abc1234", message="test")
+            result = main(["delete", uid, "--force"])
+            
+            assert result == 0
+            mock_commit.assert_called_once()
+            
+            # Verify entity type in commit call
+            call_kwargs = mock_commit.call_args.kwargs
+            assert call_kwargs["entity_data"]["type"] == expected_type
+            assert call_kwargs["action"] == "Delete"

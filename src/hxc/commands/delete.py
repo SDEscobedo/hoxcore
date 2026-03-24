@@ -5,13 +5,15 @@ import os
 import yaml
 import argparse
 from pathlib import Path
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Dict, Any
 
 from hxc.commands import register_command
 from hxc.commands.base import BaseCommand
 from hxc.commands.registry import RegistryCommand
 from hxc.utils.helpers import get_project_root
 from hxc.utils.path_security import resolve_safe_path, PathSecurityError
+from hxc.utils.git import commit_entity_change, print_commit_result
+from hxc.core.enums import EntityType
 
 
 @register_command
@@ -21,19 +23,6 @@ class DeleteCommand(BaseCommand):
     name = "delete"
     help = "Delete a program, project, action, or mission from the registry"
     
-    ENTITY_FOLDERS = {
-        "program": "programs",
-        "project": "projects",
-        "mission": "missions",
-        "action": "actions"
-    }
-    FILE_PREFIXES = {
-        "program": "prog",
-        "project": "proj",
-        "mission": "miss",
-        "action": "act"
-    }
-    
     @classmethod
     def register_subparser(cls, subparsers):
         parser = super().register_subparser(subparsers)
@@ -42,18 +31,30 @@ class DeleteCommand(BaseCommand):
         parser.add_argument('identifier', help='ID or UID of the entity to delete')
         
         # Optional arguments
-        parser.add_argument('--type', '-t', choices=list(cls.ENTITY_FOLDERS.keys()),
+        parser.add_argument('--type', '-t', choices=EntityType.values(),
                           help='Type of entity to delete (only needed if identifier is ambiguous)')
         parser.add_argument('--force', '-f', action='store_true',
                           help='Skip confirmation prompt')
         parser.add_argument('--registry',
                           help='Path to registry (defaults to current or configured registry)')
+        parser.add_argument('--no-commit',
+                          action='store_true',
+                          help='Skip automatic git commit after deleting the entity')
         
         return parser
     
     @classmethod
     def execute(cls, args):
         try:
+            # Convert entity type if provided
+            entity_type_enum = None
+            if args.type:
+                try:
+                    entity_type_enum = EntityType.from_string(args.type)
+                except ValueError as e:
+                    print(f"❌ Invalid argument: {e}")
+                    return 1
+            
             # Get registry path
             registry_path = cls._get_registry_path(args.registry)
             if not registry_path:
@@ -85,9 +86,12 @@ class DeleteCommand(BaseCommand):
                 print(f"❌ Security error: {e}")
                 return 1
             
+            # Read entity data before deletion (needed for commit message)
+            entity_data = cls._read_entity_data(str(secure_file_path))
+            entity_name = entity_data.get('title', os.path.basename(file_path))
+            
             # Ask for confirmation unless --force is used
             if not args.force:
-                entity_name = cls._get_entity_name(str(secure_file_path))
                 print(f"⚠️  Warning: About to delete {entity_type} '{entity_name}' at {secure_file_path}")
                 confirmation = input("Are you sure? (y/N): ")
                 if confirmation.lower() != 'y':
@@ -98,10 +102,25 @@ class DeleteCommand(BaseCommand):
             try:
                 os.remove(str(secure_file_path))
                 print(f"✅ Deleted {entity_type} at {secure_file_path}")
-                return 0
             except Exception as e:
                 print(f"❌ Error deleting entity: {e}")
                 return 1
+            
+            # Git commit (unless --no-commit is specified)
+            no_commit = getattr(args, 'no_commit', False)
+            if no_commit:
+                print("⚠️  Changes not committed (--no-commit flag used)")
+            else:
+                result = commit_entity_change(
+                    registry_path=registry_path,
+                    file_path=secure_file_path,
+                    action="Delete",
+                    entity_data=entity_data,
+                )
+                print_commit_result(result, no_commit_flag=False)
+            
+            return 0
+            
         except PathSecurityError as e:
             print(f"❌ Security error: {e}")
             return 1
@@ -139,11 +158,17 @@ class DeleteCommand(BaseCommand):
         results = []
         
         # Determine which entity types to search
-        entity_types = [entity_type] if entity_type else cls.ENTITY_FOLDERS.keys()
+        if entity_type:
+            try:
+                entity_types = [EntityType.from_string(entity_type)]
+            except ValueError:
+                return results
+        else:
+            entity_types = list(EntityType)
         
         for ent_type in entity_types:
-            folder = cls.ENTITY_FOLDERS[ent_type]
-            prefix = cls.FILE_PREFIXES[ent_type]
+            folder = ent_type.get_folder_name()
+            prefix = ent_type.get_file_prefix()
             
             # Securely resolve the folder path
             try:
@@ -161,7 +186,7 @@ class DeleteCommand(BaseCommand):
                 try:
                     # Verify the file is within the registry
                     secure_file_path = resolve_safe_path(registry_path, file_path)
-                    results.append((str(secure_file_path), ent_type))
+                    results.append((str(secure_file_path), ent_type.value))
                 except PathSecurityError:
                     # Skip files that are outside the registry
                     continue
@@ -178,7 +203,7 @@ class DeleteCommand(BaseCommand):
                             data = yaml.safe_load(f)
                             if data and isinstance(data, dict):
                                 if data.get('id') == identifier or data.get('uid') == identifier:
-                                    results.append((str(secure_file_path), ent_type))
+                                    results.append((str(secure_file_path), ent_type.value))
                     except PathSecurityError:
                         # Skip files that are outside the registry
                         continue
@@ -189,16 +214,36 @@ class DeleteCommand(BaseCommand):
         return results
     
     @classmethod
+    def _read_entity_data(cls, file_path: str) -> Dict[str, Any]:
+        """
+        Read entity data from file for commit message generation.
+        
+        Args:
+            file_path: Path to the entity YAML file
+            
+        Returns:
+            Dictionary with entity data, or minimal dict if file cannot be read
+        """
+        try:
+            with open(file_path, 'r') as f:
+                data = yaml.safe_load(f)
+                if data and isinstance(data, dict):
+                    return data
+        except Exception:
+            pass
+        
+        # Return minimal data if file cannot be read
+        return {
+            'title': os.path.basename(file_path),
+            'type': 'entity',
+        }
+    
+    @classmethod
     def _get_entity_name(cls, file_path: str) -> str:
         """
         Get entity name from file for confirmation message
         
         This is a simple implementation that extracts the title field from the YAML file.
         """
-        try:
-            with open(file_path, 'r') as f:
-                data = yaml.safe_load(f)
-                return data.get('title', os.path.basename(file_path))
-        except Exception:
-            # If we can't extract the title, just return the filename
-            return os.path.basename(file_path)
+        data = cls._read_entity_data(file_path)
+        return data.get('title', os.path.basename(file_path))
