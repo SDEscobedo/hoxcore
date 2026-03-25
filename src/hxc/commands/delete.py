@@ -123,7 +123,7 @@ class DeleteCommand(BaseCommand):
             print(f"❌ Security error: {e}")
             return 1
         except Exception as e:
-            print(f"❌ An unexpected error occurred: {e}")
+            print(f"❌ Error deleting entity: {e}")
             return 1
 
     @classmethod
