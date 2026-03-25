@@ -686,6 +686,16 @@ def edit_entity_tool(
                 "identifier": identifier,
             }
  
+        # Check ID uniqueness if set_id is provided
+        if set_id is not None:
+            id_check_error = _check_id_uniqueness(reg_path, entity_data, set_id)
+            if id_check_error is not None:
+                return {
+                    "success": False,
+                    "error": id_check_error,
+                    "identifier": identifier,
+                }
+ 
         changes: List[str] = []
         # Track whether the caller specified any arguments at all (even no-ops)
         anything_specified = False
@@ -711,6 +721,9 @@ def edit_entity_tool(
                     except ValueError as e:
                         return {"success": False, "error": str(e), "identifier": identifier}
                 old = entity_data.get(field)
+                # Skip if setting the same value (no-op)
+                if old == value:
+                    continue
                 entity_data[field] = value
                 changes.append(f"Set {field}: {old!r} → {value!r}")
  
@@ -847,7 +860,9 @@ def delete_entity_tool(
     except Exception as e:
         return {"success": False, "error": f"Unexpected error: {e}", "identifier": identifier}
 
-# ─── READ TOOLS ────────────────────────────────────────────────────────────
+
+# ─── HELPER FUNCTIONS ──────────────────────────────────────────────────────
+
 
 def _get_registry_path(specified_path: Optional[str] = None) -> Optional[str]:
     """Get registry path from specified path or config"""
@@ -1021,3 +1036,84 @@ def _get_entities_by_ids(
             continue
     
     return entities
+
+
+def _load_existing_ids(registry_path: str, entity_type: EntityType) -> set:
+    """
+    Load all `id` fields for existing entities of this type into a set.
+
+    Args:
+        registry_path: Path to the registry
+        entity_type: The entity type to load IDs for
+        
+    Returns:
+        Set of existing IDs (strings). Missing/invalid ids are ignored.
+    """
+    ids = set()
+    try:
+        type_dir = resolve_safe_path(registry_path, entity_type.get_folder_name())
+    except PathSecurityError:
+        return ids
+        
+    if not type_dir.exists():
+        return ids
+
+    file_prefix = entity_type.get_file_prefix()
+    for file_path in type_dir.glob(f"{file_prefix}-*.yml"):
+        try:
+            secure_file_path = resolve_safe_path(registry_path, file_path)
+            with open(secure_file_path, "r") as f:
+                data = yaml.safe_load(f)
+            if isinstance(data, dict):
+                existing_id = data.get("id")
+                if isinstance(existing_id, str):
+                    ids.add(existing_id)
+        except PathSecurityError:
+            continue
+        except Exception:
+            continue
+
+    return ids
+
+
+def _check_id_uniqueness(
+    registry_path: str,
+    entity_data: Dict[str, Any],
+    new_id: str
+) -> Optional[str]:
+    """
+    Check if the new ID is unique within the entity's type.
+    
+    Args:
+        registry_path: Path to the registry
+        entity_data: The current entity data
+        new_id: The new ID to set
+        
+    Returns:
+        None if the ID is valid/unique, or an error message string if not.
+    """
+    # Get the entity type from the loaded data
+    entity_type_value = entity_data.get('type')
+    if not entity_type_value:
+        return None  # Can't validate without knowing the type
+    
+    try:
+        actual_entity_type = EntityType.from_string(entity_type_value)
+    except ValueError:
+        return None  # Invalid entity type in file, skip check
+    
+    # Get current entity's ID
+    current_id = entity_data.get('id')
+    
+    # If setting to the same ID, it's a no-op - allow it
+    if current_id == new_id:
+        return None
+    
+    # Load all existing IDs for this entity type
+    existing_ids = _load_existing_ids(registry_path, actual_entity_type)
+    
+    # Check if new ID already exists
+    if new_id in existing_ids:
+        return f"{actual_entity_type.value} with id '{new_id}' already exists in this registry"
+    
+    return None

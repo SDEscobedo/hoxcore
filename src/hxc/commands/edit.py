@@ -180,6 +180,16 @@ class EditCommand(BaseCommand):
                 print(f"❌ Invalid entity data in {file_path}")
                 return 1
 
+            # Check for duplicate ID if --set-id is provided
+            if args.set_id is not None:
+                id_check_result = cls._check_id_uniqueness(
+                    registry_path, entity_data, args.set_id
+                )
+                if id_check_result is not None:
+                    # id_check_result contains the error message or None if OK
+                    print(id_check_result)
+                    return 1
+
             # Track changes
             changes = []
 
@@ -238,6 +248,92 @@ class EditCommand(BaseCommand):
         except Exception as e:
             print(f"❌ Error editing entity: {e}")
             return 1
+
+    # ------------------------------------------------------------------ #
+    #  ID uniqueness check                                                 #
+    # ------------------------------------------------------------------ #
+
+    @classmethod
+    def _check_id_uniqueness(
+        cls,
+        registry_path: str,
+        entity_data: Dict[str, Any],
+        new_id: str
+    ) -> Optional[str]:
+        """
+        Check if the new ID is unique within the entity's type.
+        
+        Args:
+            registry_path: Path to the registry
+            entity_data: The current entity data
+            new_id: The new ID to set
+            
+        Returns:
+            None if the ID is valid/unique, or an error message string if not.
+        """
+        # Get the entity type from the loaded data
+        entity_type_value = entity_data.get('type')
+        if not entity_type_value:
+            return None  # Can't validate without knowing the type
+        
+        try:
+            actual_entity_type = EntityType.from_string(entity_type_value)
+        except ValueError:
+            return None  # Invalid entity type in file, skip check
+        
+        # Get current entity's ID
+        current_id = entity_data.get('id')
+        
+        # If setting to the same ID, it's a no-op - allow it
+        if current_id == new_id:
+            return None
+        
+        # Load all existing IDs for this entity type
+        existing_ids = cls._load_existing_ids(registry_path, actual_entity_type)
+        
+        # Check if new ID already exists
+        if new_id in existing_ids:
+            return f"❌ {actual_entity_type.value} with id '{new_id}' already exists in this registry"
+        
+        return None
+
+    @classmethod
+    def _load_existing_ids(cls, registry_path: str, entity_type: EntityType) -> set:
+        """
+        Load all `id` fields for existing entities of this type into a set.
+
+        Args:
+            registry_path: Path to the registry
+            entity_type: The entity type to load IDs for
+            
+        Returns:
+            Set of existing IDs (strings). Missing/invalid ids are ignored.
+        """
+        ids = set()
+        try:
+            type_dir = resolve_safe_path(registry_path, entity_type.get_folder_name())
+        except PathSecurityError:
+            return ids
+            
+        if not type_dir.exists():
+            return ids
+
+        file_prefix = entity_type.get_file_prefix()
+        for file_path in type_dir.glob(f"{file_prefix}-*.yml"):
+            try:
+                secure_file_path = resolve_safe_path(registry_path, file_path)
+                with open(secure_file_path, "r") as f:
+                    data = yaml.safe_load(f)
+                if isinstance(data, dict):
+                    existing_id = data.get("id")
+                    if isinstance(existing_id, str):
+                        ids.add(existing_id)
+            except PathSecurityError:
+                continue
+            except Exception:
+                continue
+
+        return ids
 
     # ------------------------------------------------------------------ #
     #  Git integration                                                     #
@@ -435,6 +531,9 @@ class EditCommand(BaseCommand):
             value = getattr(args, arg_name, None)
             if value is not None:
                 old_value = entity_data.get(field_name, '(not set)')
+                # Skip if setting the same value (no-op)
+                if old_value == value:
+                    continue
                 entity_data[field_name] = value
                 changes.append(f"Set {field_name}: '{old_value}' → '{value}'")
         return changes

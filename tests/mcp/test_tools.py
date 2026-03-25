@@ -1419,6 +1419,89 @@ class TestEditEntityTool:
         assert result["entity"]["due_date"] == "2026-06-30"
         assert "identifier" in result
         assert "file_path" in result
+
+    # ─── ID UNIQUENESS TESTS ────────────────────────────────────────────────────
+
+    def test_edit_set_id_to_existing_id_fails(self, temp_registry):
+        """Test that set_id with an ID already used by another entity of the same type returns success=False"""
+        # Try to set P-001's id to P-002 (which already exists in the fixture)
+        result = edit_entity_tool(
+            identifier="P-001",
+            set_id="P-002",
+            registry_path=temp_registry,
+        )
+        
+        # Should fail
+        assert result["success"] is False
+        assert "error" in result
+        # Error message should mention the conflicting ID
+        assert "P-002" in result["error"]
+        assert "already exists" in result["error"].lower()
+
+    def test_edit_set_id_to_same_id_succeeds(self, temp_registry):
+        """Test that set_id with the entity's own current ID (no-op) returns success=True"""
+        # Set id to the same value it already has (P-001)
+        result = edit_entity_tool(
+            identifier="proj-test-001",
+            set_id="P-001",
+            registry_path=temp_registry,
+        )
+        
+        # Should succeed (no-op)
+        assert result["success"] is True
+        assert result["entity"]["id"] == "P-001"
+
+    def test_edit_set_id_to_unique_id_succeeds(self, temp_registry):
+        """Test that set_id with a genuinely new, unused ID returns success=True and updates the entity"""
+        result = edit_entity_tool(
+            identifier="P-001",
+            set_id="P-NEW-UNIQUE",
+            registry_path=temp_registry,
+        )
+        
+        # Should succeed
+        assert result["success"] is True
+        assert result["entity"]["id"] == "P-NEW-UNIQUE"
+        
+        # Verify persisted to file
+        import yaml
+        with open(result["file_path"]) as f:
+            on_disk = yaml.safe_load(f)
+        assert on_disk["id"] == "P-NEW-UNIQUE"
+
+    def test_edit_set_id_allows_same_id_in_different_type(self, temp_registry):
+        """Test that set_id with an ID that exists in a different entity type returns success=True"""
+        # P-001 exists as a project, but we're editing a program
+        # The uniqueness check is scoped per entity type, so this should succeed
+        result = edit_entity_tool(
+            identifier="PRG-001",
+            set_id="P-001",
+            registry_path=temp_registry,
+        )
+        
+        # Should succeed because programs and projects are different types
+        assert result["success"] is True
+        assert result["entity"]["id"] == "P-001"
+        
+        # Verify the original project still has P-001
+        get_result = get_entity_tool(
+            identifier="proj-test-001",
+            registry_path=temp_registry,
+        )
+        assert get_result["success"] is True
+        assert get_result["entity"]["id"] == "P-001"
+
+    def test_edit_set_id_error_contains_entity_type(self, temp_registry):
+        """Test that the error message for duplicate ID includes the entity type"""
+        result = edit_entity_tool(
+            identifier="P-001",
+            set_id="P-002",
+            registry_path=temp_registry,
+        )
+        
+        assert result["success"] is False
+        # Error message should mention the entity type
+        assert "project" in result["error"].lower()
  
  
 class TestDeleteEntityTool:

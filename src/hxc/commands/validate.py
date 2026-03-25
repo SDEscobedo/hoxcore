@@ -82,6 +82,10 @@ class ValidateCommand(BaseCommand):
             uid_errors = cls._validate_uids(entities, args.verbose)
             errors.extend(uid_errors)
             
+            # Validate IDs (per entity type)
+            id_errors = cls._validate_ids(entities, args.verbose)
+            errors.extend(id_errors)
+            
             # Validate parent/child relationships
             relationship_errors, relationship_warnings = cls._validate_relationships(
                 entities, args.verbose
@@ -261,6 +265,54 @@ class ValidateCommand(BaseCommand):
         
         if verbose and not errors:
             print(f"  ✓ All {len(uid_map)} UIDs are unique")
+        
+        if verbose:
+            print()
+        
+        return errors
+    
+    @classmethod
+    def _validate_ids(
+        cls,
+        entities: List[Dict[str, Any]],
+        verbose: bool
+    ) -> List[str]:
+        """Validate that all IDs are unique within each entity type"""
+        errors = []
+        
+        if verbose:
+            print("🔍 Checking ID uniqueness (per entity type)...")
+        
+        # Group entities by type
+        entities_by_type: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+        for entity in entities:
+            entity_type = entity.get('type')
+            if entity_type:
+                entities_by_type[entity_type].append(entity)
+        
+        total_ids_checked = 0
+        
+        # Check ID uniqueness within each type
+        for entity_type, type_entities in entities_by_type.items():
+            id_map: Dict[str, List[str]] = defaultdict(list)
+            
+            for entity in type_entities:
+                entity_id = entity.get('id')
+                if entity_id:
+                    file_name = entity.get('_file', {}).get('name', 'unknown')
+                    id_map[entity_id].append(file_name)
+                    total_ids_checked += 1
+            
+            # Check for duplicates within this type
+            for entity_id, files in id_map.items():
+                if len(files) > 1:
+                    error = f"Duplicate ID '{entity_id}' in {entity_type} entities: {', '.join(files)}"
+                    errors.append(error)
+                    if verbose:
+                        print(f"  ❌ {error}")
+        
+        if verbose and not errors:
+            print(f"  ✓ All {total_ids_checked} IDs are unique within their entity types")
         
         if verbose:
             print()
