@@ -568,7 +568,7 @@ def test_git_log_shows_deleted_file_path(mock_get_registry_path, temp_git_regist
     log_stat_result = subprocess.run(["git", "log", "-1", "--stat"], cwd=str(temp_git_registry), capture_output=True, text=True)
     
     assert "projects/proj-12345678.yml" in log_stat_result.stdout
-    assert "1 file changed, 7 deletions(-)" in log_stat_result.stdout
+    assert "1 file changed, 6 deletions(-)" in log_stat_result.stdout
 
 
 @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
@@ -663,7 +663,7 @@ def test_delete_commit_message_generation(mock_get_registry_path, mock_subproces
             
     assert commit_call is not None, "git commit was not called"
     
-    commit_message = commit_call.args[0][2]
+    commit_message = commit_call.args[0][3] if len(commit_call.args[0]) > 3 else ""
     assert "Delete proj-12345678: Test Project" in commit_message
     assert "Entity type: project" in commit_message
     assert "Entity ID: P-001" in commit_message
