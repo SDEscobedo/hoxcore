@@ -4,6 +4,8 @@ Delete command implementation for removing projects, programs, actions, or missi
 import os
 import yaml
 import argparse
+import subprocess
+import re
 from pathlib import Path
 from typing import Optional, List, Tuple
 
@@ -12,6 +14,7 @@ from hxc.commands.base import BaseCommand
 from hxc.commands.registry import RegistryCommand
 from hxc.utils.helpers import get_project_root
 from hxc.utils.path_security import resolve_safe_path, PathSecurityError
+from hxc.commands.edit import EditCommand
 
 
 @register_command
@@ -19,7 +22,7 @@ class DeleteCommand(BaseCommand):
     """Command for deleting entities from the registry"""
     
     name = "delete"
-    help = "Delete a program, project, action, or mission from the registry"
+    help = "Delete an entity and automatically commit the change"
     
     ENTITY_FOLDERS = {
         "program": "programs",
@@ -48,6 +51,7 @@ class DeleteCommand(BaseCommand):
                           help='Skip confirmation prompt')
         parser.add_argument('--registry',
                           help='Path to registry (defaults to current or configured registry)')
+        parser.add_argument("--no-commit", action='store_true', help='Do not commit deletion to git')
         
         return parser
     
@@ -94,17 +98,116 @@ class DeleteCommand(BaseCommand):
                     print("❌ Deletion cancelled")
                     return 1
             
-            # Delete the file
+            # Read entity data before deleting the file
             try:
+                with open(secure_file_path, 'r') as f:
+                    entity_data = yaml.safe_load(f) or {}
+            except FileNotFoundError:
+                print(f"❌ File not found at {secure_file_path}. Cannot proceed.")
+                return 1
+            except Exception as e:
+                print(f"❌ Error reading entity file: {e}")
+                return 1
+
+            if args.no_commit:
+                # Simple file deletion
                 os.remove(str(secure_file_path))
                 print(f"✅ Deleted {entity_type} at {secure_file_path}")
-                return 0
-            except Exception as e:
-                print(f"❌ Error deleting entity: {e}")
-                return 1
+                print("⚠️  Changes not committed (--no-commit flag used)")
+            else:
+                # Git-aware deletion
+                return cls._git_delete_entity(registry_path, secure_file_path, entity_type, entity_data)
+
+            return 0
         except PathSecurityError as e:
             print(f"❌ Security error: {e}")
             return 1
+        except Exception as e:
+            print(f"❌ Error deleting entity: {e}")
+            return 1
+
+    @classmethod
+    def _confirm_deletion(cls, secure_file_path: Path, entity_type: str) -> bool:
+        """Get user confirmation to delete an entity."""
+        entity_name = cls._get_entity_name(str(secure_file_path))
+        print(f"⚠️  Warning: About to delete {entity_type} '{entity_name}' at {secure_file_path}")
+        confirmation = input("Are you sure? (y/N): ")
+        if confirmation.lower() != 'y':
+            print("❌ Deletion cancelled")
+            return False
+        return True
+
+    @classmethod
+    def _git_delete_entity(cls, registry_path: str, secure_file_path: Path, entity_type: str, entity_data: dict) -> int:
+        """
+        Handles the deletion of an entity using Git.
+        It stages the deletion and commits it with a formatted message.
+        If the file is not tracked by Git, it just deletes the file from the filesystem.
+        """
+        git_root = EditCommand._find_git_root(registry_path)
+        if not git_root:
+            print("⚠️  No git repository found. Deleting file from disk only.")
+            os.remove(str(secure_file_path))
+            print(f"✅ Deleted {entity_type} at {secure_file_path}")
+            return 0
+        
+        if not EditCommand._git_available():
+            print("⚠️ Git is not installed.")
+            os.remove(str(secure_file_path))
+            print(f"✅ Deleted {entity_type} at {secure_file_path}")
+            return 0
+        
+        rel_path = secure_file_path.relative_to(Path(git_root)).as_posix()
+        
+        # Check if there are uncommitted changes
+        status_result = subprocess.run(["git", "status", "--porcelain"], cwd=git_root, capture_output=True, text=True)
+        if status_result.stdout:
+            print("Uncommitted changes exist. Staging only the deleted file.")
+
+        rm_result = subprocess.run(["git", "rm", rel_path], cwd=git_root, capture_output=True, text=True)
+
+        if rm_result.returncode != 0:
+            print(f"⚠️  File not tracked by Git. Deleting from disk only.")
+            os.remove(str(secure_file_path))
+            print(f"✅ Deleted untracked file: {secure_file_path}")
+            return 0
+
+        prefix = cls.FILE_PREFIXES.get(entity_type, "ent")
+        uid = entity_data.get('uid', "Unknown")
+        title = entity_data.get('title', os.path.basename(str(secure_file_path)))
+        entity_id = entity_data.get('id', "Unknown")
+
+        commit_message = (
+            f"Delete {prefix}-{uid}: {title}\n\n"
+            f"Entity type: {entity_type}\n"
+            f"Entity ID: {entity_id}\n"
+            f"Entity UID: {uid}"
+        )
+
+        try:
+            commit_result = subprocess.run(
+                ["git", "commit", "-m", commit_message],
+                cwd=git_root,
+                capture_output=True,
+                text=True
+            )
+
+            if commit_result.returncode != 0:
+                print(f"❌ git commit failed: {commit_result.stderr.strip()}")
+                print("     Delete operation succeded, but commit was skipped.")
+                return 0
+        
+        except Exception as e:
+            print(f"❌ git commit failed: {e}")
+            print("     Delete operation succeded, but commit was skipped.")
+            return 0
+
+        commit_hash = EditCommand._parse_commit_hash(commit_result.stdout)
+        hash_display = f"({commit_hash})" if commit_hash else "(empty commit)"
+        
+        print(f"✅ Deleted {entity_type} at {secure_file_path}")
+        print(f"📦 Changes committed to git {hash_display}")
+        return 0
     
     @classmethod
     def _get_registry_path(cls, specified_path: Optional[str] = None) -> Optional[str]:
