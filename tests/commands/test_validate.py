@@ -139,6 +139,81 @@ class TestValidateCommand:
         captured = capsys.readouterr()
         assert "Duplicate UID 'proj-001'" in captured.out
     
+    def test_validate_duplicate_ids(self, mock_registry, capsys):
+        """Test detection of duplicate IDs within the same entity type"""
+        # Create two entities of the same type with identical 'id' fields
+        entity1 = {
+            "type": "project",
+            "uid": "proj-001",
+            "id": "P-DUPLICATE",
+            "title": "First Project",
+            "status": "active"
+        }
+        entity2 = {
+            "type": "project",
+            "uid": "proj-002",
+            "id": "P-DUPLICATE",  # Same ID as entity1
+            "title": "Second Project",
+            "status": "active"
+        }
+        
+        self.create_entity_file(
+            mock_registry, "project", "proj-001.yml", entity1
+        )
+        self.create_entity_file(
+            mock_registry, "project", "proj-002.yml", entity2
+        )
+        
+        args = MagicMock()
+        args.registry = str(mock_registry)
+        args.verbose = True
+        args.fix = False
+        
+        result = ValidateCommand.execute(args)
+        
+        assert result == 1
+        captured = capsys.readouterr()
+        assert "Duplicate ID 'P-DUPLICATE'" in captured.out
+        assert "proj-001.yml" in captured.out
+        assert "proj-002.yml" in captured.out
+    
+    def test_validate_duplicate_ids_different_types_allowed(self, mock_registry, capsys):
+        """Test that duplicate IDs across different entity types are allowed"""
+        # Create entities of different types with the same 'id' field
+        project_entity = {
+            "type": "project",
+            "uid": "proj-001",
+            "id": "SHARED-ID",
+            "title": "A Project",
+            "status": "active"
+        }
+        program_entity = {
+            "type": "program",
+            "uid": "prog-001",
+            "id": "SHARED-ID",  # Same ID as project, but different type
+            "title": "A Program",
+            "status": "active"
+        }
+        
+        self.create_entity_file(
+            mock_registry, "project", "proj-001.yml", project_entity
+        )
+        self.create_entity_file(
+            mock_registry, "program", "prog-001.yml", program_entity
+        )
+        
+        args = MagicMock()
+        args.registry = str(mock_registry)
+        args.verbose = True
+        args.fix = False
+        
+        result = ValidateCommand.execute(args)
+        
+        # Should pass - duplicate IDs are only checked within the same entity type
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "✅ Registry validation passed!" in captured.out
+    
     def test_validate_broken_parent_link(self, mock_registry, valid_entity, capsys):
         """Test detection of broken parent links"""
         # Create entity with non-existent parent
@@ -316,6 +391,7 @@ class TestValidateCommand:
         assert "Loading entities" in captured.out
         assert "Checking required fields" in captured.out
         assert "Checking UID uniqueness" in captured.out
+        assert "Checking ID uniqueness" in captured.out
         assert "Checking relationships" in captured.out
         assert "Checking status values" in captured.out
         assert "Checking entity types" in captured.out
@@ -485,3 +561,88 @@ class TestValidateCommand:
         assert result == str(mock_registry)
         mock_get_path.assert_called_once()
         mock_get_root.assert_called_once()
+    
+    def test_validate_duplicate_ids_multiple_files(self, mock_registry, capsys):
+        """Test that duplicate ID error message lists all conflicting files"""
+        # Create three entities of the same type with the same 'id' field
+        entity1 = {
+            "type": "project",
+            "uid": "proj-001",
+            "id": "P-SAME",
+            "title": "First Project",
+            "status": "active"
+        }
+        entity2 = {
+            "type": "project",
+            "uid": "proj-002",
+            "id": "P-SAME",
+            "title": "Second Project",
+            "status": "active"
+        }
+        entity3 = {
+            "type": "project",
+            "uid": "proj-003",
+            "id": "P-SAME",
+            "title": "Third Project",
+            "status": "active"
+        }
+        
+        self.create_entity_file(
+            mock_registry, "project", "proj-001.yml", entity1
+        )
+        self.create_entity_file(
+            mock_registry, "project", "proj-002.yml", entity2
+        )
+        self.create_entity_file(
+            mock_registry, "project", "proj-003.yml", entity3
+        )
+        
+        args = MagicMock()
+        args.registry = str(mock_registry)
+        args.verbose = True
+        args.fix = False
+        
+        result = ValidateCommand.execute(args)
+        
+        assert result == 1
+        captured = capsys.readouterr()
+        assert "Duplicate ID 'P-SAME'" in captured.out
+        # All three files should be mentioned
+        assert "proj-001.yml" in captured.out
+        assert "proj-002.yml" in captured.out
+        assert "proj-003.yml" in captured.out
+    
+    def test_validate_unique_ids_pass(self, mock_registry, capsys):
+        """Test that unique IDs within the same entity type pass validation"""
+        entity1 = {
+            "type": "project",
+            "uid": "proj-001",
+            "id": "P-001",
+            "title": "First Project",
+            "status": "active"
+        }
+        entity2 = {
+            "type": "project",
+            "uid": "proj-002",
+            "id": "P-002",
+            "title": "Second Project",
+            "status": "active"
+        }
+        
+        self.create_entity_file(
+            mock_registry, "project", "proj-001.yml", entity1
+        )
+        self.create_entity_file(
+            mock_registry, "project", "proj-002.yml", entity2
+        )
+        
+        args = MagicMock()
+        args.registry = str(mock_registry)
+        args.verbose = True
+        args.fix = False
+        
+        result = ValidateCommand.execute(args)
+        
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "All" in captured.out and "IDs are unique" in captured.out
