@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hoxcore"
-version = "0.1.4"
+version = "0.1.5"
 description = "HoxCore - A meta-manager for organizational objects (projects, missions, activities, programs)"
 readme = "README.md"
 requires-python = ">=3.8"
