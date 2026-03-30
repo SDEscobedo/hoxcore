@@ -104,11 +104,11 @@ class TestGitAvailable:
         assert EditCommand._git_available() is True
 
     def test_returns_false_when_git_missing(self):
-        with patch("subprocess.run", side_effect=FileNotFoundError):
+        with patch("hxc.utils.git.subprocess.run", side_effect=FileNotFoundError):
             assert EditCommand._git_available() is False
 
     def test_returns_false_on_nonzero_exit(self):
-        with patch("subprocess.run",
+        with patch("hxc.utils.git.subprocess.run",
                    side_effect=subprocess.CalledProcessError(1, "git")):
             assert EditCommand._git_available() is False
 
@@ -181,7 +181,7 @@ class TestCommitChangesUnit:
 
     def test_skips_when_git_not_installed(self, git_registry, capsys):
         file_path = git_registry / "projects" / "proj-abc12345.yml"
-        with patch.object(EditCommand, "_git_available", return_value=False):
+        with patch("hxc.utils.git.git_available", return_value=False):
             EditCommand._commit_changes(
                 registry_path=str(git_registry),
                 file_path=file_path,
@@ -197,9 +197,10 @@ class TestCommitChangesUnit:
         mock_result.stdout = "[main abc1234] Edit proj-abc12345: Set title"
         mock_result.stderr = ""
 
-        # Patch _git_available so subprocess.run is only called for git add + commit
-        with patch.object(EditCommand, "_git_available", return_value=True):
-            with patch("subprocess.run", return_value=mock_result) as mock_run:
+        # Patch git_available to return True without calling subprocess
+        # Then patch subprocess.run at the git module level for actual git commands
+        with patch("hxc.utils.git.git_available", return_value=True):
+            with patch("hxc.utils.git.subprocess.run", return_value=mock_result) as mock_run:
                 EditCommand._commit_changes(
                     registry_path=str(git_registry),
                     file_path=file_path,
@@ -217,8 +218,8 @@ class TestCommitChangesUnit:
         mock_result.stdout = "[main abc1234] Edit proj-abc12345: Set title"
         mock_result.stderr = ""
 
-        with patch.object(EditCommand, "_git_available", return_value=True):
-            with patch("subprocess.run", return_value=mock_result) as mock_run:
+        with patch("hxc.utils.git.git_available", return_value=True):
+            with patch("hxc.utils.git.subprocess.run", return_value=mock_result) as mock_run:
                 EditCommand._commit_changes(
                     registry_path=str(git_registry),
                     file_path=file_path,
@@ -228,7 +229,13 @@ class TestCommitChangesUnit:
 
         # calls[0] = git add, calls[1] = git commit
         commit_call = mock_run.call_args_list[1]
-        commit_msg = commit_call[0][0][commit_call[0][0].index("-m") + 1]
+        # The commit message is passed via -m flag
+        commit_args = commit_call[0][0]
+        assert "git" in commit_args
+        assert "commit" in commit_args
+        # Find the message after -m
+        m_index = commit_args.index("-m")
+        commit_msg = commit_args[m_index + 1]
         assert "proj-abc12345" in commit_msg
 
     def test_commit_message_body_lists_all_changes(self, git_registry):
@@ -238,8 +245,8 @@ class TestCommitChangesUnit:
         mock_result.stdout = "[main abc1234] Edit proj-abc12345: ..."
         mock_result.stderr = ""
 
-        with patch.object(EditCommand, "_git_available", return_value=True):
-            with patch("subprocess.run", return_value=mock_result) as mock_run:
+        with patch("hxc.utils.git.git_available", return_value=True):
+            with patch("hxc.utils.git.subprocess.run", return_value=mock_result) as mock_run:
                 EditCommand._commit_changes(
                     registry_path=str(git_registry),
                     file_path=file_path,
@@ -248,7 +255,9 @@ class TestCommitChangesUnit:
                 )
 
         commit_call = mock_run.call_args_list[1]
-        commit_msg = commit_call[0][0][commit_call[0][0].index("-m") + 1]
+        commit_args = commit_call[0][0]
+        m_index = commit_args.index("-m")
+        commit_msg = commit_args[m_index + 1]
         for change in changes:
             assert change in commit_msg
 
@@ -258,13 +267,14 @@ class TestCommitChangesUnit:
         mock_result.stdout = "[main abc1234] Edit proj-abc12345: Set title"
         mock_result.stderr = ""
 
-        with patch("subprocess.run", return_value=mock_result):
-            EditCommand._commit_changes(
-                registry_path=str(git_registry),
-                file_path=file_path,
-                entity_data=self._entity(),
-                changes=["Set title: 'A' → 'B'"],
-            )
+        with patch("hxc.utils.git.git_available", return_value=True):
+            with patch("hxc.utils.git.subprocess.run", return_value=mock_result):
+                EditCommand._commit_changes(
+                    registry_path=str(git_registry),
+                    file_path=file_path,
+                    entity_data=self._entity(),
+                    changes=["Set title: 'A' → 'B'"],
+                )
 
         out = capsys.readouterr().out
         assert "committed to git" in out
@@ -276,13 +286,18 @@ class TestCommitChangesUnit:
         error.stdout = "nothing to commit"
         error.stderr = ""
 
-        with patch("subprocess.run", side_effect=[MagicMock(), error]):
-            EditCommand._commit_changes(
-                registry_path=str(git_registry),
-                file_path=file_path,
-                entity_data=self._entity(),
-                changes=["Set title: 'A' → 'B'"],
-            )
+        mock_add_result = MagicMock()
+        mock_add_result.stdout = ""
+        mock_add_result.stderr = ""
+
+        with patch("hxc.utils.git.git_available", return_value=True):
+            with patch("hxc.utils.git.subprocess.run", side_effect=[mock_add_result, error]):
+                EditCommand._commit_changes(
+                    registry_path=str(git_registry),
+                    file_path=file_path,
+                    entity_data=self._entity(),
+                    changes=["Set title: 'A' → 'B'"],
+                )
 
         out = capsys.readouterr().out
         assert "Nothing new to commit" in out
@@ -293,13 +308,18 @@ class TestCommitChangesUnit:
         error.stdout = ""
         error.stderr = "fatal: not a git repository"
 
-        with patch("subprocess.run", side_effect=[MagicMock(), error]):
-            EditCommand._commit_changes(
-                registry_path=str(git_registry),
-                file_path=file_path,
-                entity_data=self._entity(),
-                changes=["Set title: 'A' → 'B'"],
-            )
+        mock_add_result = MagicMock()
+        mock_add_result.stdout = ""
+        mock_add_result.stderr = ""
+
+        with patch("hxc.utils.git.git_available", return_value=True):
+            with patch("hxc.utils.git.subprocess.run", side_effect=[mock_add_result, error]):
+                EditCommand._commit_changes(
+                    registry_path=str(git_registry),
+                    file_path=file_path,
+                    entity_data=self._entity(),
+                    changes=["Set title: 'A' → 'B'"],
+                )
 
         out = capsys.readouterr().out
         assert "git commit failed" in out
@@ -323,7 +343,7 @@ class TestNoCommitFlag:
             return main(args)
 
     def test_no_commit_flag_prevents_git_call(self, git_registry):
-        with patch.object(EditCommand, "_commit_changes") as mock_commit:
+        with patch("hxc.commands.edit.commit_entity_change") as mock_commit:
             result = self._run_edit(git_registry, ["--no-commit"])
         assert result == 0
         mock_commit.assert_not_called()
@@ -335,13 +355,13 @@ class TestNoCommitFlag:
         assert "--no-commit" in out
 
     def test_without_no_commit_flag_calls_commit(self, git_registry):
-        with patch.object(EditCommand, "_commit_changes") as mock_commit:
+        with patch("hxc.commands.edit.commit_entity_change") as mock_commit:
             result = self._run_edit(git_registry)
         assert result == 0
         mock_commit.assert_called_once()
 
     def test_dry_run_does_not_commit(self, git_registry):
-        with patch.object(EditCommand, "_commit_changes") as mock_commit:
+        with patch("hxc.commands.edit.commit_entity_change") as mock_commit:
             result = self._run_edit(git_registry, ["--dry-run"])
         assert result == 0
         mock_commit.assert_not_called()
