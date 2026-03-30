@@ -2,6 +2,7 @@
 Tests for the create command
 """
 import os
+import subprocess
 import yaml
 import pathlib
 import shutil
@@ -40,6 +41,45 @@ def temp_registry(tmp_path):
         shutil.rmtree(registry_path)
 
 
+@pytest.fixture
+def git_registry(tmp_path):
+    """Create a temporary registry that is also a git repository."""
+    registry_path = tmp_path / "git_registry"
+    registry_path.mkdir(parents=True)
+    
+    # Create marker files and directories
+    (registry_path / ".hxc").mkdir()
+    (registry_path / "config.yml").write_text("# Test config")
+    
+    # Create entity directories
+    (registry_path / "programs").mkdir()
+    (registry_path / "projects").mkdir()
+    (registry_path / "missions").mkdir()
+    (registry_path / "actions").mkdir()
+    
+    # Initialize git repository
+    subprocess.run(["git", "init"], cwd=registry_path, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "test@test.com"],
+        cwd=registry_path, check=True, capture_output=True
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "Test User"],
+        cwd=registry_path, check=True, capture_output=True
+    )
+    subprocess.run(["git", "add", "."], cwd=registry_path, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", "Initial commit"],
+        cwd=registry_path, check=True, capture_output=True
+    )
+    
+    yield registry_path
+    
+    # Clean up
+    if registry_path.exists():
+        shutil.rmtree(registry_path)
+
+
 def test_create_command_registration():
     """Test that the create command is properly registered"""
     from hxc.commands import get_available_commands
@@ -66,6 +106,20 @@ def test_create_command_parser():
     assert "status" in actions
     assert "start_date" in actions
     assert "due_date" in actions
+
+
+def test_create_command_parser_has_no_commit_flag():
+    """Test that create command parser has --no-commit flag"""
+    from argparse import ArgumentParser
+    
+    parser = ArgumentParser()
+    subparsers = parser.add_subparsers()
+    
+    cmd_parser = CreateCommand.register_subparser(subparsers)
+    
+    # Verify parser has the --no-commit argument
+    actions = {action.dest for action in cmd_parser._actions}
+    assert "no_commit" in actions
 
 
 def test_create_command_parser_entity_type_choices():
@@ -117,7 +171,7 @@ def test_create_project_basic(mock_get_registry_path, temp_registry):
     # Fix uuid for predictable output
     with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
         with patch("builtins.print") as mock_print:
-            result = main(["create", "project", "Test Project"])
+            result = main(["create", "project", "Test Project", "--no-commit"])
             
             # Check result
             assert result == 0
@@ -137,8 +191,7 @@ def test_create_project_basic(mock_get_registry_path, temp_registry):
             assert "start_date" in project_data
             
             # Check success message
-            mock_print.assert_called_once()
-            assert "Created project" in mock_print.call_args[0][0]
+            assert any("Created project" in call[0][0] for call in mock_print.call_args_list)
 
 
 @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
@@ -159,7 +212,8 @@ def test_create_project_full(mock_get_registry_path, temp_registry):
             "--category", "software.dev/cli-tool",
             "--tags", "cli", "test", "yaml",
             "--parent", "P-000",
-            "--template", "software.dev/cli-tool.default"
+            "--template", "software.dev/cli-tool.default",
+            "--no-commit"
         ])
         
         # Check result
@@ -198,7 +252,7 @@ def test_create_custom_id_overrides_auto_generation(
     custom_id = "P-CUSTOM-123"
 
     with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
-        result = main(["create", "project", title, "--id", custom_id])
+        result = main(["create", "project", title, "--id", custom_id, "--no-commit"])
         assert result == 0
 
     project_file = temp_registry / "projects" / "proj-12345678.yml"
@@ -223,7 +277,7 @@ def test_create_custom_id_used_exactly_as_provided(
     custom_id = "my.Custom-ID_123"
 
     with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
-        result = main(["create", "action", title, "--id", custom_id])
+        result = main(["create", "action", title, "--id", custom_id, "--no-commit"])
         assert result == 0
 
     action_file = temp_registry / "actions" / "act-12345678.yml"
@@ -249,7 +303,7 @@ def test_create_all_entity_types_include_auto_generated_ids_and_uid(
         title = f"Test {entity_type.value.title()}"
 
         with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
-            result = main(["create", entity_type.value, title])
+            result = main(["create", entity_type.value, title, "--no-commit"])
             assert result == 0
 
         entity_file = temp_registry / folder_name / f"{file_prefix}-12345678.yml"
@@ -276,7 +330,7 @@ def test_create_program(mock_get_registry_path, temp_registry):
     
     # Fix uuid for predictable output
     with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
-        result = main(["create", "program", "Test Program"])
+        result = main(["create", "program", "Test Program", "--no-commit"])
         
         # Check result
         assert result == 0
@@ -301,7 +355,7 @@ def test_create_action(mock_get_registry_path, temp_registry):
     
     # Fix uuid for predictable output
     with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
-        result = main(["create", "action", "Test Action"])
+        result = main(["create", "action", "Test Action", "--no-commit"])
         
         # Check result
         assert result == 0
@@ -326,7 +380,7 @@ def test_create_mission(mock_get_registry_path, temp_registry):
     
     # Fix uuid for predictable output
     with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
-        result = main(["create", "mission", "Test Mission"])
+        result = main(["create", "mission", "Test Mission", "--no-commit"])
         
         # Check result
         assert result == 0
@@ -371,7 +425,7 @@ def test_create_all_valid_entity_types(mock_get_registry_path, temp_registry):
     
     for entity_type in EntityType:
         with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
-            result = main(["create", entity_type.value, f"Test {entity_type.value.title()}"])
+            result = main(["create", entity_type.value, f"Test {entity_type.value.title()}", "--no-commit"])
             
             assert result == 0
             
@@ -399,7 +453,8 @@ def test_create_all_valid_statuses(mock_get_registry_path, temp_registry):
         with patch("uuid.uuid4", return_value=f"status{status.value[:4]}"):
             result = main([
                 "create", "project", f"Test {status.value}",
-                "--status", status.value
+                "--status", status.value,
+                "--no-commit"
             ])
             
             assert result == 0
@@ -494,7 +549,7 @@ def test_create_entity_stays_within_registry(mock_get_registry_path, temp_regist
     
     # Fix uuid for predictable output
     with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
-        result = main(["create", "project", "Test Project"])
+        result = main(["create", "project", "Test Project", "--no-commit"])
         
         # Check result
         assert result == 0
@@ -519,7 +574,7 @@ def test_create_all_entity_types_within_registry(mock_get_registry_path, temp_re
     for entity_type in EntityType:
         # Fix uuid for predictable output
         with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
-            result = main(["create", entity_type.value, f"Test {entity_type.value.title()}"])
+            result = main(["create", entity_type.value, f"Test {entity_type.value.title()}", "--no-commit"])
             
             # Check result
             assert result == 0
@@ -654,3 +709,437 @@ def test_create_title_to_id_consecutive_spaces_collapse():
 
 def test_create_title_to_id_mixed_case_is_lowercased():
     assert title_to_id("My Project", "project") == "my_project"
+
+
+# ─── Git Integration Tests ───────────────────────────────────────────────────
+
+
+class TestCreateGitCommitUnit:
+    """Unit tests for git commit functionality using mocks."""
+
+    @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+    def test_no_commit_flag_skips_git_operations(self, mock_get_registry_path, temp_registry, capsys):
+        """Test that --no-commit flag prevents git operations."""
+        mock_get_registry_path.return_value = str(temp_registry)
+        
+        with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
+            with patch("hxc.commands.create.commit_entity_change") as mock_commit:
+                result = main(["create", "project", "Test Project", "--no-commit"])
+        
+        assert result == 0
+        mock_commit.assert_not_called()
+        
+        out = capsys.readouterr().out
+        assert "--no-commit" in out
+
+    @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+    def test_without_no_commit_flag_calls_commit(self, mock_get_registry_path, temp_registry):
+        """Test that commit is called when --no-commit is not specified."""
+        mock_get_registry_path.return_value = str(temp_registry)
+        
+        with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
+            with patch("hxc.commands.create.commit_entity_change") as mock_commit:
+                result = main(["create", "project", "Test Project"])
+        
+        assert result == 0
+        mock_commit.assert_called_once()
+
+    @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+    def test_commit_called_with_correct_action(self, mock_get_registry_path, temp_registry):
+        """Test that commit is called with action='Create'."""
+        mock_get_registry_path.return_value = str(temp_registry)
+        
+        with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
+            with patch("hxc.commands.create.commit_entity_change") as mock_commit:
+                result = main(["create", "project", "Test Project"])
+        
+        assert result == 0
+        call_kwargs = mock_commit.call_args[1]
+        assert call_kwargs["action"] == "Create"
+
+    @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+    def test_commit_called_with_entity_data(self, mock_get_registry_path, temp_registry):
+        """Test that commit is called with correct entity data."""
+        mock_get_registry_path.return_value = str(temp_registry)
+        
+        with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
+            with patch("hxc.commands.create.commit_entity_change") as mock_commit:
+                result = main(["create", "project", "Test Project"])
+        
+        assert result == 0
+        call_kwargs = mock_commit.call_args[1]
+        entity_data = call_kwargs["entity_data"]
+        assert entity_data["type"] == "project"
+        assert entity_data["title"] == "Test Project"
+        assert entity_data["uid"] == "12345678"
+
+    @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+    def test_commit_called_with_registry_path(self, mock_get_registry_path, temp_registry):
+        """Test that commit is called with correct registry path."""
+        mock_get_registry_path.return_value = str(temp_registry)
+        
+        with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
+            with patch("hxc.commands.create.commit_entity_change") as mock_commit:
+                result = main(["create", "project", "Test Project"])
+        
+        assert result == 0
+        call_kwargs = mock_commit.call_args[1]
+        assert call_kwargs["registry_path"] == str(temp_registry)
+
+
+class TestCreateGitCommitNonGitRepo:
+    """Tests for create command behavior when registry is not a git repo."""
+
+    @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+    def test_create_succeeds_without_git_repo(self, mock_get_registry_path, temp_registry, capsys):
+        """Test that create succeeds even if registry is not a git repo."""
+        mock_get_registry_path.return_value = str(temp_registry)
+        
+        with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
+            result = main(["create", "project", "Test Project"])
+        
+        assert result == 0
+        
+        # File should be created
+        project_file = temp_registry / "projects" / "proj-12345678.yml"
+        assert project_file.exists()
+        
+        out = capsys.readouterr().out
+        assert "not inside a git repository" in out
+
+    @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+    def test_create_without_git_installed(self, mock_get_registry_path, temp_registry, capsys):
+        """Test that create succeeds even if git is not installed."""
+        mock_get_registry_path.return_value = str(temp_registry)
+        
+        with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
+            with patch("hxc.utils.git.git_available", return_value=False):
+                with patch("hxc.utils.git.find_git_root", return_value=str(temp_registry)):
+                    result = main(["create", "project", "Test Project"])
+        
+        assert result == 0
+        
+        # File should still be created
+        project_file = temp_registry / "projects" / "proj-12345678.yml"
+        assert project_file.exists()
+        
+        out = capsys.readouterr().out
+        assert "git is not installed" in out
+
+
+class TestCreateGitCommitIntegration:
+    """Integration tests that perform real git operations."""
+
+    @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+    def test_create_commits_to_git(self, mock_get_registry_path, git_registry):
+        """Test that create command commits the new file to git."""
+        mock_get_registry_path.return_value = str(git_registry)
+        
+        with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
+            result = main(["create", "project", "Git Test Project"])
+        
+        assert result == 0
+        
+        # Check git log for the commit
+        log = subprocess.run(
+            ["git", "log", "--oneline"],
+            cwd=git_registry,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        assert "proj-12345678" in log.stdout
+
+    @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+    def test_commit_message_contains_title(self, mock_get_registry_path, git_registry):
+        """Test that commit message contains the entity title."""
+        mock_get_registry_path.return_value = str(git_registry)
+        
+        with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
+            result = main(["create", "project", "My Amazing Project"])
+        
+        assert result == 0
+        
+        log = subprocess.run(
+            ["git", "log", "-1", "--format=%B"],
+            cwd=git_registry,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        assert "My Amazing Project" in log.stdout
+
+    @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+    def test_commit_message_contains_entity_type(self, mock_get_registry_path, git_registry):
+        """Test that commit message body contains the entity type."""
+        mock_get_registry_path.return_value = str(git_registry)
+        
+        with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
+            result = main(["create", "project", "Test Project"])
+        
+        assert result == 0
+        
+        log = subprocess.run(
+            ["git", "log", "-1", "--format=%B"],
+            cwd=git_registry,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        assert "Entity type: project" in log.stdout
+
+    @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+    def test_commit_message_contains_uid(self, mock_get_registry_path, git_registry):
+        """Test that commit message body contains the entity UID."""
+        mock_get_registry_path.return_value = str(git_registry)
+        
+        with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
+            result = main(["create", "project", "Test Project"])
+        
+        assert result == 0
+        
+        log = subprocess.run(
+            ["git", "log", "-1", "--format=%B"],
+            cwd=git_registry,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        assert "Entity UID: 12345678" in log.stdout
+
+    @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+    def test_only_new_file_is_committed(self, mock_get_registry_path, git_registry):
+        """Test that only the created file is committed, not other changes."""
+        mock_get_registry_path.return_value = str(git_registry)
+        
+        # Create an unrelated file that should not be committed
+        unrelated = git_registry / "unrelated.txt"
+        unrelated.write_text("This should not be committed")
+        
+        with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
+            result = main(["create", "project", "Test Project"])
+        
+        assert result == 0
+        
+        # Check what files were committed
+        show = subprocess.run(
+            ["git", "show", "--name-only", "--format="],
+            cwd=git_registry,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        
+        committed_files = show.stdout.strip().splitlines()
+        assert any("proj-12345678.yml" in f for f in committed_files)
+        assert not any("unrelated.txt" in f for f in committed_files)
+        
+        # Unrelated file should still exist but be untracked
+        assert unrelated.exists()
+
+    @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+    def test_no_commit_flag_leaves_file_unstaged(self, mock_get_registry_path, git_registry):
+        """Test that --no-commit leaves the new file unstaged."""
+        mock_get_registry_path.return_value = str(git_registry)
+        
+        with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
+            result = main(["create", "project", "Test Project", "--no-commit"])
+        
+        assert result == 0
+        
+        # Check git status
+        status = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=git_registry,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        
+        # File should appear as untracked
+        assert "proj-12345678.yml" in status.stdout
+
+    @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+    def test_create_all_entity_types_commits(self, mock_get_registry_path, git_registry):
+        """Test that create commits work for all entity types."""
+        mock_get_registry_path.return_value = str(git_registry)
+        
+        for i, entity_type in enumerate(EntityType):
+            uid = f"1234567{i}"
+            with patch("uuid.uuid4", return_value=f"{uid}-1234-5678-1234-567812345678"):
+                result = main(["create", entity_type.value, f"Test {entity_type.value.title()}"])
+            
+            assert result == 0
+            
+            # Verify commit was created
+            log = subprocess.run(
+                ["git", "log", "--oneline"],
+                cwd=git_registry,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            
+            file_prefix = entity_type.get_file_prefix()
+            assert f"{file_prefix}-{uid}" in log.stdout
+
+    @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+    def test_sequential_creates_produce_separate_commits(self, mock_get_registry_path, git_registry):
+        """Test that multiple create commands produce separate commits."""
+        mock_get_registry_path.return_value = str(git_registry)
+        
+        # Create first entity
+        with patch("uuid.uuid4", return_value="11111111-1234-5678-1234-567812345678"):
+            result1 = main(["create", "project", "First Project"])
+        assert result1 == 0
+        
+        # Create second entity
+        with patch("uuid.uuid4", return_value="22222222-1234-5678-1234-567812345678"):
+            result2 = main(["create", "project", "Second Project"])
+        assert result2 == 0
+        
+        # Check that both commits exist
+        log = subprocess.run(
+            ["git", "log", "--oneline"],
+            cwd=git_registry,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        
+        assert "proj-11111111" in log.stdout
+        assert "proj-22222222" in log.stdout
+        
+        # Count commits (should be initial + 2 new)
+        commit_count = len(log.stdout.strip().splitlines())
+        assert commit_count >= 3
+
+    @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+    def test_commit_includes_custom_id_in_message(self, mock_get_registry_path, git_registry):
+        """Test that commit message includes custom ID when provided."""
+        mock_get_registry_path.return_value = str(git_registry)
+        
+        with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
+            result = main(["create", "project", "Test Project", "--id", "P-CUSTOM-001"])
+        
+        assert result == 0
+        
+        log = subprocess.run(
+            ["git", "log", "-1", "--format=%B"],
+            cwd=git_registry,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        
+        assert "Entity ID: P-CUSTOM-001" in log.stdout
+
+    @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+    def test_commit_includes_category_in_message(self, mock_get_registry_path, git_registry):
+        """Test that commit message includes category when provided."""
+        mock_get_registry_path.return_value = str(git_registry)
+        
+        with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
+            result = main([
+                "create", "project", "Test Project",
+                "--category", "software.dev/cli-tool"
+            ])
+        
+        assert result == 0
+        
+        log = subprocess.run(
+            ["git", "log", "-1", "--format=%B"],
+            cwd=git_registry,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        
+        assert "Category: software.dev/cli-tool" in log.stdout
+
+    @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+    def test_commit_includes_status_in_message(self, mock_get_registry_path, git_registry):
+        """Test that commit message includes status."""
+        mock_get_registry_path.return_value = str(git_registry)
+        
+        with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
+            result = main([
+                "create", "project", "Test Project",
+                "--status", "on-hold"
+            ])
+        
+        assert result == 0
+        
+        log = subprocess.run(
+            ["git", "log", "-1", "--format=%B"],
+            cwd=git_registry,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        
+        assert "Status: on-hold" in log.stdout
+
+    @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+    def test_commit_hash_displayed_to_user(self, mock_get_registry_path, git_registry, capsys):
+        """Test that the commit hash is displayed to the user."""
+        mock_get_registry_path.return_value = str(git_registry)
+        
+        with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
+            result = main(["create", "project", "Test Project"])
+        
+        assert result == 0
+        
+        out = capsys.readouterr().out
+        assert "committed to git" in out
+        # Should include a parenthesized hash like "(abc1234)"
+        assert "(" in out and ")" in out
+
+
+class TestCreateGitErrorHandling:
+    """Tests for error handling in git operations during create."""
+
+    @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+    def test_git_error_does_not_fail_create(self, mock_get_registry_path, git_registry, capsys):
+        """Test that git errors don't fail the create operation."""
+        mock_get_registry_path.return_value = str(git_registry)
+        
+        # Make git commit fail
+        error = subprocess.CalledProcessError(128, "git")
+        error.stdout = ""
+        error.stderr = "fatal: some git error"
+        
+        with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
+            with patch("hxc.utils.git.git_available", return_value=True):
+                with patch("subprocess.run", side_effect=[MagicMock(), error]):
+                    result = main(["create", "project", "Test Project"])
+        
+        # Create should still succeed
+        assert result == 0
+        
+        # File should be created
+        project_file = git_registry / "projects" / "proj-12345678.yml"
+        assert project_file.exists()
+        
+        out = capsys.readouterr().out
+        assert "git commit failed" in out
+        assert "File was created but not committed" in out
+
+    @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+    def test_nothing_to_commit_handled_gracefully(self, mock_get_registry_path, git_registry, capsys):
+        """Test that 'nothing to commit' is handled gracefully."""
+        mock_get_registry_path.return_value = str(git_registry)
+        
+        error = subprocess.CalledProcessError(1, "git")
+        error.stdout = "nothing to commit"
+        error.stderr = ""
+        
+        with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
+            with patch("hxc.utils.git.git_available", return_value=True):
+                with patch("subprocess.run", side_effect=[MagicMock(), error]):
+                    result = main(["create", "project", "Test Project"])
+        
+        assert result == 0
+        
+        out = capsys.readouterr().out
+        assert "Nothing new to commit" in out
