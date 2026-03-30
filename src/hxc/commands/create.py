@@ -18,6 +18,7 @@ from hxc.commands.base import BaseCommand
 from hxc.commands.registry import RegistryCommand
 from hxc.utils.helpers import get_project_root
 from hxc.utils.path_security import get_safe_entity_path, resolve_safe_path, PathSecurityError
+from hxc.utils.git import commit_entity_change
 from hxc.core.enums import EntityType, EntityStatus
 
 
@@ -98,6 +99,9 @@ class CreateCommand(BaseCommand):
                           help='Template to use (e.g., software.dev/cli-tool.default)')
         parser.add_argument('--registry',
                           help='Path to registry (defaults to current or configured registry)')
+        parser.add_argument('--no-commit',
+                          action='store_true',
+                          help='Skip automatic git commit after creating')
         
         return parser
     
@@ -169,10 +173,23 @@ class CreateCommand(BaseCommand):
                 yaml.dump(entity_data, f, default_flow_style=False, sort_keys=False)
             
             print(f"✅ Created {entity_type.value} '{entity_data['title']}' at {file_path}")
-            return 0
         except Exception as e:
             print(f"❌ Error creating {entity_type.value}: {e}")
             return 1
+        
+        # Git commit (unless --no-commit is specified)
+        no_commit = getattr(args, 'no_commit', False)
+        if no_commit:
+            print("⚠️  Changes not committed (--no-commit flag used)")
+        else:
+            commit_entity_change(
+                registry_path=registry_path,
+                file_path=file_path,
+                action="Create",
+                entity_data=entity_data,
+            )
+        
+        return 0
     
     @classmethod
     def _get_registry_path(cls, specified_path: Optional[str] = None) -> Optional[str]:

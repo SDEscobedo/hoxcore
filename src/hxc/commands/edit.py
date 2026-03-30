@@ -2,7 +2,6 @@
 Edit command implementation for modifying entity properties.
 """
 import os
-import subprocess
 import yaml
 import argparse
 import datetime
@@ -14,6 +13,13 @@ from hxc.commands.base import BaseCommand
 from hxc.commands.registry import RegistryCommand
 from hxc.utils.helpers import get_project_root
 from hxc.utils.path_security import resolve_safe_path, PathSecurityError
+from hxc.utils.git import (
+    find_git_root,
+    git_available,
+    parse_commit_hash,
+    summarise_changes,
+    commit_entity_change,
+)
 from hxc.core.enums import EntityType, EntityStatus
 
 
@@ -336,7 +342,7 @@ class EditCommand(BaseCommand):
         return ids
 
     # ------------------------------------------------------------------ #
-    #  Git integration                                                     #
+    #  Git integration (delegates to shared utilities)                     #
     # ------------------------------------------------------------------ #
 
     @classmethod
@@ -350,108 +356,39 @@ class EditCommand(BaseCommand):
         """
         Stage the edited file and create a git commit.
 
+        Delegates to the shared git utility module for consistent behavior
+        across create, edit, and delete commands.
+
         Failures are non-fatal: a warning is printed and the method returns
         without raising so the edit operation is still considered successful.
         """
-        git_root = cls._find_git_root(registry_path)
-        if git_root is None:
-            print("⚠️  Registry is not inside a git repository — changes not committed.")
-            return
-
-        # Verify git is available
-        if not cls._git_available():
-            print("⚠️  git is not installed or not on PATH — changes not committed.")
-            return
-
-        # Build commit message
-        entity_type = entity_data.get('type', 'entity')
-        uid = entity_data.get('uid', str(file_path.stem))
-        commit_subject = f"Edit {file_path.stem}: {cls._summarise_changes(changes)}"
-        commit_body = "\n".join(f"- {c}" for c in changes)
-        commit_message = f"{commit_subject}\n\n{commit_body}"
-
-        try:
-            # Stage only the edited file (relative to the git root)
-            subprocess.run(
-                ["git", "add", str(file_path)],
-                cwd=git_root,
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-
-            # Commit
-            result = subprocess.run(
-                ["git", "commit", "-m", commit_message],
-                cwd=git_root,
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-
-            # Extract short hash from output, e.g. "[main abc1234] ..."
-            commit_hash = cls._parse_commit_hash(result.stdout)
-            hash_display = f" ({commit_hash})" if commit_hash else ""
-            print(f'📦 Changes committed to git{hash_display}')
-            print(f'   "{commit_subject}"')
-
-        except subprocess.CalledProcessError as e:
-            stderr = e.stderr.strip() if e.stderr else ""
-            # "nothing to commit" is not really an error
-            if "nothing to commit" in stderr or "nothing to commit" in e.stdout:
-                print("⚠️  Nothing new to commit (file may not have changed on disk).")
-            else:
-                print(f"⚠️  git commit failed: {stderr or e.stdout.strip()}")
-                print("    Edit was saved but not committed.")
+        commit_entity_change(
+            registry_path=registry_path,
+            file_path=file_path,
+            action="Edit",
+            entity_data=entity_data,
+            changes=changes,
+        )
 
     @classmethod
     def _find_git_root(cls, start_path: str) -> Optional[str]:
         """Walk up from *start_path* looking for a .git directory."""
-        current = Path(start_path).resolve()
-        while True:
-            if (current / ".git").exists():
-                return str(current)
-            parent = current.parent
-            if parent == current:
-                return None
-            current = parent
+        return find_git_root(start_path)
 
     @classmethod
     def _git_available(cls) -> bool:
         """Return True if the git executable can be found."""
-        try:
-            subprocess.run(
-                ["git", "--version"],
-                check=True,
-                capture_output=True,
-            )
-            return True
-        except (subprocess.CalledProcessError, FileNotFoundError):
-            return False
+        return git_available()
 
     @classmethod
     def _summarise_changes(cls, changes: List[str]) -> str:
         """Build a short one-line summary from the changes list."""
-        if not changes:
-            return "no changes"
-        if len(changes) == 1:
-            # Trim long values to keep the subject line short
-            summary = changes[0]
-            if len(summary) > 72:
-                summary = summary[:69] + "..."
-            return summary
-        return f"{changes[0].split(':')[0]}; {len(changes) - 1} more change(s)"
+        return summarise_changes(changes)
 
     @classmethod
     def _parse_commit_hash(cls, git_output: str) -> Optional[str]:
-        """
-        Extract the short commit hash from git commit stdout.
-
-        Typical output: "[main abc1234] Edit proj-xxx: ..."
-        """
-        import re
-        match = re.search(r'\[.*?\s+([0-9a-f]{5,})\]', git_output)
-        return match.group(1) if match else None
+        """Extract the short commit hash from git commit stdout."""
+        return parse_commit_hash(git_output)
 
     # ------------------------------------------------------------------ #
     #  Existing helpers (unchanged)                                        #
