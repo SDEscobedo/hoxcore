@@ -142,6 +142,9 @@ hxc delete <uid>
 
 # Delete immediately without prompt
 hxc delete <uid> --force
+
+# Prevent automatic commit after deletion
+hxc delete <uid> --no-commit
 ```
 
 **Getting Help**

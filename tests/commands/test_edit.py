@@ -1088,3 +1088,114 @@ def test_edit_field_mappings():
     assert 'tools' in EditCommand.COMPLEX_FIELDS
     assert 'models' in EditCommand.COMPLEX_FIELDS
     assert 'knowledge_bases' in EditCommand.COMPLEX_FIELDS
+
+
+# ─── ID UNIQUENESS TESTS ────────────────────────────────────────────────────────
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_edit_set_id_to_existing_id_fails(mock_get_registry_path, temp_registry):
+    """Test that --set-id with an ID already used by another entity of the same type returns exit code 1"""
+    mock_get_registry_path.return_value = str(temp_registry)
+    
+    # Get original data to verify it stays unchanged
+    project_file = temp_registry / "projects" / "proj-12345678.yml"
+    with open(project_file, 'r') as f:
+        original_data = yaml.safe_load(f)
+    
+    with patch("builtins.print") as mock_print:
+        # Try to set P-001's id to P-002 (which already exists)
+        result = main(["edit", "P-001", "--set-id", "P-002"])
+    
+    # Should fail with exit code 1
+    assert result == 1
+    
+    # Verify error message mentions duplicate/existing id
+    printed_output = " ".join(str(call) for call in mock_print.call_args_list)
+    assert "P-002" in printed_output
+    assert "already exists" in printed_output.lower()
+    
+    # Verify the original file was NOT changed
+    with open(project_file, 'r') as f:
+        data = yaml.safe_load(f)
+    
+    assert data["id"] == original_data["id"]
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_edit_set_id_to_same_id_succeeds(mock_get_registry_path, temp_registry):
+    """Test that --set-id with the entity's own current ID (no-op) returns exit code 0"""
+    mock_get_registry_path.return_value = str(temp_registry)
+    
+    # Set id to the same value it already has (P-001)
+    result = main(["edit", "12345678", "--set-id", "P-001"])
+    
+    # Should succeed with exit code 0
+    assert result == 0
+    
+    # Verify the file still has the same id
+    project_file = temp_registry / "projects" / "proj-12345678.yml"
+    with open(project_file, 'r') as f:
+        data = yaml.safe_load(f)
+    
+    assert data["id"] == "P-001"
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_edit_set_id_to_new_unique_id_succeeds(mock_get_registry_path, temp_registry):
+    """Test that --set-id with a genuinely new, unused ID returns exit code 0 and updates the file"""
+    mock_get_registry_path.return_value = str(temp_registry)
+    
+    result = main(["edit", "12345678", "--set-id", "P-NEW-UNIQUE"])
+    
+    # Should succeed with exit code 0
+    assert result == 0
+    
+    # Verify the file was updated with the new id
+    project_file = temp_registry / "projects" / "proj-12345678.yml"
+    with open(project_file, 'r') as f:
+        data = yaml.safe_load(f)
+    
+    assert data["id"] == "P-NEW-UNIQUE"
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_edit_set_id_allows_same_id_in_different_type(mock_get_registry_path, temp_registry):
+    """Test that --set-id with an ID that exists in a different entity type returns exit code 0"""
+    mock_get_registry_path.return_value = str(temp_registry)
+    
+    # First, set the program's id to something unique
+    result = main(["edit", "PG-001", "--set-id", "P-001"])
+    
+    # Should succeed because P-001 exists in projects, but we're editing a program
+    # The uniqueness check is scoped per entity type
+    assert result == 0
+    
+    # Verify the program file was updated
+    program_file = temp_registry / "programs" / "prog-abcdef12.yml"
+    with open(program_file, 'r') as f:
+        data = yaml.safe_load(f)
+    
+    assert data["id"] == "P-001"
+    
+    # Verify the project with P-001 still exists unchanged
+    project_file = temp_registry / "projects" / "proj-12345678.yml"
+    with open(project_file, 'r') as f:
+        project_data = yaml.safe_load(f)
+    
+    assert project_data["id"] == "P-001"
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_edit_set_id_error_message_contains_entity_type(mock_get_registry_path, temp_registry):
+    """Test that the error message for duplicate ID includes the entity type"""
+    mock_get_registry_path.return_value = str(temp_registry)
+    
+    with patch("builtins.print") as mock_print:
+        result = main(["edit", "P-001", "--set-id", "P-002"])
+    
+    assert result == 1
+    
+    # Verify error message mentions the entity type
+    printed_output = " ".join(str(call) for call in mock_print.call_args_list)
+    assert "project" in printed_output.lower()
