@@ -343,7 +343,7 @@ class TestNoCommitFlag:
             return main(args)
 
     def test_no_commit_flag_prevents_git_call(self, git_registry):
-        with patch("hxc.utils.git.commit_entity_change") as mock_commit:
+        with patch("hxc.commands.edit.commit_entity_change") as mock_commit:
             result = self._run_edit(git_registry, ["--no-commit"])
         assert result == 0
         mock_commit.assert_not_called()
@@ -355,13 +355,13 @@ class TestNoCommitFlag:
         assert "--no-commit" in out
 
     def test_without_no_commit_flag_calls_commit(self, git_registry):
-        with patch("hxc.utils.git.commit_entity_change") as mock_commit:
+        with patch("hxc.commands.edit.commit_entity_change") as mock_commit:
             result = self._run_edit(git_registry)
         assert result == 0
         mock_commit.assert_called_once()
 
     def test_dry_run_does_not_commit(self, git_registry):
-        with patch("hxc.utils.git.commit_entity_change") as mock_commit:
+        with patch("hxc.commands.edit.commit_entity_change") as mock_commit:
             result = self._run_edit(git_registry, ["--dry-run"])
         assert result == 0
         mock_commit.assert_not_called()
