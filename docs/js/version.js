@@ -1,4 +1,4 @@
-const HXC_VERSION = '0.1.4';
+const HXC_VERSION = '0.1.5';
 
 document.addEventListener('DOMContentLoaded', function() {
   document.querySelectorAll('.nav-version').forEach(el => { el.textContent = 'v' + HXC_VERSION; });
