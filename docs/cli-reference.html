@@ -223,6 +223,7 @@ hxc create program "Platform Team" --registry ~/registries/work</code></pre>
               <tr><td><code>--type, -t {program,project,mission,action}</code></td><td>Type of entity to delete — only needed if the identifier is ambiguous</td></tr>
               <tr><td><code>--force, -f</code></td><td>Skip confirmation prompt</td></tr>
               <tr><td><code>--registry REGISTRY</code></td><td>Path to registry (defaults to current or configured registry)</td></tr>
+              <tr><td><code>--no-commit</code></td><td>Do not commit deletion to git</td></tr>
             </tbody>
           </table>
         </div>
@@ -231,13 +232,16 @@ hxc create program "Platform Team" --registry ~/registries/work</code></pre>
 hxc delete P-001
  
 # Delete by UID, skip confirmation
-hxc delete proj_abc123 --force
+hxc delete a8bc123 --force
  
 # Disambiguate when the same ID exists across types
 hxc delete P-001 --type project
  
 # Target a specific registry
 hxc delete P-001 --force --registry ~/registries/work</code></pre>
+
+# Delete without commiting to git
+hxc delete P-001 --no-commit
       </section>
 
       <section id="list" class="doc-section">
