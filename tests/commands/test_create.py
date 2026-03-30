@@ -947,9 +947,9 @@ class TestCreateGitCommitIntegration:
         
         assert result == 0
         
-        # Check git status
+        # Check git status with -uall to show individual untracked files
         status = subprocess.run(
-            ["git", "status", "--porcelain"],
+            ["git", "status", "--porcelain", "-uall"],
             cwd=git_registry,
             capture_output=True,
             text=True,
