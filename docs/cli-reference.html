@@ -173,6 +173,7 @@ hxc init my-registry --no-set-default</code></pre>
               <tr><td><code>--parent PARENT</code></td><td>Parent entity UID or ID</td></tr>
               <tr><td><code>--template TEMPLATE</code></td><td>Template to use (e.g., software.dev/cli-tool.default)</td></tr>
               <tr><td><code>--registry REGISTRY</code></td><td>Path to registry (defaults to current or configured registry)</td></tr>
+              <tr><td><code>--no-commit</code></td><td>Skip automatic git commit after creating</td></tr>
             </tbody>
           </table>
         </div>
@@ -195,7 +196,12 @@ hxc create project "GraphQL Migration" \
 hxc create mission "Q4 Launch" --template software.dev/cli-tool.default
  
 # Target a specific registry
-hxc create program "Platform Team" --registry ~/registries/work</code></pre>
+hxc create program "Platform Team" --registry ~/registries/work
+
+# Skipping commit new project to git repository
+hxc create project "GraphQL Migration" --id P-042 --no-commit
+
+</code></pre>
       </section>
 
       <section id="delete" class="doc-section">
@@ -238,10 +244,10 @@ hxc delete a8bc123 --force
 hxc delete P-001 --type project
  
 # Target a specific registry
-hxc delete P-001 --force --registry ~/registries/work</code></pre>
+hxc delete P-001 --force --registry ~/registries/work
 
 # Delete without commiting to git
-hxc delete P-001 --no-commit
+hxc delete P-001 --no-commit</code></pre>
       </section>
 
       <section id="list" class="doc-section">
