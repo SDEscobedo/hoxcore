@@ -4,6 +4,7 @@ Tests for the edit command
 import os
 import sys
 import yaml
+import json
 import pathlib
 import shutil
 import pytest
@@ -381,13 +382,14 @@ def test_edit_remove_related(mock_get_registry_path, temp_registry):
     
     assert "rel1" not in data["related"]
 
-"""
+
 @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
 def test_edit_add_repository(mock_get_registry_path, temp_registry):
-    \"""Test adding a repository""\"
+    """Test adding a repository using JSON format"""
     mock_get_registry_path.return_value = str(temp_registry)
     
-    result = main(["edit", "12345678", "--add-repository", "myrepo:https://github.com/test/repo"])
+    repo_json = json.dumps({"name": "myrepo", "url": "https://github.com/test/repo"})
+    result = main(["edit", "12345678", "--add-repository", repo_json])
     
     assert result == 0
     
@@ -399,14 +401,15 @@ def test_edit_add_repository(mock_get_registry_path, temp_registry):
     assert len(data["repositories"]) == 1
     assert data["repositories"][0]["name"] == "myrepo"
     assert data["repositories"][0]["url"] == "https://github.com/test/repo"
-"""
-"""
+
+
 @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
 def test_edit_add_repository_with_path(mock_get_registry_path, temp_registry):
-    \"""Test adding a repository with local path""\"
+    """Test adding a repository with local path using JSON format"""
     mock_get_registry_path.return_value = str(temp_registry)
     
-    result = main(["edit", "12345678", "--add-repository", "local:./repos/myrepo"])
+    repo_json = json.dumps({"name": "local", "path": "./repos/myrepo"})
+    result = main(["edit", "12345678", "--add-repository", repo_json])
     
     assert result == 0
     
@@ -418,7 +421,28 @@ def test_edit_add_repository_with_path(mock_get_registry_path, temp_registry):
     assert len(data["repositories"]) == 1
     assert data["repositories"][0]["name"] == "local"
     assert data["repositories"][0]["path"] == "./repos/myrepo"
-"""
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_edit_add_repository_with_complex_url(mock_get_registry_path, temp_registry):
+    """Test adding a repository with a URL containing multiple colons"""
+    mock_get_registry_path.return_value = str(temp_registry)
+    
+    # URL with port number and protocol - this would break the old colon-delimited format
+    repo_json = json.dumps({"name": "gitlab", "url": "https://gitlab.example.com:8443/org/repo"})
+    result = main(["edit", "12345678", "--add-repository", repo_json])
+    
+    assert result == 0
+    
+    # Verify the repository was added with full URL preserved
+    project_file = temp_registry / "projects" / "proj-12345678.yml"
+    with open(project_file, 'r') as f:
+        data = yaml.safe_load(f)
+    
+    assert len(data["repositories"]) == 1
+    assert data["repositories"][0]["name"] == "gitlab"
+    assert data["repositories"][0]["url"] == "https://gitlab.example.com:8443/org/repo"
+
 
 @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
 def test_edit_remove_repository(mock_get_registry_path, temp_registry):
@@ -436,13 +460,14 @@ def test_edit_remove_repository(mock_get_registry_path, temp_registry):
     
     assert len(data["repositories"]) == 0
 
-"""
+
 @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
 def test_edit_add_storage(mock_get_registry_path, temp_registry):
-    \"""Test adding storage""\"
+    """Test adding storage using JSON format"""
     mock_get_registry_path.return_value = str(temp_registry)
     
-    result = main(["edit", "12345678", "--add-storage", "mystorage:s3:https://s3.amazonaws.com/bucket"])
+    storage_json = json.dumps({"name": "mystorage", "provider": "s3", "url": "https://s3.amazonaws.com/bucket"})
+    result = main(["edit", "12345678", "--add-storage", storage_json])
     
     assert result == 0
     
@@ -455,7 +480,32 @@ def test_edit_add_storage(mock_get_registry_path, temp_registry):
     assert data["storage"][0]["name"] == "mystorage"
     assert data["storage"][0]["provider"] == "s3"
     assert data["storage"][0]["url"] == "https://s3.amazonaws.com/bucket"
-"""
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_edit_add_storage_with_complex_url(mock_get_registry_path, temp_registry):
+    """Test adding storage with Google Drive URL containing special characters"""
+    mock_get_registry_path.return_value = str(temp_registry)
+    
+    storage_json = json.dumps({
+        "name": "gdrive-docs",
+        "provider": "google-drive",
+        "url": "https://drive.google.com/drive/folders/1ABC123_xyz?resourcekey=0-AbCdEfG"
+    })
+    result = main(["edit", "12345678", "--add-storage", storage_json])
+    
+    assert result == 0
+    
+    # Verify the storage was added with full URL preserved
+    project_file = temp_registry / "projects" / "proj-12345678.yml"
+    with open(project_file, 'r') as f:
+        data = yaml.safe_load(f)
+    
+    assert len(data["storage"]) == 1
+    assert data["storage"][0]["name"] == "gdrive-docs"
+    assert data["storage"][0]["provider"] == "google-drive"
+    assert "resourcekey" in data["storage"][0]["url"]
+
 
 @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
 def test_edit_remove_storage(mock_get_registry_path, temp_registry):
@@ -473,13 +523,14 @@ def test_edit_remove_storage(mock_get_registry_path, temp_registry):
     
     assert len(data["storage"]) == 0
 
-"""
+
 @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
 def test_edit_add_database(mock_get_registry_path, temp_registry):
-    \"""Test adding a database""\"
+    """Test adding a database using JSON format"""
     mock_get_registry_path.return_value = str(temp_registry)
     
-    result = main(["edit", "12345678", "--add-database", "mydb:postgres:postgres://localhost/mydb"])
+    db_json = json.dumps({"name": "mydb", "type": "postgres", "url": "postgres://localhost/mydb"})
+    result = main(["edit", "12345678", "--add-database", db_json])
     
     assert result == 0
     
@@ -492,7 +543,31 @@ def test_edit_add_database(mock_get_registry_path, temp_registry):
     assert data["databases"][0]["name"] == "mydb"
     assert data["databases"][0]["type"] == "postgres"
     assert data["databases"][0]["url"] == "postgres://localhost/mydb"
-"""
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_edit_add_database_with_credentials_url(mock_get_registry_path, temp_registry):
+    """Test adding a database with URL containing credentials and port"""
+    mock_get_registry_path.return_value = str(temp_registry)
+    
+    # URL with username:password@host:port pattern
+    db_json = json.dumps({
+        "name": "production",
+        "type": "postgres",
+        "url": "postgres://user:pass@db.example.com:5432/production"
+    })
+    result = main(["edit", "12345678", "--add-database", db_json])
+    
+    assert result == 0
+    
+    # Verify the database was added with full URL preserved
+    project_file = temp_registry / "projects" / "proj-12345678.yml"
+    with open(project_file, 'r') as f:
+        data = yaml.safe_load(f)
+    
+    assert len(data["databases"]) == 1
+    assert data["databases"][0]["url"] == "postgres://user:pass@db.example.com:5432/production"
+
 
 @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
 def test_edit_remove_database(mock_get_registry_path, temp_registry):
@@ -510,13 +585,14 @@ def test_edit_remove_database(mock_get_registry_path, temp_registry):
     
     assert len(data["databases"]) == 0
 
-"""
+
 @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
 def test_edit_add_tool(mock_get_registry_path, temp_registry):
-    \"""Test adding a tool""\"
+    """Test adding a tool using JSON format"""
     mock_get_registry_path.return_value = str(temp_registry)
     
-    result = main(["edit", "12345678", "--add-tool", "github:github:https://github.com"])
+    tool_json = json.dumps({"name": "github", "provider": "github", "url": "https://github.com"})
+    result = main(["edit", "12345678", "--add-tool", tool_json])
     
     assert result == 0
     
@@ -529,7 +605,31 @@ def test_edit_add_tool(mock_get_registry_path, temp_registry):
     assert data["tools"][0]["name"] == "github"
     assert data["tools"][0]["provider"] == "github"
     assert data["tools"][0]["url"] == "https://github.com"
-"""
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_edit_add_tool_with_atlassian_url(mock_get_registry_path, temp_registry):
+    """Test adding a tool with Atlassian-style URL"""
+    mock_get_registry_path.return_value = str(temp_registry)
+    
+    tool_json = json.dumps({
+        "name": "confluence",
+        "provider": "atlassian",
+        "url": "https://myorg.atlassian.net/wiki/spaces/TEAM/overview"
+    })
+    result = main(["edit", "12345678", "--add-tool", tool_json])
+    
+    assert result == 0
+    
+    # Verify the tool was added with full URL preserved
+    project_file = temp_registry / "projects" / "proj-12345678.yml"
+    with open(project_file, 'r') as f:
+        data = yaml.safe_load(f)
+    
+    assert len(data["tools"]) == 1
+    assert data["tools"][0]["name"] == "confluence"
+    assert "atlassian.net" in data["tools"][0]["url"]
+
 
 @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
 def test_edit_remove_tool(mock_get_registry_path, temp_registry):
@@ -547,13 +647,14 @@ def test_edit_remove_tool(mock_get_registry_path, temp_registry):
     
     assert len(data["tools"]) == 0
 
-"""
+
 @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
 def test_edit_add_model(mock_get_registry_path, temp_registry):
-    \"""Test adding a model""\"
+    """Test adding a model using JSON format"""
     mock_get_registry_path.return_value = str(temp_registry)
     
-    result = main(["edit", "12345678", "--add-model", "claude:anthropic:https://api.anthropic.com"])
+    model_json = json.dumps({"id": "claude", "provider": "anthropic", "url": "https://api.anthropic.com"})
+    result = main(["edit", "12345678", "--add-model", model_json])
     
     assert result == 0
     
@@ -566,7 +667,31 @@ def test_edit_add_model(mock_get_registry_path, temp_registry):
     assert data["models"][0]["id"] == "claude"
     assert data["models"][0]["provider"] == "anthropic"
     assert data["models"][0]["url"] == "https://api.anthropic.com"
-"""
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_edit_add_model_with_openwebui_url(mock_get_registry_path, temp_registry):
+    """Test adding a model with OpenWebUI URL containing query parameters"""
+    mock_get_registry_path.return_value = str(temp_registry)
+    
+    model_json = json.dumps({
+        "id": "local-assistant",
+        "provider": "openwebui",
+        "url": "http://openwebui.local/?models=assistant:latest"
+    })
+    result = main(["edit", "12345678", "--add-model", model_json])
+    
+    assert result == 0
+    
+    # Verify the model was added with full URL preserved (including colon in query param)
+    project_file = temp_registry / "projects" / "proj-12345678.yml"
+    with open(project_file, 'r') as f:
+        data = yaml.safe_load(f)
+    
+    assert len(data["models"]) == 1
+    assert data["models"][0]["id"] == "local-assistant"
+    assert "models=assistant:latest" in data["models"][0]["url"]
+
 
 @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
 def test_edit_remove_model(mock_get_registry_path, temp_registry):
@@ -584,13 +709,14 @@ def test_edit_remove_model(mock_get_registry_path, temp_registry):
     
     assert len(data["models"]) == 0
 
-"""
+
 @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
 def test_edit_add_kb(mock_get_registry_path, temp_registry):
-    \"""Test adding a knowledge base""\"
+    """Test adding a knowledge base using JSON format"""
     mock_get_registry_path.return_value = str(temp_registry)
     
-    result = main(["edit", "12345678", "--add-kb", "kb-new:https://kb.example.com"])
+    kb_json = json.dumps({"id": "kb-new", "url": "https://kb.example.com"})
+    result = main(["edit", "12345678", "--add-kb", kb_json])
     
     assert result == 0
     
@@ -602,7 +728,30 @@ def test_edit_add_kb(mock_get_registry_path, temp_registry):
     assert len(data["knowledge_bases"]) == 1
     assert data["knowledge_bases"][0]["id"] == "kb-new"
     assert data["knowledge_bases"][0]["url"] == "https://kb.example.com"
-"""
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_edit_add_kb_with_complex_url(mock_get_registry_path, temp_registry):
+    """Test adding a knowledge base with a complex URL containing UUIDs"""
+    mock_get_registry_path.return_value = str(temp_registry)
+    
+    kb_json = json.dumps({
+        "id": "kb-registry-specs",
+        "url": "http://openwebui.local/workspace/knowledge/5f0f9cc7-abc1-4def-89ab-123456789012"
+    })
+    result = main(["edit", "12345678", "--add-kb", kb_json])
+    
+    assert result == 0
+    
+    # Verify the knowledge base was added with full URL preserved
+    project_file = temp_registry / "projects" / "proj-12345678.yml"
+    with open(project_file, 'r') as f:
+        data = yaml.safe_load(f)
+    
+    assert len(data["knowledge_bases"]) == 1
+    assert data["knowledge_bases"][0]["id"] == "kb-registry-specs"
+    assert "5f0f9cc7" in data["knowledge_bases"][0]["url"]
+
 
 @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
 def test_edit_remove_kb(mock_get_registry_path, temp_registry):
@@ -721,18 +870,23 @@ def test_edit_program(mock_get_registry_path, temp_registry):
     
     assert data["title"] == "Updated Program"
 
-"""
+
 @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
 def test_edit_multiple_complex_operations(mock_get_registry_path, temp_registry):
-    \"""Test multiple complex field operations in one command""\"
+    """Test multiple complex field operations in one command using JSON format"""
     mock_get_registry_path.return_value = str(temp_registry)
+    
+    repo1_json = json.dumps({"name": "repo1", "url": "https://github.com/test/repo1"})
+    repo2_json = json.dumps({"name": "repo2", "url": "https://github.com/test/repo2"})
+    storage_json = json.dumps({"name": "storage1", "provider": "s3", "url": "https://s3.aws.com/bucket1"})
+    tool_json = json.dumps({"name": "tool1", "provider": "provider1", "url": "https://tool1.com"})
     
     result = main([
         "edit", "12345678",
-        "--add-repository", "repo1:https://github.com/test/repo1",
-        "--add-repository", "repo2:https://github.com/test/repo2",
-        "--add-storage", "storage1:s3:https://s3.aws.com/bucket1",
-        "--add-tool", "tool1:provider1:https://tool1.com"
+        "--add-repository", repo1_json,
+        "--add-repository", repo2_json,
+        "--add-storage", storage_json,
+        "--add-tool", tool_json
     ])
     
     assert result == 0
@@ -745,7 +899,7 @@ def test_edit_multiple_complex_operations(mock_get_registry_path, temp_registry)
     assert len(data["repositories"]) == 2
     assert len(data["storage"]) == 1
     assert len(data["tools"]) == 1
-"""
+
 
 @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
 def test_edit_all_scalar_fields(mock_get_registry_path, temp_registry):
@@ -897,16 +1051,46 @@ def test_edit_add_duplicate_child(mock_get_registry_path, temp_registry):
 
 
 @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
-def test_edit_invalid_complex_field_format(mock_get_registry_path, temp_registry):
-    """Test handling of invalid format for complex fields"""
+def test_edit_invalid_json_format_for_complex_field(mock_get_registry_path, temp_registry):
+    """Test handling of invalid JSON format for complex fields"""
     mock_get_registry_path.return_value = str(temp_registry)
     
     with patch("builtins.print") as mock_print:
-        result = main(["edit", "12345678", "--add-repository", "invalid_format"])
+        # Pass an invalid JSON string
+        result = main(["edit", "12345678", "--add-repository", "not_valid_json"])
         
         # Should show warning about invalid format
-        assert any("Invalid format" in str(call) or "Warning" in str(call) 
-                   for call in mock_print.call_args_list)
+        printed_output = " ".join(str(call) for call in mock_print.call_args_list)
+        assert "Invalid format" in printed_output or "Warning" in printed_output
+        assert "JSON object" in printed_output
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_edit_invalid_json_array_instead_of_object(mock_get_registry_path, temp_registry):
+    """Test handling of JSON array when object is expected"""
+    mock_get_registry_path.return_value = str(temp_registry)
+    
+    with patch("builtins.print") as mock_print:
+        # Pass a JSON array instead of object
+        result = main(["edit", "12345678", "--add-repository", '["not", "an", "object"]'])
+        
+        # Should show warning about invalid format
+        printed_output = " ".join(str(call) for call in mock_print.call_args_list)
+        assert "Invalid format" in printed_output or "Warning" in printed_output
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_edit_malformed_json_syntax(mock_get_registry_path, temp_registry):
+    """Test handling of malformed JSON syntax"""
+    mock_get_registry_path.return_value = str(temp_registry)
+    
+    with patch("builtins.print") as mock_print:
+        # Pass malformed JSON
+        result = main(["edit", "12345678", "--add-repository", '{"name": "test", "url":}'])
+        
+        # Should show warning about invalid format
+        printed_output = " ".join(str(call) for call in mock_print.call_args_list)
+        assert "Invalid format" in printed_output or "Warning" in printed_output
 
 
 @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
@@ -1199,3 +1383,115 @@ def test_edit_set_id_error_message_contains_entity_type(mock_get_registry_path, 
     # Verify error message mentions the entity type
     printed_output = " ".join(str(call) for call in mock_print.call_args_list)
     assert "project" in printed_output.lower()
+
+
+# ─── JSON FORMAT EDGE CASES ─────────────────────────────────────────────────────
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_edit_add_repository_with_ssh_url(mock_get_registry_path, temp_registry):
+    """Test adding a repository with SSH URL format"""
+    mock_get_registry_path.return_value = str(temp_registry)
+    
+    repo_json = json.dumps({"name": "ssh-repo", "url": "git@github.com:org/repo.git"})
+    result = main(["edit", "12345678", "--add-repository", repo_json])
+    
+    assert result == 0
+    
+    project_file = temp_registry / "projects" / "proj-12345678.yml"
+    with open(project_file, 'r') as f:
+        data = yaml.safe_load(f)
+    
+    assert len(data["repositories"]) == 1
+    assert data["repositories"][0]["url"] == "git@github.com:org/repo.git"
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_edit_add_complex_item_with_extra_fields(mock_get_registry_path, temp_registry):
+    """Test that extra fields in JSON are preserved"""
+    mock_get_registry_path.return_value = str(temp_registry)
+    
+    # Include extra fields beyond the standard ones
+    repo_json = json.dumps({
+        "name": "myrepo",
+        "url": "https://github.com/org/repo",
+        "branch": "main",
+        "private": True,
+        "custom_field": "custom_value"
+    })
+    result = main(["edit", "12345678", "--add-repository", repo_json])
+    
+    assert result == 0
+    
+    project_file = temp_registry / "projects" / "proj-12345678.yml"
+    with open(project_file, 'r') as f:
+        data = yaml.safe_load(f)
+    
+    assert len(data["repositories"]) == 1
+    assert data["repositories"][0]["branch"] == "main"
+    assert data["repositories"][0]["private"] is True
+    assert data["repositories"][0]["custom_field"] == "custom_value"
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_edit_add_database_with_sqlite_path(mock_get_registry_path, temp_registry):
+    """Test adding a SQLite database with file path instead of URL"""
+    mock_get_registry_path.return_value = str(temp_registry)
+    
+    db_json = json.dumps({
+        "name": "local-db",
+        "type": "sqlite",
+        "path": "./data/local.db"
+    })
+    result = main(["edit", "12345678", "--add-database", db_json])
+    
+    assert result == 0
+    
+    project_file = temp_registry / "projects" / "proj-12345678.yml"
+    with open(project_file, 'r') as f:
+        data = yaml.safe_load(f)
+    
+    assert len(data["databases"]) == 1
+    assert data["databases"][0]["path"] == "./data/local.db"
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_edit_json_with_unicode_characters(mock_get_registry_path, temp_registry):
+    """Test JSON with Unicode characters"""
+    mock_get_registry_path.return_value = str(temp_registry)
+    
+    repo_json = json.dumps({
+        "name": "プロジェクト",
+        "url": "https://example.com/日本語/path"
+    })
+    result = main(["edit", "12345678", "--add-repository", repo_json])
+    
+    assert result == 0
+    
+    project_file = temp_registry / "projects" / "proj-12345678.yml"
+    with open(project_file, 'r') as f:
+        data = yaml.safe_load(f)
+    
+    assert len(data["repositories"]) == 1
+    assert data["repositories"][0]["name"] == "プロジェクト"
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_edit_json_with_empty_string_values(mock_get_registry_path, temp_registry):
+    """Test JSON with empty string values"""
+    mock_get_registry_path.return_value = str(temp_registry)
+    
+    repo_json = json.dumps({
+        "name": "minimal",
+        "url": ""
+    })
+    result = main(["edit", "12345678", "--add-repository", repo_json])
+    
+    assert result == 0
+    
+    project_file = temp_registry / "projects" / "proj-12345678.yml"
+    with open(project_file, 'r') as f:
+        data = yaml.safe_load(f)
+    
+    assert len(data["repositories"]) == 1
+    assert data["repositories"][0]["url"] == ""
