@@ -2,6 +2,7 @@
 Edit command implementation for modifying entity properties.
 """
 import os
+import json
 import yaml
 import argparse
 import datetime
@@ -107,24 +108,54 @@ class EditCommand(BaseCommand):
         parser.add_argument('--remove-related', metavar='UID', action='append', help='Remove a related UID')
         parser.add_argument('--set-related', metavar='UID', nargs='+', help='Set related UIDs (replaces all)')
 
-        # Complex field operations (simplified - add/remove items)
-        parser.add_argument('--add-repository', metavar='NAME:URL', help='Add repository (format: name:url)')
-        parser.add_argument('--remove-repository', metavar='NAME', help='Remove repository by name')
+        # Complex field operations (JSON object format)
+        parser.add_argument(
+            '--add-repository',
+            metavar='JSON',
+            action='append',
+            help='Add repository as JSON object (can be used multiple times), e.g.: \'{"name": "myrepo", "url": "https://github.com/org/repo"}\''
+        )
+        parser.add_argument('--remove-repository', metavar='NAME', action='append', help='Remove repository by name (can be used multiple times)')
 
-        parser.add_argument('--add-storage', metavar='NAME:PROVIDER:URL', help='Add storage (format: name:provider:url)')
-        parser.add_argument('--remove-storage', metavar='NAME', help='Remove storage by name')
+        parser.add_argument(
+            '--add-storage',
+            metavar='JSON',
+            action='append',
+            help='Add storage as JSON object (can be used multiple times), e.g.: \'{"name": "docs", "provider": "gdrive", "url": "https://drive.google.com/..."}\''
+        )
+        parser.add_argument('--remove-storage', metavar='NAME', action='append', help='Remove storage by name (can be used multiple times)')
 
-        parser.add_argument('--add-database', metavar='NAME:TYPE:URL', help='Add database (format: name:type:url)')
-        parser.add_argument('--remove-database', metavar='NAME', help='Remove database by name')
+        parser.add_argument(
+            '--add-database',
+            metavar='JSON',
+            action='append',
+            help='Add database as JSON object (can be used multiple times), e.g.: \'{"name": "main", "type": "postgres", "url": "postgres://..."}\''
+        )
+        parser.add_argument('--remove-database', metavar='NAME', action='append', help='Remove database by name (can be used multiple times)')
 
-        parser.add_argument('--add-tool', metavar='NAME:PROVIDER:URL', help='Add tool (format: name:provider:url)')
-        parser.add_argument('--remove-tool', metavar='NAME', help='Remove tool by name')
+        parser.add_argument(
+            '--add-tool',
+            metavar='JSON',
+            action='append',
+            help='Add tool as JSON object (can be used multiple times), e.g.: \'{"name": "jira", "provider": "atlassian", "url": "https://..."}\''
+        )
+        parser.add_argument('--remove-tool', metavar='NAME', action='append', help='Remove tool by name (can be used multiple times)')
 
-        parser.add_argument('--add-model', metavar='ID:PROVIDER:URL', help='Add model (format: id:provider:url)')
-        parser.add_argument('--remove-model', metavar='ID', help='Remove model by ID')
+        parser.add_argument(
+            '--add-model',
+            metavar='JSON',
+            action='append',
+            help='Add model as JSON object (can be used multiple times), e.g.: \'{"id": "gpt-4", "provider": "openai", "url": "https://..."}\''
+        )
+        parser.add_argument('--remove-model', metavar='ID', action='append', help='Remove model by ID (can be used multiple times)')
 
-        parser.add_argument('--add-kb', metavar='ID:URL', help='Add knowledge base (format: id:url)')
-        parser.add_argument('--remove-kb', metavar='ID', help='Remove knowledge base by ID')
+        parser.add_argument(
+            '--add-kb',
+            metavar='JSON',
+            action='append',
+            help='Add knowledge base as JSON object (can be used multiple times), e.g.: \'{"id": "kb-001", "url": "https://..."}\''
+        )
+        parser.add_argument('--remove-kb', metavar='ID', action='append', help='Remove knowledge base by ID (can be used multiple times)')
 
         # Other options
         parser.add_argument(
@@ -552,69 +583,75 @@ class EditCommand(BaseCommand):
         changes = []
         # Repository operations
         if args.add_repository:
-            changes.extend(cls._add_complex_item(
-                entity_data, 'repositories', args.add_repository,
-                ['name', 'url'], 'repository'
-            ))
+            for repo_json in args.add_repository:
+                changes.extend(cls._add_complex_item(
+                    entity_data, 'repositories', repo_json, 'repository'
+                ))
         if args.remove_repository:
-            changes.extend(cls._remove_complex_item(
-                entity_data, 'repositories', args.remove_repository, 'name', 'repository'
-            ))
+            for repo_name in args.remove_repository:
+                changes.extend(cls._remove_complex_item(
+                    entity_data, 'repositories', repo_name, 'name', 'repository'
+                ))
 
         # Storage operations
         if args.add_storage:
-            changes.extend(cls._add_complex_item(
-                entity_data, 'storage', args.add_storage,
-                ['name', 'provider', 'url'], 'storage'
-            ))
+            for storage_json in args.add_storage:
+                changes.extend(cls._add_complex_item(
+                    entity_data, 'storage', storage_json, 'storage'
+                ))
         if args.remove_storage:
-            changes.extend(cls._remove_complex_item(
-                entity_data, 'storage', args.remove_storage, 'name', 'storage'
-            ))
+            for storage_name in args.remove_storage:
+                changes.extend(cls._remove_complex_item(
+                    entity_data, 'storage', storage_name, 'name', 'storage'
+                ))
 
         # Database operations
         if args.add_database:
-            changes.extend(cls._add_complex_item(
-                entity_data, 'databases', args.add_database,
-                ['name', 'type', 'url'], 'database'
-            ))
+            for db_json in args.add_database:
+                changes.extend(cls._add_complex_item(
+                    entity_data, 'databases', db_json, 'database'
+                ))
         if args.remove_database:
-            changes.extend(cls._remove_complex_item(
-                entity_data, 'databases', args.remove_database, 'name', 'database'
-            ))
+            for db_name in args.remove_database:
+                changes.extend(cls._remove_complex_item(
+                    entity_data, 'databases', db_name, 'name', 'database'
+                ))
 
         # Tool operations
         if args.add_tool:
-            changes.extend(cls._add_complex_item(
-                entity_data, 'tools', args.add_tool,
-                ['name', 'provider', 'url'], 'tool'
-            ))
+            for tool_json in args.add_tool:
+                changes.extend(cls._add_complex_item(
+                    entity_data, 'tools', tool_json, 'tool'
+                ))
         if args.remove_tool:
-            changes.extend(cls._remove_complex_item(
-                entity_data, 'tools', args.remove_tool, 'name', 'tool'
-            ))
+            for tool_name in args.remove_tool:
+                changes.extend(cls._remove_complex_item(
+                    entity_data, 'tools', tool_name, 'name', 'tool'
+                ))
 
         # Model operations
         if args.add_model:
-            changes.extend(cls._add_complex_item(
-                entity_data, 'models', args.add_model,
-                ['id', 'provider', 'url'], 'model'
-            ))
+            for model_json in args.add_model:
+                changes.extend(cls._add_complex_item(
+                    entity_data, 'models', model_json, 'model'
+                ))
         if args.remove_model:
-            changes.extend(cls._remove_complex_item(
-                entity_data, 'models', args.remove_model, 'id', 'model'
-            ))
+            for model_id in args.remove_model:
+                changes.extend(cls._remove_complex_item(
+                    entity_data, 'models', model_id, 'id', 'model'
+                ))
 
         # Knowledge base operations
         if args.add_kb:
-            changes.extend(cls._add_complex_item(
-                entity_data, 'knowledge_bases', args.add_kb,
-                ['id', 'url'], 'knowledge base'
-            ))
+            for kb_json in args.add_kb:
+                changes.extend(cls._add_complex_item(
+                    entity_data, 'knowledge_bases', kb_json, 'knowledge base'
+                ))
         if args.remove_kb:
-            changes.extend(cls._remove_complex_item(
-                entity_data, 'knowledge_bases', args.remove_kb, 'id', 'knowledge base'
-            ))
+            for kb_id in args.remove_kb:
+                changes.extend(cls._remove_complex_item(
+                    entity_data, 'knowledge_bases', kb_id, 'id', 'knowledge base'
+                ))
 
         return changes
 
@@ -624,25 +661,42 @@ class EditCommand(BaseCommand):
         entity_data: Dict[str, Any],
         field_name: str,
         value_str: str,
-        keys: List[str],
         item_type: str
     ) -> List[str]:
+        """
+        Add a complex item to a list field by parsing JSON.
+        
+        Args:
+            entity_data: The entity data dictionary to modify
+            field_name: The name of the field (e.g., 'repositories')
+            value_str: JSON string representing the item to add
+            item_type: Human-readable name for error messages (e.g., 'repository')
+            
+        Returns:
+            List of change descriptions
+        """
         changes = []
-        # Parse the value string (format: key1:key2:key3)
-        parts = value_str.split(':')
-        if len(parts) != len(keys):
-            print(f"⚠️  Warning: Invalid format for {item_type}. Expected {':'.join(keys)}")
+        
+        # Parse the JSON object
+        try:
+            new_item = json.loads(value_str)
+            if not isinstance(new_item, dict):
+                raise ValueError("Expected a JSON object")
+        except (json.JSONDecodeError, ValueError) as e:
+            print(f"⚠️  Warning: Invalid format for {item_type}. Expected a JSON object.")
+            print(f"   Example: '{{\"name\": \"example\", \"url\": \"https://...\"}}'")
             return changes
-        # Create the new item
-        new_item = {key: part for key, part in zip(keys, parts)}
+        
         # Get or create the list
         items = entity_data.get(field_name, [])
         if not isinstance(items, list):
             items = []
+        
         # Add the item
         items.append(new_item)
         entity_data[field_name] = items
         changes.append(f"Added {item_type}: {new_item}")
+        
         return changes
 
     @classmethod
