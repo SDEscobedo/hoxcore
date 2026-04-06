@@ -627,12 +627,16 @@ def edit_entity_tool(
     set_completion_date: Optional[str] = None,
     add_tags: Optional[List[str]] = None,
     remove_tags: Optional[List[str]] = None,
+    add_children: Optional[List[str]] = None,
+    remove_children: Optional[List[str]] = None,
+    add_related: Optional[List[str]] = None,
+    remove_related: Optional[List[str]] = None,
     entity_type: Optional[str] = None,
     registry_path: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Edit properties of an existing registry entity.
- 
+
     Args:
         identifier: UID or human-readable ID of the entity to edit
         set_title: New title value
@@ -646,9 +650,13 @@ def edit_entity_tool(
         set_completion_date: New completion date (YYYY-MM-DD)
         add_tags: Tags to add
         remove_tags: Tags to remove
+        add_children: Child entity UIDs/IDs to add
+        remove_children: Child entity UIDs/IDs to remove
+        add_related: Related entity UIDs/IDs to add
+        remove_related: Related entity UIDs/IDs to remove
         entity_type: Optional type filter to disambiguate the identifier
         registry_path: Optional registry path (uses default if not provided)
- 
+
     Returns:
         Dictionary with updated entity on success; error message on failure.
     """
@@ -745,7 +753,45 @@ def edit_entity_tool(
                     tags.remove(tag)
                     changes.append(f"Removed tag: {tag!r}")
             entity_data["tags"] = tags
- 
+
+        # Children operations
+        if add_children:
+            anything_specified = True
+            children = entity_data.get("children") or []
+            for child in add_children:
+                if child not in children:
+                    children.append(child)
+                    changes.append(f"Added child: {child!r}")
+            entity_data["children"] = children
+
+        if remove_children:
+            anything_specified = True
+            children = entity_data.get("children") or []
+            for child in remove_children:
+                if child in children:
+                    children.remove(child)
+                    changes.append(f"Removed child: {child!r}")
+            entity_data["children"] = children
+
+        # Related operations
+        if add_related:
+            anything_specified = True
+            related = entity_data.get("related") or []
+            for rel in add_related:
+                if rel not in related:
+                    related.append(rel)
+                    changes.append(f"Added related: {rel!r}")
+            entity_data["related"] = related
+
+        if remove_related:
+            anything_specified = True
+            related = entity_data.get("related") or []
+            for rel in remove_related:
+                if rel in related:
+                    related.remove(rel)
+                    changes.append(f"Removed related: {rel!r}")
+            entity_data["related"] = related
+
         if not anything_specified:
             return {
                 "success": False,
