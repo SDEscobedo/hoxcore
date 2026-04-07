@@ -1398,6 +1398,38 @@ class TestEditEntityTool:
         assert result["success"] is True
         assert result["entity"]["related"] == ["proj-test-001"]
 
+    def test_edit_add_duplicate_related_is_idempotent(self, temp_registry):
+        edit_entity_tool(identifier="P-001", add_related=["proj-test-001"], registry_path=temp_registry)
+
+        result = edit_entity_tool(
+            identifier="P-001",
+            add_related=["proj-test-001"],
+            registry_path=temp_registry
+        )
+
+        assert result["success"] is True
+        assert result["entity"]["related"].count("proj-test-001") == 1
+
+    def test_edit_remove_nonexistent_child_is_noop(self, temp_registry):
+
+        result = edit_entity_tool(
+            identifier="PRG-001",
+            remove_children=["nonexistent-uid"],
+            registry_path=temp_registry
+        )
+
+        assert result["success"] is True  # anything_specified=True, but no error raised
+
+    def test_edit_remove_nonexistent_related_is_noop(self, temp_registry):
+
+        result = edit_entity_tool(
+            identifier="P-001",
+            remove_related=["nonexistent-uid"],
+            registry_path=temp_registry
+        )
+        
+        assert result["success"] is True
+
     def test_edit_multiple_scalar_fields(self, temp_registry):
         """Test editing multiple scalar fields at once"""
         result = edit_entity_tool(
