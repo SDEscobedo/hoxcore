@@ -130,16 +130,16 @@
         <h3>Examples</h3>
         <pre><code class="language-bash"># Initialize in the current directory
 hxc init
- 
+
 # Initialize in a specific path
 hxc init my-registry
- 
+
 # Skip Git setup entirely
 hxc init ~/work-projects --no-git
- 
+
 # Initialize with a remote and skip the initial commit
 hxc init . --remote https://github.com/user/registry.git --no-commit
- 
+
 # Initialize without setting this registry as the default
 hxc init my-registry --no-set-default</code></pre>
       </section>
@@ -180,10 +180,10 @@ hxc init my-registry --no-set-default</code></pre>
         <h3>Examples</h3>
         <pre><code class="language-bash"># Minimal project
 hxc create project "New API"
- 
+
 # With custom ID and description
 hxc create project "GraphQL Migration" --id P-042 -d "Migrate REST endpoints to GraphQL"
- 
+
 # Fully specified
 hxc create project "GraphQL Migration" \
   --id P-042 \
@@ -191,17 +191,15 @@ hxc create project "GraphQL Migration" \
   --tags graphql migration backend \
   --parent prog_abc123 \
   --due-date 2024-12-31
- 
+
 # Create a mission from a template
 hxc create mission "Q4 Launch" --template software.dev/cli-tool.default
- 
+
 # Target a specific registry
 hxc create program "Platform Team" --registry ~/registries/work
 
-# Skipping commit new project to git repository
-hxc create project "GraphQL Migration" --id P-042 --no-commit
-
-</code></pre>
+# Skip commiting new project to git repository
+hxc create project "GraphQL Migration" --id P-042 --no-commit</code></pre>
       </section>
 
       <section id="delete" class="doc-section">
@@ -236,13 +234,13 @@ hxc create project "GraphQL Migration" --id P-042 --no-commit
         <h3>Examples</h3>
         <pre><code class="language-bash"># Delete by ID (with confirmation prompt)
 hxc delete P-001
- 
+
 # Delete by UID, skip confirmation
 hxc delete a8bc123 --force
- 
+
 # Disambiguate when the same ID exists across types
 hxc delete P-001 --type project
- 
+
 # Target a specific registry
 hxc delete P-001 --force --registry ~/registries/work
 
@@ -286,22 +284,22 @@ hxc delete P-001 --no-commit</code></pre>
         <h3>Examples</h3>
         <pre><code class="language-bash"># List all projects (default type)
 hxc list
- 
+
 # List all programs
 hxc list program
- 
+
 # List active projects
 hxc list project --status active
- 
+
 # Filter by tag (repeatable)
 hxc list project --tag ai --tag python
- 
+
 # Search in title and description
 hxc list all --query "machine learning"
- 
+
 # Filter by due date range and sort
 hxc list project --before 2024-12-31 --sort due_date
- 
+
 # Output as JSON, limit to 10 results
 hxc list all --format json --max 10</code></pre>
       </section>
@@ -335,14 +333,14 @@ hxc list all --format json --max 10</code></pre>
         <pre><code class="language-bash"># Show entity with default pretty formatting
 hxc show P-001
 hxc show proj_abc123def456
- 
+
 # Output as YAML or JSON
 hxc show P-001 --format yaml
 hxc show P-001 --format json
- 
+
 # Display raw file content
 hxc show P-001 --raw
- 
+
 # Disambiguate type and target a specific registry
 hxc show P-001 --type project --registry ~/registries/work</code></pre>
       </section>
@@ -360,7 +358,7 @@ hxc show P-001 --type project --registry ~/registries/work</code></pre>
             </tbody>
           </table>
         </div>
- 
+
         <h3>General options</h3>
         <div class="table-wrap">
           <table class="doc-table">
@@ -373,7 +371,7 @@ hxc show P-001 --type project --registry ~/registries/work</code></pre>
             </tbody>
           </table>
         </div>
- 
+
         <h3>Scalar fields</h3>
         <div class="table-wrap">
           <table class="doc-table">
@@ -393,7 +391,7 @@ hxc show P-001 --type project --registry ~/registries/work</code></pre>
             </tbody>
           </table>
         </div>
- 
+
         <h3>Tags</h3>
         <div class="table-wrap">
           <table class="doc-table">
@@ -405,7 +403,7 @@ hxc show P-001 --type project --registry ~/registries/work</code></pre>
             </tbody>
           </table>
         </div>
- 
+
         <h3>Relationships</h3>
         <div class="table-wrap">
           <table class="doc-table">
@@ -420,51 +418,79 @@ hxc show P-001 --type project --registry ~/registries/work</code></pre>
             </tbody>
           </table>
         </div>
- 
+
         <h3>Integrations</h3>
+        <p>Integration flags accept a <strong>JSON object</strong> string so that URLs with colons are never ambiguous. Each <code>--add-*</code> flag can be repeated multiple times in a single command to add several items at once.</p>
         <div class="table-wrap">
           <table class="doc-table">
             <thead><tr><th>Flag</th><th>Description</th></tr></thead>
             <tbody>
-              <tr><td><code>--add-repository NAME:URL</code></td><td>Add a repository (format: name:url)</td></tr>
-              <tr><td><code>--remove-repository NAME</code></td><td>Remove a repository by name</td></tr>
-              <tr><td><code>--add-storage NAME:PROVIDER:URL</code></td><td>Add a storage entry (format: name:provider:url)</td></tr>
-              <tr><td><code>--remove-storage NAME</code></td><td>Remove a storage entry by name</td></tr>
-              <tr><td><code>--add-database NAME:TYPE:URL</code></td><td>Add a database (format: name:type:url)</td></tr>
-              <tr><td><code>--remove-database NAME</code></td><td>Remove a database by name</td></tr>
-              <tr><td><code>--add-tool NAME:PROVIDER:URL</code></td><td>Add a tool (format: name:provider:url)</td></tr>
-              <tr><td><code>--remove-tool NAME</code></td><td>Remove a tool by name</td></tr>
-              <tr><td><code>--add-model ID:PROVIDER:URL</code></td><td>Add a model (format: id:provider:url)</td></tr>
-              <tr><td><code>--remove-model ID</code></td><td>Remove a model by ID</td></tr>
-              <tr><td><code>--add-kb ID:URL</code></td><td>Add a knowledge base (format: id:url)</td></tr>
-              <tr><td><code>--remove-kb ID</code></td><td>Remove a knowledge base by ID</td></tr>
+              <tr><td><code>--add-repository JSON</code></td><td>Add a repository (repeatable). JSON keys: <code>name</code>, <code>url</code></td></tr>
+              <tr><td><code>--remove-repository NAME</code></td><td>Remove a repository by name (repeatable)</td></tr>
+              <tr><td><code>--add-storage JSON</code></td><td>Add a storage entry (repeatable). JSON keys: <code>name</code>, <code>provider</code>, <code>url</code></td></tr>
+              <tr><td><code>--remove-storage NAME</code></td><td>Remove a storage entry by name (repeatable)</td></tr>
+              <tr><td><code>--add-database JSON</code></td><td>Add a database (repeatable). JSON keys: <code>name</code>, <code>type</code>, <code>url</code></td></tr>
+              <tr><td><code>--remove-database NAME</code></td><td>Remove a database by name (repeatable)</td></tr>
+              <tr><td><code>--add-tool JSON</code></td><td>Add a tool (repeatable). JSON keys: <code>name</code>, <code>provider</code>, <code>url</code></td></tr>
+              <tr><td><code>--remove-tool NAME</code></td><td>Remove a tool by name (repeatable)</td></tr>
+              <tr><td><code>--add-model JSON</code></td><td>Add a model (repeatable). JSON keys: <code>id</code>, <code>provider</code>, <code>url</code></td></tr>
+              <tr><td><code>--remove-model ID</code></td><td>Remove a model by ID (repeatable)</td></tr>
+              <tr><td><code>--add-kb JSON</code></td><td>Add a knowledge base (repeatable). JSON keys: <code>id</code>, <code>url</code></td></tr>
+              <tr><td><code>--remove-kb ID</code></td><td>Remove a knowledge base by ID (repeatable)</td></tr>
             </tbody>
           </table>
         </div>
- 
+
+        <div class="info-box">
+          <h4>JSON object format for integrations</h4>
+          <p>All <code>--add-*</code> integration flags expect a JSON object string. This avoids any ambiguity with URLs, which contain colons. Wrap the JSON in single quotes on the command line.</p>
+        </div>
+
         <h3>Examples</h3>
         <pre><code class="language-bash"># Set scalar fields (automatically creates a Git commit)
 hxc edit P-001 --set-status completed --set-completion-date 2026-06-30
- 
+
 # Preview changes without saving or committing
 hxc edit P-001 --set-title "Revised Title" --dry-run
 
 # Update properties without creating a Git commit
 hxc edit P-001 --add-tag "manual-update" --no-commit
- 
+
 # Tag operations
 hxc edit P-001 --add-tag production --add-tag deployed
 hxc edit P-001 --remove-tag wip
 hxc edit P-001 --set-tags python cli backend
- 
+
 # Relationship operations
 hxc edit P-001 --add-child proj_abc123 --add-related proj_def456
- 
-# Integration operations
-hxc edit P-001 --add-repository main:https://github.com/org/repo
-hxc edit P-001 --add-tool jira:atlassian:https://org.atlassian.net
+
+# Add a repository (JSON object — URLs with colons are handled correctly)
+hxc edit P-001 --add-repository '{"name": "main", "url": "https://github.com/org/repo"}'
+
+# Add multiple repositories in a single command
+hxc edit P-001 \
+  --add-repository '{"name": "main", "url": "https://github.com/org/main"}' \
+  --add-repository '{"name": "docs", "url": "https://github.com/org/docs"}'
+
+# Add a storage entry
+hxc edit P-001 --add-storage '{"name": "assets", "provider": "gdrive", "url": "https://drive.google.com/drive/folders/abc"}'
+
+# Add a database
+hxc edit P-001 --add-database '{"name": "main", "type": "postgres", "url": "postgres://user:pass@host:5432/db"}'
+
+# Add a tool
+hxc edit P-001 --add-tool '{"name": "jira", "provider": "atlassian", "url": "https://org.atlassian.net"}'
+
+# Add a model
+hxc edit P-001 --add-model '{"id": "gpt-4", "provider": "openai", "url": "https://api.openai.com"}'
+
+# Add a knowledge base
+hxc edit P-001 --add-kb '{"id": "kb-docs", "url": "https://kb.example.com"}'
+
+# Remove integration entries by name or ID
 hxc edit P-001 --remove-repository legacy
- 
+hxc edit P-001 --remove-tool old-tracker
+
 # Disambiguate type and target a specific registry
 hxc edit P-001 --type project --registry ~/registries/work</code></pre>
       </section>
@@ -500,19 +526,19 @@ hxc edit P-001 --type project --registry ~/registries/work</code></pre>
         <pre><code class="language-bash"># Get a scalar property
 hxc get P-001 title
 hxc get P-001 status
- 
+
 # Get all properties as YAML
 hxc get P-001 all --format yaml
- 
+
 # Get a list property as JSON
 hxc get P-001 tags --format json
- 
+
 # Get the first tag by index
 hxc get P-001 tags --index 0
- 
+
 # Filter a complex list property by key
 hxc get P-001 repositories --key name:github
- 
+
 # Disambiguate type and target a specific registry
 hxc get P-001 title --type project --registry ~/registries/work</code></pre>
       </section>
@@ -543,10 +569,10 @@ hxc get P-001 title --type project --registry ~/registries/work</code></pre>
         <h3>Examples</h3>
         <pre><code class="language-bash"># Show the current registry path
 hxc registry path
- 
+
 # Set the default registry path
 hxc registry path --set /path/to/my-registry
- 
+
 # List all known registries
 hxc registry list</code></pre>
       </section>
@@ -573,14 +599,13 @@ hxc registry list</code></pre>
         <h3>Examples</h3>
         <pre><code class="language-bash"># Validate the current or configured registry
 hxc validate
- 
+
 # Show detailed output for each check
 hxc validate --verbose
- 
+
 # Validate a specific registry
 hxc validate --registry ~/registries/work</code></pre>
       </section>
-
 
       <section id="mcp" class="doc-section">
         <h2>hxc mcp</h2>
@@ -605,16 +630,16 @@ hxc validate --registry ~/registries/work</code></pre>
         <h3>Examples</h3>
         <pre><code class="language-bash"># Start the MCP server using the default or configured registry
 hxc mcp
- 
+
 # Start with a specific registry
 hxc mcp --registry ~/registries/work
- 
+
 # Inspect available tools, resources, and prompts without starting
 hxc mcp --capabilities
- 
+
 # Start in read-only mode (write tools are not exposed to the LLM)
 hxc mcp --read-only
- 
+
 # Read-only with explicit registry
 hxc mcp --registry ~/registries/work --read-only</code></pre>
         <div class="info-box">

@@ -442,6 +442,10 @@ class MCPServer:
                     "set_completion_date": {"type": "string"},
                     "add_tags": {"type": "array", "items": {"type": "string"}},
                     "remove_tags": {"type": "array", "items": {"type": "string"}},
+                    "add_children": {"type": "array", "items": {"type": "string"}, "description": "Child entity UIDs/IDs to add"},
+                    "remove_children": {"type": "array", "items": {"type": "string"}, "description": "Child entity UIDs/IDs to remove"},
+                    "add_related": {"type": "array", "items": {"type": "string"}, "description": "Related entity UIDs/IDs to add"},
+                    "remove_related": {"type": "array", "items": {"type": "string"}, "description": "Related entity UIDs/IDs to remove"},
                     "entity_type": {"type": "string"},
                 },
                 "required": ["identifier"]

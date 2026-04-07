@@ -15,8 +15,15 @@ jobs:
   # Job 1: Run tests before publishing anything
   # ──────────────────────────────────────────────
   test:
-    name: Run Test Suite
-    runs-on: ubuntu-latest
+    name: Run Test Suite (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
 
     steps:
       - uses: actions/checkout@v4
