@@ -15,7 +15,7 @@ jobs:
   # Job 1: Run tests before publishing anything
   # ──────────────────────────────────────────────
   test:
-    name: Run Test Suite
+    name: Run Test Suite (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
