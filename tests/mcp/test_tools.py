@@ -1327,6 +1327,77 @@ class TestEditEntityTool:
         tags = result["entity"]["tags"]
         assert tags.count("test") == 1
  
+    def test_edit_add_children(self, temp_registry):
+        result = edit_entity_tool(
+            identifier="PRG-001",
+            add_children=["act-test-001"],
+            registry_path=temp_registry,
+        )
+
+        assert result["success"] is True
+        children = result["entity"]["children"]
+        assert "act-test-001" in children
+        assert any("child" in c.lower() for c in result["changes"])
+
+    def test_edit_remove_children(self, temp_registry):
+        result = edit_entity_tool(
+            identifier="PRG-001",
+            remove_children=["proj-test-001"],
+            registry_path=temp_registry,
+        )
+
+        assert result["success"] is True
+        assert "proj-test-001" not in result["entity"]["children"]
+
+    def test_edit_add_duplicate_child_is_idempotent(self, temp_registry):
+        result = edit_entity_tool(
+            identifier="PRG-001",
+            add_children=["proj-test-001"],  # already in fixture
+            registry_path=temp_registry,
+        )
+
+        assert result["success"] is True
+        children = result["entity"]["children"]
+        assert children.count("proj-test-001") == 1
+
+    def test_edit_add_related(self, temp_registry):
+        result = edit_entity_tool(
+            identifier="P-001",
+            add_related=["proj-test-002", "act-test-001"],
+            registry_path=temp_registry,
+        )
+
+        assert result["success"] is True
+        related = result["entity"]["related"]
+        assert "proj-test-002" in related
+        assert "act-test-001" in related
+
+    def test_edit_remove_related(self, temp_registry):
+        # add first, then remove
+        edit_entity_tool(
+            identifier="P-001",
+            add_related=["proj-test-002"],
+            registry_path=temp_registry,
+        )
+        result = edit_entity_tool(
+            identifier="P-001",
+            remove_related=["proj-test-002"],
+            registry_path=temp_registry,
+        )
+
+        assert result["success"] is True
+        assert "proj-test-002" not in result["entity"].get("related", [])
+
+    def test_edit_add_related_to_entity_without_related(self, temp_registry):
+        result = edit_entity_tool(
+            identifier="A-001",
+            add_related=["proj-test-001"],
+            registry_path=temp_registry,
+        )
+
+        assert result["success"] is True
+        assert result["entity"]["related"] == ["proj-test-001"]
+
     def test_edit_multiple_scalar_fields(self, temp_registry):
         """Test editing multiple scalar fields at once"""
         result = edit_entity_tool(
