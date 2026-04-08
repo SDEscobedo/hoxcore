@@ -9,6 +9,7 @@ from pathlib import Path
 import yaml
 
 from hxc.commands.registry import RegistryCommand
+from hxc.commands.show import ShowCommand
 from hxc.utils.helpers import get_project_root
 from hxc.utils.path_security import get_safe_entity_path, resolve_safe_path, PathSecurityError
 from hxc.core.enums import EntityType, EntityStatus, SortField
@@ -930,41 +931,8 @@ def _find_entity_file(
     identifier: str,
     entity_type: Optional[EntityType] = None
 ) -> Optional[Path]:
-    """Find an entity file by ID or UID"""
-    types_to_search = [entity_type] if entity_type else list(EntityType)
-    
-    for entity_type_enum in types_to_search:
-        folder_name = entity_type_enum.get_folder_name()
-        file_prefix = entity_type_enum.get_file_prefix()
-        
-        try:
-            type_dir = resolve_safe_path(registry_path, folder_name)
-        except PathSecurityError:
-            continue
-        
-        if not type_dir.exists():
-            continue
-        
-        uid_pattern = f"{file_prefix}-{identifier}.yml"
-        for file_path in type_dir.glob(uid_pattern):
-            try:
-                secure_file_path = resolve_safe_path(registry_path, file_path)
-                return secure_file_path
-            except PathSecurityError:
-                continue
-        
-        for file_path in type_dir.glob(f"{file_prefix}-*.yml"):
-            try:
-                secure_file_path = resolve_safe_path(registry_path, file_path)
-                with open(secure_file_path, 'r') as f:
-                    data = yaml.safe_load(f)
-                    if data and isinstance(data, dict):
-                        if data.get('id') == identifier or data.get('uid') == identifier:
-                            return secure_file_path
-            except (PathSecurityError, Exception):
-                continue
-    
-    return None
+    """Find an entity file by ID or UID using the same lookup as the CLI show command."""
+    return ShowCommand.find_file(registry_path, identifier, entity_type)
 
 
 def _get_entities_of_type(

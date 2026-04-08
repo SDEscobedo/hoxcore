@@ -474,6 +474,30 @@ class TestGetEntityTool:
         assert "identifier" in result
         assert result["identifier"] == "P-001"
 
+    def test_get_entity_finds_nested_project_files(self, temp_registry):
+        """Test MCP entity lookup matches the recursive CLI show lookup."""
+        nested_dir = Path(temp_registry) / "projects" / "nested"
+        nested_dir.mkdir()
+        nested_file = nested_dir / "proj-nested-001.yml"
+        nested_file.write_text(
+            """
+type: project
+uid: proj-nested-001
+id: P-003
+title: Nested Project
+""".strip()
+        )
+
+        result = get_entity_tool(
+            identifier="P-003",
+            entity_type="project",
+            registry_path=temp_registry,
+        )
+
+        assert result["success"] is True
+        assert result["entity"]["title"] == "Nested Project"
+        assert result["file_path"].endswith("projects/nested/proj-nested-001.yml")
+
 
 class TestSearchEntitiesTool:
     """Tests for search_entities_tool"""
