@@ -15,6 +15,11 @@ from hxc.commands.create import title_to_id
 from hxc.commands.registry import RegistryCommand
 from hxc.utils.path_security import PathSecurityError
 from hxc.core.enums import EntityType, EntityStatus
+from hxc.core.operations.create import (
+    CreateOperation,
+    CreateOperationError,
+    DuplicateIdError,
+)
 
 
 @pytest.fixture
@@ -78,6 +83,34 @@ def git_registry(tmp_path):
     # Clean up
     if registry_path.exists():
         shutil.rmtree(registry_path)
+
+
+@pytest.fixture
+def registry_with_projects(temp_registry):
+    """Create a registry with existing project entities for ID uniqueness tests"""
+    # Create project with id "P-001"
+    project1 = {
+        "type": "project",
+        "uid": "proj0001",
+        "id": "P-001",
+        "title": "Existing Project One",
+        "status": "active",
+    }
+    with open(temp_registry / "projects" / "proj-proj0001.yml", "w") as f:
+        yaml.dump(project1, f)
+    
+    # Create project with id "P-002"
+    project2 = {
+        "type": "project",
+        "uid": "proj0002",
+        "id": "P-002",
+        "title": "Existing Project Two",
+        "status": "active",
+    }
+    with open(temp_registry / "projects" / "proj-proj0002.yml", "w") as f:
+        yaml.dump(project2, f)
+    
+    return temp_registry
 
 
 def test_create_command_registration():
@@ -169,7 +202,7 @@ def test_create_project_basic(mock_get_registry_path, temp_registry):
     mock_get_registry_path.return_value = str(temp_registry)
     
     # Fix uuid for predictable output
-    with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
+    with patch("hxc.core.operations.create.uuid.uuid4", return_value=MagicMock(__str__=lambda x: "12345678-1234-5678-1234-567812345678")):
         with patch("builtins.print") as mock_print:
             result = main(["create", "project", "Test Project", "--no-commit"])
             
@@ -201,7 +234,7 @@ def test_create_project_full(mock_get_registry_path, temp_registry):
     mock_get_registry_path.return_value = str(temp_registry)
     
     # Fix uuid for predictable output
-    with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
+    with patch("hxc.core.operations.create.uuid.uuid4", return_value=MagicMock(__str__=lambda x: "12345678-1234-5678-1234-567812345678")):
         result = main([
             "create", "project", "Full Project",
             "--id", "P-001",
@@ -251,7 +284,7 @@ def test_create_custom_id_overrides_auto_generation(
     auto_id = title_to_id(title, "project")
     custom_id = "P-CUSTOM-123"
 
-    with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
+    with patch("hxc.core.operations.create.uuid.uuid4", return_value=MagicMock(__str__=lambda x: "12345678-1234-5678-1234-567812345678")):
         result = main(["create", "project", title, "--id", custom_id, "--no-commit"])
         assert result == 0
 
@@ -276,7 +309,7 @@ def test_create_custom_id_used_exactly_as_provided(
     title = "Test Action"
     custom_id = "my.Custom-ID_123"
 
-    with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
+    with patch("hxc.core.operations.create.uuid.uuid4", return_value=MagicMock(__str__=lambda x: "12345678-1234-5678-1234-567812345678")):
         result = main(["create", "action", title, "--id", custom_id, "--no-commit"])
         assert result == 0
 
@@ -302,7 +335,7 @@ def test_create_all_entity_types_include_auto_generated_ids_and_uid(
         file_prefix = entity_type.get_file_prefix()
         title = f"Test {entity_type.value.title()}"
 
-        with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
+        with patch("hxc.core.operations.create.uuid.uuid4", return_value=MagicMock(__str__=lambda x: "12345678-1234-5678-1234-567812345678")):
             result = main(["create", entity_type.value, title, "--no-commit"])
             assert result == 0
 
@@ -329,7 +362,7 @@ def test_create_program(mock_get_registry_path, temp_registry):
     mock_get_registry_path.return_value = str(temp_registry)
     
     # Fix uuid for predictable output
-    with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
+    with patch("hxc.core.operations.create.uuid.uuid4", return_value=MagicMock(__str__=lambda x: "12345678-1234-5678-1234-567812345678")):
         result = main(["create", "program", "Test Program", "--no-commit"])
         
         # Check result
@@ -354,7 +387,7 @@ def test_create_action(mock_get_registry_path, temp_registry):
     mock_get_registry_path.return_value = str(temp_registry)
     
     # Fix uuid for predictable output
-    with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
+    with patch("hxc.core.operations.create.uuid.uuid4", return_value=MagicMock(__str__=lambda x: "12345678-1234-5678-1234-567812345678")):
         result = main(["create", "action", "Test Action", "--no-commit"])
         
         # Check result
@@ -379,7 +412,7 @@ def test_create_mission(mock_get_registry_path, temp_registry):
     mock_get_registry_path.return_value = str(temp_registry)
     
     # Fix uuid for predictable output
-    with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
+    with patch("hxc.core.operations.create.uuid.uuid4", return_value=MagicMock(__str__=lambda x: "12345678-1234-5678-1234-567812345678")):
         result = main(["create", "mission", "Test Mission", "--no-commit"])
         
         # Check result
@@ -424,7 +457,7 @@ def test_create_all_valid_entity_types(mock_get_registry_path, temp_registry):
     mock_get_registry_path.return_value = str(temp_registry)
     
     for entity_type in EntityType:
-        with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
+        with patch("hxc.core.operations.create.uuid.uuid4", return_value=MagicMock(__str__=lambda x: "12345678-1234-5678-1234-567812345678")):
             result = main(["create", entity_type.value, f"Test {entity_type.value.title()}", "--no-commit"])
             
             assert result == 0
@@ -450,7 +483,7 @@ def test_create_all_valid_statuses(mock_get_registry_path, temp_registry):
     mock_get_registry_path.return_value = str(temp_registry)
     
     for status in EntityStatus:
-        with patch("uuid.uuid4", return_value=f"status{status.value[:4]}"):
+        with patch("hxc.core.operations.create.uuid.uuid4", return_value=MagicMock(__str__=lambda x: f"status{status.value[:4]}1234-5678-1234-567812345678")):
             result = main([
                 "create", "project", f"Test {status.value}",
                 "--status", status.value,
@@ -511,8 +544,8 @@ def test_create_path_traversal_protection(mock_get_registry_path, temp_registry)
     # Configure mock to return the temp registry
     mock_get_registry_path.return_value = str(temp_registry)
     
-    # Mock get_safe_entity_path to raise PathSecurityError
-    with patch("hxc.commands.create.get_safe_entity_path", side_effect=PathSecurityError("Path traversal detected")):
+    # Mock get_safe_entity_path to raise PathSecurityError (in core.operations.create)
+    with patch("hxc.core.operations.create.get_safe_entity_path", side_effect=PathSecurityError("Path traversal detected")):
         with patch("builtins.print") as mock_print:
             result = main(["create", "project", "Malicious Project"])
             
@@ -529,8 +562,8 @@ def test_create_invalid_entity_type_protection(mock_get_registry_path, temp_regi
     # Configure mock to return the temp registry
     mock_get_registry_path.return_value = str(temp_registry)
     
-    # Mock get_safe_entity_path to raise ValueError for invalid type
-    with patch("hxc.commands.create.get_safe_entity_path", side_effect=ValueError("Invalid entity type")):
+    # Mock get_safe_entity_path to raise ValueError for invalid type (in core.operations.create)
+    with patch("hxc.core.operations.create.get_safe_entity_path", side_effect=ValueError("Invalid entity type")):
         with patch("builtins.print") as mock_print:
             result = main(["create", "project", "Test Project"])
             
@@ -548,7 +581,7 @@ def test_create_entity_stays_within_registry(mock_get_registry_path, temp_regist
     mock_get_registry_path.return_value = str(temp_registry)
     
     # Fix uuid for predictable output
-    with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
+    with patch("hxc.core.operations.create.uuid.uuid4", return_value=MagicMock(__str__=lambda x: "12345678-1234-5678-1234-567812345678")):
         result = main(["create", "project", "Test Project", "--no-commit"])
         
         # Check result
@@ -573,7 +606,7 @@ def test_create_all_entity_types_within_registry(mock_get_registry_path, temp_re
     
     for entity_type in EntityType:
         # Fix uuid for predictable output
-        with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
+        with patch("hxc.core.operations.create.uuid.uuid4", return_value=MagicMock(__str__=lambda x: "12345678-1234-5678-1234-567812345678")):
             result = main(["create", entity_type.value, f"Test {entity_type.value.title()}", "--no-commit"])
             
             # Check result
@@ -711,6 +744,95 @@ def test_create_title_to_id_mixed_case_is_lowercased():
     assert title_to_id("My Project", "project") == "my_project"
 
 
+# ─── ID Uniqueness Tests ─────────────────────────────────────────────────────
+
+
+class TestCreateIdUniqueness:
+    """Tests for ID uniqueness validation in create command"""
+
+    @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+    def test_create_duplicate_custom_id_fails(self, mock_get_registry_path, registry_with_projects):
+        """Test that creating with a duplicate custom ID fails"""
+        mock_get_registry_path.return_value = str(registry_with_projects)
+        
+        with patch("builtins.print") as mock_print:
+            result = main(["create", "project", "New Project", "--id", "P-001", "--no-commit"])
+        
+        # Should fail
+        assert result == 1
+        
+        # Error message should mention the duplicate ID
+        assert any("P-001" in call[0][0] and "already exists" in call[0][0].lower() 
+                   for call in mock_print.call_args_list)
+
+    @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+    def test_create_unique_custom_id_succeeds(self, mock_get_registry_path, registry_with_projects):
+        """Test that creating with a unique custom ID succeeds"""
+        mock_get_registry_path.return_value = str(registry_with_projects)
+        
+        with patch("hxc.core.operations.create.uuid.uuid4", return_value=MagicMock(__str__=lambda x: "newuid12-1234-5678-1234-567812345678")):
+            result = main(["create", "project", "New Project", "--id", "P-UNIQUE", "--no-commit"])
+        
+        assert result == 0
+        
+        # File should be created
+        project_file = registry_with_projects / "projects" / "proj-newuid12.yml"
+        assert project_file.exists()
+        
+        with open(project_file) as f:
+            data = yaml.safe_load(f)
+        assert data["id"] == "P-UNIQUE"
+
+    @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+    def test_create_auto_id_collision_resolution(self, mock_get_registry_path, temp_registry):
+        """Test that auto-generated ID collision is resolved with suffix"""
+        mock_get_registry_path.return_value = str(temp_registry)
+        
+        # Create first entity with auto ID
+        with patch("hxc.core.operations.create.uuid.uuid4", return_value=MagicMock(__str__=lambda x: "first123-1234-5678-1234-567812345678")):
+            result1 = main(["create", "project", "Test Project", "--no-commit"])
+        assert result1 == 0
+        
+        # Create second entity with same title (would generate same base ID)
+        with patch("hxc.core.operations.create.uuid.uuid4", return_value=MagicMock(__str__=lambda x: "second12-1234-5678-1234-567812345678")):
+            result2 = main(["create", "project", "Test Project", "--no-commit"])
+        assert result2 == 0
+        
+        # Both files should exist
+        file1 = temp_registry / "projects" / "proj-first123.yml"
+        file2 = temp_registry / "projects" / "proj-second12.yml"
+        assert file1.exists()
+        assert file2.exists()
+        
+        # IDs should be different
+        with open(file1) as f:
+            data1 = yaml.safe_load(f)
+        with open(file2) as f:
+            data2 = yaml.safe_load(f)
+        
+        assert data1["id"] != data2["id"]
+        # Second one should have a suffix
+        assert data2["id"].startswith("test_project_")
+
+    @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+    def test_create_same_id_different_entity_types_allowed(self, mock_get_registry_path, registry_with_projects):
+        """Test that same ID can be used for different entity types"""
+        mock_get_registry_path.return_value = str(registry_with_projects)
+        
+        # P-001 exists as a project, but should be allowed for a program
+        with patch("hxc.core.operations.create.uuid.uuid4", return_value=MagicMock(__str__=lambda x: "proguid1-1234-5678-1234-567812345678")):
+            result = main(["create", "program", "Test Program", "--id", "P-001", "--no-commit"])
+        
+        assert result == 0
+        
+        program_file = registry_with_projects / "programs" / "prog-proguid1.yml"
+        assert program_file.exists()
+        
+        with open(program_file) as f:
+            data = yaml.safe_load(f)
+        assert data["id"] == "P-001"
+
+
 # ─── Git Integration Tests ───────────────────────────────────────────────────
 
 
@@ -722,8 +844,8 @@ class TestCreateGitCommitUnit:
         """Test that --no-commit flag prevents git operations."""
         mock_get_registry_path.return_value = str(temp_registry)
         
-        with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
-            with patch("hxc.commands.create.commit_entity_change") as mock_commit:
+        with patch("hxc.core.operations.create.uuid.uuid4", return_value=MagicMock(__str__=lambda x: "12345678-1234-5678-1234-567812345678")):
+            with patch("hxc.core.operations.create.commit_entity_change") as mock_commit:
                 result = main(["create", "project", "Test Project", "--no-commit"])
         
         assert result == 0
@@ -737,8 +859,8 @@ class TestCreateGitCommitUnit:
         """Test that commit is called when --no-commit is not specified."""
         mock_get_registry_path.return_value = str(temp_registry)
         
-        with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
-            with patch("hxc.commands.create.commit_entity_change") as mock_commit:
+        with patch("hxc.core.operations.create.uuid.uuid4", return_value=MagicMock(__str__=lambda x: "12345678-1234-5678-1234-567812345678")):
+            with patch("hxc.core.operations.create.commit_entity_change") as mock_commit:
                 result = main(["create", "project", "Test Project"])
         
         assert result == 0
@@ -749,8 +871,8 @@ class TestCreateGitCommitUnit:
         """Test that commit is called with action='Create'."""
         mock_get_registry_path.return_value = str(temp_registry)
         
-        with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
-            with patch("hxc.commands.create.commit_entity_change") as mock_commit:
+        with patch("hxc.core.operations.create.uuid.uuid4", return_value=MagicMock(__str__=lambda x: "12345678-1234-5678-1234-567812345678")):
+            with patch("hxc.core.operations.create.commit_entity_change") as mock_commit:
                 result = main(["create", "project", "Test Project"])
         
         assert result == 0
@@ -762,8 +884,8 @@ class TestCreateGitCommitUnit:
         """Test that commit is called with correct entity data."""
         mock_get_registry_path.return_value = str(temp_registry)
         
-        with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
-            with patch("hxc.commands.create.commit_entity_change") as mock_commit:
+        with patch("hxc.core.operations.create.uuid.uuid4", return_value=MagicMock(__str__=lambda x: "12345678-1234-5678-1234-567812345678")):
+            with patch("hxc.core.operations.create.commit_entity_change") as mock_commit:
                 result = main(["create", "project", "Test Project"])
         
         assert result == 0
@@ -778,8 +900,8 @@ class TestCreateGitCommitUnit:
         """Test that commit is called with correct registry path."""
         mock_get_registry_path.return_value = str(temp_registry)
         
-        with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
-            with patch("hxc.commands.create.commit_entity_change") as mock_commit:
+        with patch("hxc.core.operations.create.uuid.uuid4", return_value=MagicMock(__str__=lambda x: "12345678-1234-5678-1234-567812345678")):
+            with patch("hxc.core.operations.create.commit_entity_change") as mock_commit:
                 result = main(["create", "project", "Test Project"])
         
         assert result == 0
@@ -795,7 +917,7 @@ class TestCreateGitCommitNonGitRepo:
         """Test that create succeeds even if registry is not a git repo."""
         mock_get_registry_path.return_value = str(temp_registry)
         
-        with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
+        with patch("hxc.core.operations.create.uuid.uuid4", return_value=MagicMock(__str__=lambda x: "12345678-1234-5678-1234-567812345678")):
             result = main(["create", "project", "Test Project"])
         
         assert result == 0
@@ -812,7 +934,7 @@ class TestCreateGitCommitNonGitRepo:
         """Test that create succeeds even if git is not installed."""
         mock_get_registry_path.return_value = str(temp_registry)
         
-        with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
+        with patch("hxc.core.operations.create.uuid.uuid4", return_value=MagicMock(__str__=lambda x: "12345678-1234-5678-1234-567812345678")):
             with patch("hxc.utils.git.git_available", return_value=False):
                 with patch("hxc.utils.git.find_git_root", return_value=str(temp_registry)):
                     result = main(["create", "project", "Test Project"])
@@ -835,7 +957,7 @@ class TestCreateGitCommitIntegration:
         """Test that create command commits the new file to git."""
         mock_get_registry_path.return_value = str(git_registry)
         
-        with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
+        with patch("hxc.core.operations.create.uuid.uuid4", return_value=MagicMock(__str__=lambda x: "12345678-1234-5678-1234-567812345678")):
             result = main(["create", "project", "Git Test Project"])
         
         assert result == 0
@@ -855,7 +977,7 @@ class TestCreateGitCommitIntegration:
         """Test that commit message contains the entity title."""
         mock_get_registry_path.return_value = str(git_registry)
         
-        with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
+        with patch("hxc.core.operations.create.uuid.uuid4", return_value=MagicMock(__str__=lambda x: "12345678-1234-5678-1234-567812345678")):
             result = main(["create", "project", "My Amazing Project"])
         
         assert result == 0
@@ -874,7 +996,7 @@ class TestCreateGitCommitIntegration:
         """Test that commit message body contains the entity type."""
         mock_get_registry_path.return_value = str(git_registry)
         
-        with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
+        with patch("hxc.core.operations.create.uuid.uuid4", return_value=MagicMock(__str__=lambda x: "12345678-1234-5678-1234-567812345678")):
             result = main(["create", "project", "Test Project"])
         
         assert result == 0
@@ -893,7 +1015,7 @@ class TestCreateGitCommitIntegration:
         """Test that commit message body contains the entity UID."""
         mock_get_registry_path.return_value = str(git_registry)
         
-        with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
+        with patch("hxc.core.operations.create.uuid.uuid4", return_value=MagicMock(__str__=lambda x: "12345678-1234-5678-1234-567812345678")):
             result = main(["create", "project", "Test Project"])
         
         assert result == 0
@@ -916,7 +1038,7 @@ class TestCreateGitCommitIntegration:
         unrelated = git_registry / "unrelated.txt"
         unrelated.write_text("This should not be committed")
         
-        with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
+        with patch("hxc.core.operations.create.uuid.uuid4", return_value=MagicMock(__str__=lambda x: "12345678-1234-5678-1234-567812345678")):
             result = main(["create", "project", "Test Project"])
         
         assert result == 0
@@ -942,7 +1064,7 @@ class TestCreateGitCommitIntegration:
         """Test that --no-commit leaves the new file unstaged."""
         mock_get_registry_path.return_value = str(git_registry)
         
-        with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
+        with patch("hxc.core.operations.create.uuid.uuid4", return_value=MagicMock(__str__=lambda x: "12345678-1234-5678-1234-567812345678")):
             result = main(["create", "project", "Test Project", "--no-commit"])
         
         assert result == 0
@@ -966,7 +1088,7 @@ class TestCreateGitCommitIntegration:
         
         for i, entity_type in enumerate(EntityType):
             uid = f"1234567{i}"
-            with patch("uuid.uuid4", return_value=f"{uid}-1234-5678-1234-567812345678"):
+            with patch("hxc.core.operations.create.uuid.uuid4", return_value=MagicMock(__str__=lambda x: f"{uid}-1234-5678-1234-567812345678")):
                 result = main(["create", entity_type.value, f"Test {entity_type.value.title()}"])
             
             assert result == 0
@@ -989,12 +1111,12 @@ class TestCreateGitCommitIntegration:
         mock_get_registry_path.return_value = str(git_registry)
         
         # Create first entity
-        with patch("uuid.uuid4", return_value="11111111-1234-5678-1234-567812345678"):
+        with patch("hxc.core.operations.create.uuid.uuid4", return_value=MagicMock(__str__=lambda x: "11111111-1234-5678-1234-567812345678")):
             result1 = main(["create", "project", "First Project"])
         assert result1 == 0
         
         # Create second entity
-        with patch("uuid.uuid4", return_value="22222222-1234-5678-1234-567812345678"):
+        with patch("hxc.core.operations.create.uuid.uuid4", return_value=MagicMock(__str__=lambda x: "22222222-1234-5678-1234-567812345678")):
             result2 = main(["create", "project", "Second Project"])
         assert result2 == 0
         
@@ -1019,7 +1141,7 @@ class TestCreateGitCommitIntegration:
         """Test that commit message includes custom ID when provided."""
         mock_get_registry_path.return_value = str(git_registry)
         
-        with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
+        with patch("hxc.core.operations.create.uuid.uuid4", return_value=MagicMock(__str__=lambda x: "12345678-1234-5678-1234-567812345678")):
             result = main(["create", "project", "Test Project", "--id", "P-CUSTOM-001"])
         
         assert result == 0
@@ -1039,7 +1161,7 @@ class TestCreateGitCommitIntegration:
         """Test that commit message includes category when provided."""
         mock_get_registry_path.return_value = str(git_registry)
         
-        with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
+        with patch("hxc.core.operations.create.uuid.uuid4", return_value=MagicMock(__str__=lambda x: "12345678-1234-5678-1234-567812345678")):
             result = main([
                 "create", "project", "Test Project",
                 "--category", "software.dev/cli-tool"
@@ -1062,7 +1184,7 @@ class TestCreateGitCommitIntegration:
         """Test that commit message includes status."""
         mock_get_registry_path.return_value = str(git_registry)
         
-        with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
+        with patch("hxc.core.operations.create.uuid.uuid4", return_value=MagicMock(__str__=lambda x: "12345678-1234-5678-1234-567812345678")):
             result = main([
                 "create", "project", "Test Project",
                 "--status", "on-hold"
@@ -1085,7 +1207,7 @@ class TestCreateGitCommitIntegration:
         """Test that the commit hash is displayed to the user."""
         mock_get_registry_path.return_value = str(git_registry)
         
-        with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
+        with patch("hxc.core.operations.create.uuid.uuid4", return_value=MagicMock(__str__=lambda x: "12345678-1234-5678-1234-567812345678")):
             result = main(["create", "project", "Test Project"])
         
         assert result == 0
@@ -1109,7 +1231,7 @@ class TestCreateGitErrorHandling:
         error.stdout = ""
         error.stderr = "fatal: some git error"
         
-        with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
+        with patch("hxc.core.operations.create.uuid.uuid4", return_value=MagicMock(__str__=lambda x: "12345678-1234-5678-1234-567812345678")):
             with patch("hxc.utils.git.git_available", return_value=True):
                 with patch("subprocess.run", side_effect=[MagicMock(), error]):
                     result = main(["create", "project", "Test Project"])
@@ -1134,7 +1256,7 @@ class TestCreateGitErrorHandling:
         error.stdout = "nothing to commit"
         error.stderr = ""
         
-        with patch("uuid.uuid4", return_value="12345678-1234-5678-1234-567812345678"):
+        with patch("hxc.core.operations.create.uuid.uuid4", return_value=MagicMock(__str__=lambda x: "12345678-1234-5678-1234-567812345678")):
             with patch("hxc.utils.git.git_available", return_value=True):
                 with patch("subprocess.run", side_effect=[MagicMock(), error]):
                     result = main(["create", "project", "Test Project"])
@@ -1143,3 +1265,97 @@ class TestCreateGitErrorHandling:
         
         out = capsys.readouterr().out
         assert "Nothing new to commit" in out
+
+
+class TestCreateUsesSharedOperation:
+    """Tests to verify CLI command delegates to shared CreateOperation"""
+
+    @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+    def test_create_command_uses_create_operation(self, mock_get_registry_path, temp_registry):
+        """Test that CreateCommand uses CreateOperation internally"""
+        mock_get_registry_path.return_value = str(temp_registry)
+        
+        with patch("hxc.commands.create.CreateOperation") as MockOperation:
+            mock_instance = MagicMock()
+            mock_instance.create_entity.return_value = {
+                "success": True,
+                "uid": "12345678",
+                "id": "test_project",
+                "file_path": str(temp_registry / "projects" / "proj-12345678.yml"),
+                "entity": {"type": "project", "title": "Test Project"},
+                "git_committed": False,
+            }
+            MockOperation.return_value = mock_instance
+            
+            result = main(["create", "project", "Test Project", "--no-commit"])
+        
+        assert result == 0
+        MockOperation.assert_called_once_with(str(temp_registry))
+        mock_instance.create_entity.assert_called_once()
+
+    @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+    def test_create_command_passes_use_git_parameter(self, mock_get_registry_path, temp_registry):
+        """Test that use_git parameter is passed correctly based on --no-commit flag"""
+        mock_get_registry_path.return_value = str(temp_registry)
+        
+        with patch("hxc.commands.create.CreateOperation") as MockOperation:
+            mock_instance = MagicMock()
+            mock_instance.create_entity.return_value = {
+                "success": True,
+                "uid": "12345678",
+                "id": "test_project",
+                "file_path": str(temp_registry / "projects" / "proj-12345678.yml"),
+                "entity": {"type": "project", "title": "Test Project"},
+                "git_committed": False,
+            }
+            MockOperation.return_value = mock_instance
+            
+            # With --no-commit, use_git should be False
+            main(["create", "project", "Test Project", "--no-commit"])
+            call_kwargs = mock_instance.create_entity.call_args[1]
+            assert call_kwargs["use_git"] is False
+            
+            mock_instance.reset_mock()
+            
+            # Without --no-commit, use_git should be True
+            main(["create", "project", "Test Project"])
+            call_kwargs = mock_instance.create_entity.call_args[1]
+            assert call_kwargs["use_git"] is True
+
+    @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+    def test_create_handles_duplicate_id_error(self, mock_get_registry_path, temp_registry):
+        """Test that DuplicateIdError is handled correctly"""
+        mock_get_registry_path.return_value = str(temp_registry)
+        
+        with patch("hxc.commands.create.CreateOperation") as MockOperation:
+            mock_instance = MagicMock()
+            mock_instance.create_entity.side_effect = DuplicateIdError(
+                "project with id 'P-001' already exists in this registry"
+            )
+            MockOperation.return_value = mock_instance
+            
+            with patch("builtins.print") as mock_print:
+                result = main(["create", "project", "Test", "--id", "P-001", "--no-commit"])
+        
+        assert result == 1
+        assert any("P-001" in call[0][0] and "already exists" in call[0][0].lower()
+                   for call in mock_print.call_args_list)
+
+    @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+    def test_create_handles_create_operation_error(self, mock_get_registry_path, temp_registry):
+        """Test that CreateOperationError is handled correctly"""
+        mock_get_registry_path.return_value = str(temp_registry)
+        
+        with patch("hxc.commands.create.CreateOperation") as MockOperation:
+            mock_instance = MagicMock()
+            mock_instance.create_entity.side_effect = CreateOperationError(
+                "Could not generate a unique project id"
+            )
+            MockOperation.return_value = mock_instance
+            
+            with patch("builtins.print") as mock_print:
+                result = main(["create", "project", "Test", "--no-commit"])
+        
+        assert result == 1
+        assert any("Could not generate" in call[0][0]
+                   for call in mock_print.call_args_list)
