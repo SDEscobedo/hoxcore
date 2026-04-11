@@ -24,7 +24,7 @@ from hxc.mcp.tools import (
     edit_entity_tool,
     delete_entity_tool,
 )
-from hxc.core.enums import EntityType
+from hxc.core.enums import EntityType, EntityStatus, SortField
 from hxc.core.operations.create import CreateOperation, DuplicateIdError
 from hxc.core.operations.delete import (
     DeleteOperation,
@@ -32,6 +32,7 @@ from hxc.core.operations.delete import (
     EntityNotFoundError,
     AmbiguousEntityError,
 )
+from hxc.core.operations.list import ListOperation, ListOperationError
 
 
 @pytest.fixture
@@ -127,6 +128,72 @@ category: maintenance
 tags: [test, action]
 """
     (registry_path / "actions" / "act-test-001.yml").write_text(action_content)
+    
+    yield str(registry_path)
+    
+    # Cleanup
+    shutil.rmtree(temp_dir)
+
+
+@pytest.fixture
+def temp_registry_with_dates():
+    """Create a temporary registry with entities having various due dates"""
+    temp_dir = tempfile.mkdtemp()
+    registry_path = Path(temp_dir)
+    
+    # Create registry structure
+    (registry_path / "programs").mkdir()
+    (registry_path / "projects").mkdir()
+    (registry_path / "missions").mkdir()
+    (registry_path / "actions").mkdir()
+    
+    # Create config file
+    config_content = """
+registry:
+  version: "1.0"
+  name: "Date Test Registry"
+"""
+    (registry_path / "config.yml").write_text(config_content)
+    
+    # Create projects with different due dates
+    project_early = {
+        "type": "project",
+        "uid": "proj-early",
+        "id": "P-EARLY",
+        "title": "Early Project",
+        "status": "active",
+        "due_date": "2024-03-15",
+    }
+    (registry_path / "projects" / "proj-proj-early.yml").write_text(yaml.dump(project_early))
+    
+    project_mid = {
+        "type": "project",
+        "uid": "proj-mid",
+        "id": "P-MID",
+        "title": "Mid Project",
+        "status": "active",
+        "due_date": "2024-06-30",
+    }
+    (registry_path / "projects" / "proj-proj-mid.yml").write_text(yaml.dump(project_mid))
+    
+    project_late = {
+        "type": "project",
+        "uid": "proj-late",
+        "id": "P-LATE",
+        "title": "Late Project",
+        "status": "active",
+        "due_date": "2024-12-31",
+    }
+    (registry_path / "projects" / "proj-proj-late.yml").write_text(yaml.dump(project_late))
+    
+    project_nodate = {
+        "type": "project",
+        "uid": "proj-nodate",
+        "id": "P-NODATE",
+        "title": "No Date Project",
+        "status": "active",
+    }
+    (registry_path / "projects" / "proj-proj-nodate.yml").write_text(yaml.dump(project_nodate))
     
     yield str(registry_path)
     
@@ -475,6 +542,413 @@ class TestListEntitiesTool:
         assert result["sort"]["descending"] is True
 
 
+class TestListEntitiesToolIdentifierFilter:
+    """Tests for identifier filter in list_entities_tool"""
+    
+    def test_list_with_identifier_filter_by_id(self, temp_registry):
+        """Test filtering by entity ID"""
+        result = list_entities_tool(
+            entity_type="project",
+            identifier="P-001",
+            registry_path=temp_registry
+        )
+        
+        assert result["success"] is True
+        assert result["count"] == 1
+        assert result["entities"][0]["id"] == "P-001"
+    
+    def test_list_with_identifier_filter_by_uid(self, temp_registry):
+        """Test filtering by entity UID"""
+        result = list_entities_tool(
+            entity_type="project",
+            identifier="proj-test-001",
+            registry_path=temp_registry
+        )
+        
+        assert result["success"] is True
+        assert result["count"] == 1
+        assert result["entities"][0]["uid"] == "proj-test-001"
+    
+    def test_list_with_identifier_no_match(self, temp_registry):
+        """Test filtering by identifier with no match"""
+        result = list_entities_tool(
+            entity_type="project",
+            identifier="NONEXISTENT",
+            registry_path=temp_registry
+        )
+        
+        assert result["success"] is True
+        assert result["count"] == 0
+    
+    def test_list_with_identifier_across_types(self, temp_registry):
+        """Test filtering by identifier across all entity types"""
+        result = list_entities_tool(
+            entity_type="all",
+            identifier="PRG-001",
+            registry_path=temp_registry
+        )
+        
+        assert result["success"] is True
+        assert result["count"] == 1
+        assert result["entities"][0]["type"] == "program"
+    
+    def test_list_filters_metadata_includes_identifier(self, temp_registry):
+        """Test that filters metadata includes identifier"""
+        result = list_entities_tool(
+            entity_type="project",
+            identifier="P-001",
+            registry_path=temp_registry
+        )
+        
+        assert result["success"] is True
+        assert "filters" in result
+        assert result["filters"]["identifier"] == "P-001"
+
+
+class TestListEntitiesToolQueryFilter:
+    """Tests for query filter in list_entities_tool"""
+    
+    def test_list_with_query_matches_title(self, temp_registry):
+        """Test query filter matches in title"""
+        result = list_entities_tool(
+            entity_type="project",
+            query="Project One",
+            registry_path=temp_registry
+        )
+        
+        assert result["success"] is True
+        assert result["count"] >= 1
+        
+        found = False
+        for entity in result["entities"]:
+            if "Project One" in entity["title"]:
+                found = True
+                break
+        assert found
+    
+    def test_list_with_query_matches_description(self, temp_registry):
+        """Test query filter matches in description"""
+        result = list_entities_tool(
+            entity_type="project",
+            query="MCP tools",
+            registry_path=temp_registry
+        )
+        
+        assert result["success"] is True
+        assert result["count"] >= 1
+    
+    def test_list_with_query_case_insensitive(self, temp_registry):
+        """Test that query filter is case insensitive"""
+        result1 = list_entities_tool(
+            entity_type="project",
+            query="test",
+            registry_path=temp_registry
+        )
+        
+        result2 = list_entities_tool(
+            entity_type="project",
+            query="TEST",
+            registry_path=temp_registry
+        )
+        
+        result3 = list_entities_tool(
+            entity_type="project",
+            query="Test",
+            registry_path=temp_registry
+        )
+        
+        assert result1["success"] is True
+        assert result2["success"] is True
+        assert result3["success"] is True
+        assert result1["count"] == result2["count"] == result3["count"]
+    
+    def test_list_with_query_no_match(self, temp_registry):
+        """Test query filter with no matches"""
+        result = list_entities_tool(
+            entity_type="project",
+            query="nonexistent query string xyz",
+            registry_path=temp_registry
+        )
+        
+        assert result["success"] is True
+        assert result["count"] == 0
+    
+    def test_list_with_query_combined_with_other_filters(self, temp_registry):
+        """Test query filter combined with other filters"""
+        result = list_entities_tool(
+            entity_type="project",
+            query="test",
+            status="active",
+            tags=["mcp"],
+            registry_path=temp_registry
+        )
+        
+        assert result["success"] is True
+        
+        for entity in result["entities"]:
+            assert entity["status"] == "active"
+            assert "mcp" in entity.get("tags", [])
+    
+    def test_list_filters_metadata_includes_query(self, temp_registry):
+        """Test that filters metadata includes query"""
+        result = list_entities_tool(
+            entity_type="project",
+            query="test",
+            registry_path=temp_registry
+        )
+        
+        assert result["success"] is True
+        assert "filters" in result
+        assert result["filters"]["query"] == "test"
+
+
+class TestListEntitiesToolDateFilters:
+    """Tests for date range filters in list_entities_tool"""
+    
+    def test_list_with_due_before_filter(self, temp_registry_with_dates):
+        """Test filtering by due date before"""
+        result = list_entities_tool(
+            entity_type="project",
+            due_before="2024-07-01",
+            registry_path=temp_registry_with_dates
+        )
+        
+        assert result["success"] is True
+        
+        for entity in result["entities"]:
+            if entity.get("due_date"):
+                assert entity["due_date"] <= "2024-07-01"
+    
+    def test_list_with_due_after_filter(self, temp_registry_with_dates):
+        """Test filtering by due date after"""
+        result = list_entities_tool(
+            entity_type="project",
+            due_after="2024-07-01",
+            registry_path=temp_registry_with_dates
+        )
+        
+        assert result["success"] is True
+        
+        for entity in result["entities"]:
+            assert entity.get("due_date")  # Must have due_date
+            assert entity["due_date"] >= "2024-07-01"
+    
+    def test_list_with_date_range_filter(self, temp_registry_with_dates):
+        """Test filtering by date range"""
+        result = list_entities_tool(
+            entity_type="project",
+            due_after="2024-04-01",
+            due_before="2024-10-01",
+            registry_path=temp_registry_with_dates
+        )
+        
+        assert result["success"] is True
+        
+        for entity in result["entities"]:
+            assert entity.get("due_date")
+            assert "2024-04-01" <= entity["due_date"] <= "2024-10-01"
+    
+    def test_list_due_after_excludes_no_due_date(self, temp_registry_with_dates):
+        """Test that due_after filter excludes entities without due_date"""
+        result = list_entities_tool(
+            entity_type="project",
+            due_after="2024-01-01",
+            registry_path=temp_registry_with_dates
+        )
+        
+        assert result["success"] is True
+        
+        for entity in result["entities"]:
+            assert "due_date" in entity and entity["due_date"] is not None
+    
+    def test_list_filters_metadata_includes_date_filters(self, temp_registry_with_dates):
+        """Test that filters metadata includes date filters"""
+        result = list_entities_tool(
+            entity_type="project",
+            due_before="2024-12-31",
+            due_after="2024-01-01",
+            registry_path=temp_registry_with_dates
+        )
+        
+        assert result["success"] is True
+        assert "filters" in result
+        assert result["filters"]["due_before"] == "2024-12-31"
+        assert result["filters"]["due_after"] == "2024-01-01"
+
+
+class TestListEntitiesToolFileMetadata:
+    """Tests for file metadata handling in list_entities_tool"""
+    
+    def test_list_with_file_metadata_true(self, temp_registry):
+        """Test listing with file metadata included"""
+        result = list_entities_tool(
+            entity_type="project",
+            include_file_metadata=True,
+            registry_path=temp_registry
+        )
+        
+        assert result["success"] is True
+        
+        for entity in result["entities"]:
+            assert "_file" in entity
+            assert "path" in entity["_file"]
+            assert "name" in entity["_file"]
+            assert "created" in entity["_file"]
+            assert "modified" in entity["_file"]
+    
+    def test_list_with_file_metadata_false(self, temp_registry):
+        """Test listing without file metadata"""
+        result = list_entities_tool(
+            entity_type="project",
+            include_file_metadata=False,
+            registry_path=temp_registry
+        )
+        
+        assert result["success"] is True
+        
+        for entity in result["entities"]:
+            assert "_file" not in entity
+    
+    def test_list_default_excludes_file_metadata(self, temp_registry):
+        """Test that file metadata is excluded by default"""
+        result = list_entities_tool(
+            entity_type="project",
+            registry_path=temp_registry
+        )
+        
+        assert result["success"] is True
+        
+        for entity in result["entities"]:
+            assert "_file" not in entity
+    
+    def test_list_sort_by_created_with_file_metadata(self, temp_registry):
+        """Test sorting by created date with file metadata enabled"""
+        result = list_entities_tool(
+            entity_type="project",
+            sort_by="created",
+            include_file_metadata=True,
+            registry_path=temp_registry
+        )
+        
+        assert result["success"] is True
+        
+        # Verify created dates are sorted
+        created_dates = [e["_file"]["created"] for e in result["entities"]]
+        assert created_dates == sorted(created_dates)
+    
+    def test_list_sort_by_modified_with_file_metadata(self, temp_registry):
+        """Test sorting by modified date with file metadata enabled"""
+        result = list_entities_tool(
+            entity_type="project",
+            sort_by="modified",
+            include_file_metadata=True,
+            registry_path=temp_registry
+        )
+        
+        assert result["success"] is True
+        
+        # Verify modified dates are sorted
+        modified_dates = [e["_file"]["modified"] for e in result["entities"]]
+        assert modified_dates == sorted(modified_dates)
+    
+    def test_list_sort_by_created_without_file_metadata(self, temp_registry):
+        """Test sorting by created date works even without file metadata in output"""
+        result = list_entities_tool(
+            entity_type="project",
+            sort_by="created",
+            include_file_metadata=False,
+            registry_path=temp_registry
+        )
+        
+        # Should still work (sorting happens on raw data)
+        assert result["success"] is True
+
+
+class TestListEntitiesToolUsesSharedOperation:
+    """Tests to verify list_entities_tool uses the shared ListOperation"""
+    
+    def test_list_uses_list_operation(self, temp_registry):
+        """Test that list_entities_tool uses ListOperation internally"""
+        with patch("hxc.mcp.tools.ListOperation") as MockOperation:
+            mock_instance = MagicMock()
+            mock_instance.list_entities.return_value = {
+                "success": True,
+                "entities": [],
+                "count": 0,
+                "filters": {"types": ["project"]},
+                "sort": {"field": "title", "descending": False},
+            }
+            MockOperation.return_value = mock_instance
+            
+            result = list_entities_tool(
+                entity_type="project",
+                registry_path=temp_registry
+            )
+        
+        MockOperation.assert_called_once_with(temp_registry)
+        mock_instance.list_entities.assert_called_once()
+    
+    def test_list_passes_all_filters_to_operation(self, temp_registry):
+        """Test that list_entities_tool passes all filter parameters to ListOperation"""
+        with patch("hxc.mcp.tools.ListOperation") as MockOperation:
+            mock_instance = MagicMock()
+            mock_instance.list_entities.return_value = {
+                "success": True,
+                "entities": [],
+                "count": 0,
+                "filters": {},
+                "sort": {"field": "title", "descending": False},
+            }
+            MockOperation.return_value = mock_instance
+            
+            result = list_entities_tool(
+                entity_type="project",
+                status="active",
+                tags=["test"],
+                category="software",
+                parent="P-000",
+                identifier="P-001",
+                query="search term",
+                due_before="2024-12-31",
+                due_after="2024-01-01",
+                sort_by="due_date",
+                descending=True,
+                max_items=10,
+                include_file_metadata=True,
+                registry_path=temp_registry,
+            )
+        
+        # Verify the call arguments
+        call_kwargs = mock_instance.list_entities.call_args[1]
+        assert call_kwargs["status"] == EntityStatus.ACTIVE
+        assert call_kwargs["tags"] == ["test"]
+        assert call_kwargs["category"] == "software"
+        assert call_kwargs["parent"] == "P-000"
+        assert call_kwargs["identifier"] == "P-001"
+        assert call_kwargs["query"] == "search term"
+        assert call_kwargs["due_before"] == "2024-12-31"
+        assert call_kwargs["due_after"] == "2024-01-01"
+        assert call_kwargs["sort_field"] == SortField.DUE_DATE
+        assert call_kwargs["descending"] is True
+        assert call_kwargs["max_items"] == 10
+        assert call_kwargs["include_file_metadata"] is True
+    
+    def test_list_handles_operation_error(self, temp_registry):
+        """Test that list_entities_tool handles ListOperation errors gracefully"""
+        with patch("hxc.mcp.tools.ListOperation") as MockOperation:
+            mock_instance = MagicMock()
+            mock_instance.list_entities.side_effect = ListOperationError("Test error")
+            MockOperation.return_value = mock_instance
+            
+            result = list_entities_tool(
+                entity_type="project",
+                registry_path=temp_registry
+            )
+        
+        assert result["success"] is False
+        assert "Test error" in result["error"]
+
+
 class TestGetEntityTool:
     """Tests for get_entity_tool"""
     
@@ -588,6 +1062,27 @@ class TestGetEntityTool:
         assert result["success"] is True
         assert "identifier" in result
         assert result["identifier"] == "P-001"
+    
+    def test_get_entity_uses_list_operation(self, temp_registry):
+        """Test that get_entity_tool uses ListOperation internally"""
+        with patch("hxc.mcp.tools.ListOperation") as MockOperation:
+            mock_instance = MagicMock()
+            mock_instance.get_entity_by_identifier.return_value = {
+                "type": "project",
+                "uid": "proj-test-001",
+                "id": "P-001",
+                "title": "Test Project",
+                "_file": {"path": "/test/path.yml"},
+            }
+            MockOperation.return_value = mock_instance
+            
+            result = get_entity_tool(
+                identifier="P-001",
+                registry_path=temp_registry
+            )
+        
+        MockOperation.assert_called_once_with(temp_registry)
+        mock_instance.get_entity_by_identifier.assert_called_once()
 
 
 class TestSearchEntitiesTool:
@@ -736,6 +1231,37 @@ class TestSearchEntitiesTool:
         assert "filters" in result
         assert result["filters"]["type"] == "project"
         assert result["filters"]["status"] == "active"
+    
+    def test_search_delegates_to_list_entities_tool(self, temp_registry):
+        """Test that search_entities_tool delegates to list_entities_tool"""
+        with patch("hxc.mcp.tools.list_entities_tool") as mock_list:
+            mock_list.return_value = {
+                "success": True,
+                "entities": [],
+                "count": 0,
+                "filters": {},
+                "sort": {},
+            }
+            
+            result = search_entities_tool(
+                query="test",
+                entity_type="project",
+                status="active",
+                tags=["test"],
+                category="software.dev/cli-tool",
+                max_items=10,
+                registry_path=temp_registry,
+            )
+        
+        mock_list.assert_called_once_with(
+            entity_type="project",
+            status="active",
+            tags=["test"],
+            category="software.dev/cli-tool",
+            query="test",
+            max_items=10,
+            registry_path=temp_registry,
+        )
 
 
 class TestGetEntityPropertyTool:
@@ -3056,3 +3582,159 @@ class TestMCPCLIBehavioralParity:
         assert result["success"] is True
         # git_committed may be False for untracked files
         assert not untracked_file.exists()
+
+
+class TestListEntitiesToolBehavioralParityWithCLI:
+    """Tests to verify list_entities_tool produces same results as CLI"""
+    
+    def test_list_filter_produces_same_results_as_cli_operation(self, temp_registry):
+        """Test that MCP list produces same results as direct ListOperation"""
+        # Get results via direct operation
+        operation = ListOperation(temp_registry)
+        operation_result = operation.list_entities(
+            entity_types=[EntityType.PROJECT],
+            status=EntityStatus.ACTIVE,
+            include_file_metadata=False,
+        )
+        
+        # Get results via MCP tool
+        mcp_result = list_entities_tool(
+            entity_type="project",
+            status="active",
+            include_file_metadata=False,
+            registry_path=temp_registry,
+        )
+        
+        assert mcp_result["success"] is True
+        assert operation_result["success"] is True
+        
+        # Compare IDs
+        operation_ids = {e["id"] for e in operation_result["entities"]}
+        mcp_ids = {e["id"] for e in mcp_result["entities"]}
+        
+        assert operation_ids == mcp_ids
+    
+    def test_list_sort_produces_same_order_as_cli_operation(self, temp_registry):
+        """Test that MCP list produces same sort order as direct ListOperation"""
+        # Get results via direct operation
+        operation = ListOperation(temp_registry)
+        operation_result = operation.list_entities(
+            entity_types=[EntityType.PROJECT],
+            sort_field=SortField.TITLE,
+            descending=True,
+            include_file_metadata=False,
+        )
+        
+        # Get results via MCP tool
+        mcp_result = list_entities_tool(
+            entity_type="project",
+            sort_by="title",
+            descending=True,
+            include_file_metadata=False,
+            registry_path=temp_registry,
+        )
+        
+        assert mcp_result["success"] is True
+        assert operation_result["success"] is True
+        
+        # Compare order
+        operation_ids = [e["id"] for e in operation_result["entities"]]
+        mcp_ids = [e["id"] for e in mcp_result["entities"]]
+        
+        assert operation_ids == mcp_ids
+    
+    def test_list_with_all_filters_matches_operation(self, temp_registry):
+        """Test that all filters work identically between MCP and ListOperation"""
+        # Use MCP tool with all filters
+        mcp_result = list_entities_tool(
+            entity_type="project",
+            status="active",
+            tags=["mcp"],
+            category="software.dev/cli-tool",
+            query="MCP",
+            max_items=10,
+            sort_by="title",
+            descending=False,
+            include_file_metadata=False,
+            registry_path=temp_registry,
+        )
+        
+        # Use direct operation with same filters
+        operation = ListOperation(temp_registry)
+        operation_result = operation.list_entities(
+            entity_types=[EntityType.PROJECT],
+            status=EntityStatus.ACTIVE,
+            tags=["mcp"],
+            category="software.dev/cli-tool",
+            query="MCP",
+            max_items=10,
+            sort_field=SortField.TITLE,
+            descending=False,
+            include_file_metadata=False,
+        )
+        
+        assert mcp_result["success"] is True
+        assert operation_result["success"] is True
+        
+        # Should produce identical results
+        assert mcp_result["count"] == operation_result["count"]
+        
+        mcp_ids = [e["id"] for e in mcp_result["entities"]]
+        operation_ids = [e["id"] for e in operation_result["entities"]]
+        
+        assert mcp_ids == operation_ids
+    
+    def test_list_date_filters_match_operation(self, temp_registry_with_dates):
+        """Test that date filters work identically between MCP and ListOperation"""
+        # Use MCP tool with date filters
+        mcp_result = list_entities_tool(
+            entity_type="project",
+            due_before="2024-07-01",
+            due_after="2024-03-01",
+            registry_path=temp_registry_with_dates,
+        )
+        
+        # Use direct operation with same filters
+        operation = ListOperation(temp_registry_with_dates)
+        operation_result = operation.list_entities(
+            entity_types=[EntityType.PROJECT],
+            due_before="2024-07-01",
+            due_after="2024-03-01",
+            include_file_metadata=False,
+        )
+        
+        assert mcp_result["success"] is True
+        assert operation_result["success"] is True
+        
+        # Should produce identical results
+        assert mcp_result["count"] == operation_result["count"]
+        
+        mcp_ids = {e["id"] for e in mcp_result["entities"]}
+        operation_ids = {e["id"] for e in operation_result["entities"]}
+        
+        assert mcp_ids == operation_ids
+    
+    def test_list_file_metadata_structure_matches_operation(self, temp_registry):
+        """Test that file metadata structure is identical between MCP and ListOperation"""
+        # Use MCP tool with file metadata
+        mcp_result = list_entities_tool(
+            entity_type="project",
+            identifier="P-001",
+            include_file_metadata=True,
+            registry_path=temp_registry,
+        )
+        
+        assert mcp_result["success"] is True
+        assert len(mcp_result["entities"]) == 1
+        
+        entity = mcp_result["entities"][0]
+        assert "_file" in entity
+        assert "path" in entity["_file"]
+        assert "name" in entity["_file"]
+        assert "created" in entity["_file"]
+        assert "modified" in entity["_file"]
+        
+        # Verify date format (YYYY-MM-DD)
+        import datetime
+        datetime.datetime.strptime(entity["_file"]["created"], "%Y-%m-%d")
+        datetime.datetime.strptime(entity["_file"]["modified"], "%Y-%m-%d")

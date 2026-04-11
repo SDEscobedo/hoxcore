@@ -371,14 +371,59 @@ class MCPServer:
             "list_entities": {
                 "type": "object",
                 "properties": {
-                    "entity_type": {"type": "string", "description": "Type of entity (program, project, mission, action, all)"},
-                    "status": {"type": "string", "description": "Filter by status"},
-                    "tags": {"type": "array", "items": {"type": "string"}, "description": "Filter by tags"},
-                    "category": {"type": "string", "description": "Filter by category"},
-                    "parent": {"type": "string", "description": "Filter by parent ID"},
-                    "max_items": {"type": "integer", "description": "Maximum items to return (0 = all)"},
-                    "sort_by": {"type": "string", "description": "Sort field"},
-                    "descending": {"type": "boolean", "description": "Sort descending"},
+                    "entity_type": {
+                        "type": "string",
+                        "description": "Type of entity (program, project, mission, action, all)"
+                    },
+                    "status": {
+                        "type": "string",
+                        "description": "Filter by status (active, completed, on-hold, cancelled, planned, any)"
+                    },
+                    "tags": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Filter by tags (AND logic - entity must have ALL specified tags)"
+                    },
+                    "category": {
+                        "type": "string",
+                        "description": "Filter by category (exact match)"
+                    },
+                    "parent": {
+                        "type": "string",
+                        "description": "Filter by parent ID (exact match)"
+                    },
+                    "identifier": {
+                        "type": "string",
+                        "description": "Filter by ID or UID (exact match)"
+                    },
+                    "query": {
+                        "type": "string",
+                        "description": "Text search in title and description (case-insensitive)"
+                    },
+                    "due_before": {
+                        "type": "string",
+                        "description": "Filter by due date before YYYY-MM-DD (inclusive)"
+                    },
+                    "due_after": {
+                        "type": "string",
+                        "description": "Filter by due date after YYYY-MM-DD (inclusive)"
+                    },
+                    "max_items": {
+                        "type": "integer",
+                        "description": "Maximum items to return (0 = all)"
+                    },
+                    "sort_by": {
+                        "type": "string",
+                        "description": "Sort field (title, id, due_date, status, created, modified)"
+                    },
+                    "descending": {
+                        "type": "boolean",
+                        "description": "Sort in descending order"
+                    },
+                    "include_file_metadata": {
+                        "type": "boolean",
+                        "description": "Include file metadata (_file field with path, created, modified)"
+                    },
                 }
             },
             "get_entity": {
@@ -457,6 +502,7 @@ class MCPServer:
                     "identifier": {"type": "string", "description": "UID or human-readable ID"},
                     "force": {"type": "boolean", "description": "Set True to confirm deletion (default: False returns a confirmation prompt)"},
                     "entity_type": {"type": "string"},
+                    "use_git": {"type": "boolean", "description": "Whether to commit the deletion to git (default: true). Set false to skip git operations."},
                 },
                 "required": ["identifier"]
             },

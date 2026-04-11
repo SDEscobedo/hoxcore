@@ -23,6 +23,10 @@ from hxc.core.operations.delete import (
     EntityNotFoundError,
     AmbiguousEntityError,
 )
+from hxc.core.operations.list import (
+    ListOperation,
+    ListOperationError,
+)
 
 
 def list_entities_tool(
@@ -31,27 +35,45 @@ def list_entities_tool(
     tags: Optional[List[str]] = None,
     category: Optional[str] = None,
     parent: Optional[str] = None,
+    identifier: Optional[str] = None,
+    query: Optional[str] = None,
+    due_before: Optional[str] = None,
+    due_after: Optional[str] = None,
     max_items: int = 0,
     sort_by: str = "title",
     descending: bool = False,
+    include_file_metadata: bool = False,
     registry_path: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     List entities from the HoxCore registry with optional filtering and sorting.
     
+    This tool provides comprehensive filtering capabilities identical to the CLI
+    `hxc list` command, including text search, date range filters, and ID lookup.
+    
     Args:
         entity_type: Type of entities to list (program, project, mission, action, all)
         status: Optional status filter (active, completed, on-hold, cancelled, planned, any)
-        tags: Optional list of tags to filter by
-        category: Optional category filter
-        parent: Optional parent ID filter
+        tags: Optional list of tags to filter by (AND logic - entity must have ALL tags)
+        category: Optional category filter (exact match)
+        parent: Optional parent ID filter (exact match)
+        identifier: Optional ID or UID filter (exact match)
+        query: Optional text search in title and description (case-insensitive)
+        due_before: Optional due date filter - show entities due before YYYY-MM-DD (inclusive)
+        due_after: Optional due date filter - show entities due after YYYY-MM-DD (inclusive)
         max_items: Maximum number of items to return (0 for all)
         sort_by: Sort field (title, id, due_date, status, created, modified)
         descending: Sort in descending order
+        include_file_metadata: Include file metadata (_file field with path, created, modified)
         registry_path: Optional registry path (uses default if not provided)
         
     Returns:
-        Dictionary containing list of entities and metadata
+        Dictionary containing:
+        - success: bool
+        - entities: list of entity dictionaries
+        - count: number of entities returned
+        - filters: applied filter values
+        - sort: sort configuration
         
     Raises:
         ValueError: If invalid parameters provided
@@ -60,43 +82,89 @@ def list_entities_tool(
     try:
         reg_path = _get_registry_path(registry_path)
         if not reg_path:
-            raise ValueError("No registry found")
+            return {
+                "success": False,
+                "error": "No registry found",
+                "entities": [],
+                "count": 0
+            }
         
+        # Convert entity type
         if entity_type == "all":
-            types_to_search = list(EntityType)
+            entity_types = list(EntityType)
         else:
-            types_to_search = [EntityType.from_string(entity_type)]
+            try:
+                entity_types = [EntityType.from_string(entity_type)]
+            except ValueError as e:
+                return {
+                    "success": False,
+                    "error": str(e),
+                    "entities": [],
+                    "count": 0
+                }
         
-        status_filter = None if status == "any" or status is None else EntityStatus.from_string(status)
-        sort_field = SortField.from_string(sort_by)
+        # Convert status filter
+        status_filter = None
+        if status and status != "any":
+            try:
+                status_filter = EntityStatus.from_string(status)
+            except ValueError as e:
+                return {
+                    "success": False,
+                    "error": str(e),
+                    "entities": [],
+                    "count": 0
+                }
         
-        all_entities = []
-        for entity_type_enum in types_to_search:
-            entities = _get_entities_of_type(reg_path, entity_type_enum)
-            filtered = _filter_entities(
-                entities,
-                status=status_filter,
-                tags=tags,
-                category=category,
-                parent=parent
-            )
-            all_entities.extend(filtered)
+        # Convert sort field
+        try:
+            sort_field = SortField.from_string(sort_by)
+        except ValueError as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "entities": [],
+                "count": 0
+            }
         
-        all_entities = _sort_entities(all_entities, sort_field, descending)
+        # Use shared ListOperation
+        operation = ListOperation(reg_path)
         
-        if max_items > 0:
-            all_entities = all_entities[:max_items]
+        result = operation.list_entities(
+            entity_types=entity_types,
+            status=status_filter,
+            tags=tags,
+            category=category,
+            parent=parent,
+            identifier=identifier,
+            query=query,
+            due_before=due_before,
+            due_after=due_after,
+            sort_field=sort_field,
+            descending=descending,
+            max_items=max_items,
+            include_file_metadata=include_file_metadata,
+        )
+        
+        # Clean entities for output if file metadata not requested
+        entities = result["entities"]
+        if not include_file_metadata:
+            entities = ListOperation.clean_entities_for_output(entities, remove_file_metadata=True)
         
         return {
             "success": True,
-            "entities": all_entities,
-            "count": len(all_entities),
+            "entities": entities,
+            "count": len(entities),
             "filters": {
                 "type": entity_type,
                 "status": status,
                 "tags": tags,
                 "category": category,
-                "parent": parent
+                "parent": parent,
+                "identifier": identifier,
+                "query": query,
+                "due_before": due_before,
+                "due_after": due_after,
             },
             "sort": {
                 "field": sort_by,
@@ -104,7 +172,7 @@ def list_entities_tool(
             }
         }
     
-    except ValueError as e:
+    except ListOperationError as e:
         return {
             "success": False,
             "error": str(e),
@@ -156,21 +224,27 @@ def get_entity_tool(
         if entity_type:
             entity_type_enum = EntityType.from_string(entity_type)
         
-        file_path = _find_entity_file(reg_path, identifier, entity_type_enum)
-        if not file_path:
+        # Use ListOperation to get entity with file metadata
+        operation = ListOperation(reg_path)
+        entity_data = operation.get_entity_by_identifier(
+            identifier=identifier,
+            entity_type=entity_type_enum,
+            include_file_metadata=True,
+        )
+        
+        if not entity_data:
             raise ValueError(f"Entity not found: {identifier}")
         
-        secure_file_path = resolve_safe_path(reg_path, file_path)
-        with open(secure_file_path, 'r') as f:
-            entity_data = yaml.safe_load(f)
+        # Extract file path from metadata
+        file_path = entity_data.get("_file", {}).get("path", "")
         
-        if not entity_data or not isinstance(entity_data, dict):
-            raise ValueError(f"Invalid entity data for {identifier}")
+        # Clean entity for output
+        clean_entity = {k: v for k, v in entity_data.items() if not k.startswith('_')}
         
         return {
             "success": True,
-            "entity": entity_data,
-            "file_path": str(secure_file_path),
+            "entity": clean_entity,
+            "file_path": file_path,
             "identifier": identifier
         }
     
@@ -209,8 +283,12 @@ def search_entities_tool(
     """
     Search for entities in the HoxCore registry.
     
+    Note: This tool is provided for backwards compatibility. Consider using
+    `list_entities_tool` with the `query` parameter for new implementations,
+    which provides additional filtering capabilities.
+    
     Args:
-        query: Search query for title and description
+        query: Search query for title and description (case-insensitive)
         entity_type: Type of entities to search (program, project, mission, action, all)
         status: Optional status filter
         tags: Optional list of tags to filter by
@@ -225,37 +303,23 @@ def search_entities_tool(
         ValueError: If invalid parameters provided
         PathSecurityError: If path security validation fails
     """
-    try:
-        list_result = list_entities_tool(
-            entity_type=entity_type,
-            status=status,
-            tags=tags,
-            category=category,
-            max_items=0,
-            registry_path=registry_path
-        )
-        
-        if not list_result.get("success"):
-            return list_result
-        
-        all_entities = list_result.get("entities", [])
-        query_lower = query.lower()
-        matching_entities = []
-        
-        for entity in all_entities:
-            title = entity.get("title", "").lower()
-            description = entity.get("description", "").lower()
-            
-            if query_lower in title or query_lower in description:
-                matching_entities.append(entity)
-        
-        if max_items > 0:
-            matching_entities = matching_entities[:max_items]
-        
+    # Delegate to list_entities_tool with query parameter
+    result = list_entities_tool(
+        entity_type=entity_type,
+        status=status,
+        tags=tags,
+        category=category,
+        query=query,
+        max_items=max_items,
+        registry_path=registry_path
+    )
+    
+    # Transform response to match expected search format
+    if result.get("success"):
         return {
             "success": True,
-            "entities": matching_entities,
-            "count": len(matching_entities),
+            "entities": result["entities"],
+            "count": result["count"],
             "query": query,
             "filters": {
                 "type": entity_type,
@@ -264,11 +328,10 @@ def search_entities_tool(
                 "category": category
             }
         }
-    
-    except Exception as e:
+    else:
         return {
             "success": False,
-            "error": f"Search error: {e}",
+            "error": result.get("error", "Search error"),
             "entities": [],
             "count": 0,
             "query": query
@@ -302,18 +365,38 @@ def get_entity_property_tool(
         PathSecurityError: If path security validation fails
     """
     try:
-        entity_result = get_entity_tool(identifier, entity_type, registry_path)
+        reg_path = _get_registry_path(registry_path)
+        if not reg_path:
+            raise ValueError("No registry found")
         
-        if not entity_result.get("success"):
-            return entity_result
+        entity_type_enum = None
+        if entity_type:
+            entity_type_enum = EntityType.from_string(entity_type)
         
-        entity_data = entity_result.get("entity", {})
+        # Use ListOperation to get entity with file metadata
+        operation = ListOperation(reg_path)
+        entity_data = operation.get_entity_by_identifier(
+            identifier=identifier,
+            entity_type=entity_type_enum,
+            include_file_metadata=True,
+        )
+        
+        if not entity_data:
+            return {
+                "success": False,
+                "error": f"Entity not found: {identifier}",
+                "property": property_name,
+                "value": None,
+                "identifier": identifier
+            }
         
         if property_name == "all":
+            # Return all properties except internal metadata
+            clean_entity = {k: v for k, v in entity_data.items() if not k.startswith('_')}
             return {
                 "success": True,
                 "property": property_name,
-                "value": entity_data,
+                "value": clean_entity,
                 "identifier": identifier
             }
         
@@ -321,7 +404,7 @@ def get_entity_property_tool(
             return {
                 "success": True,
                 "property": property_name,
-                "value": entity_result.get("file_path"),
+                "value": entity_data.get("_file", {}).get("path", ""),
                 "identifier": identifier
             }
         
@@ -382,6 +465,22 @@ def get_entity_property_tool(
             "identifier": identifier
         }
     
+    except ValueError as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "property": property_name,
+            "value": None,
+            "identifier": identifier
+        }
+    except PathSecurityError as e:
+        return {
+            "success": False,
+            "error": f"Security error: {e}",
+            "property": property_name,
+            "value": None,
+            "identifier": identifier
+        }
     except Exception as e:
         return {
             "success": False,
@@ -485,6 +584,9 @@ def get_registry_stats_tool(
         if not reg_path:
             raise ValueError("No registry found")
         
+        # Use ListOperation to get entities
+        operation = ListOperation(reg_path)
+        
         stats = {
             "total_entities": 0,
             "by_type": {},
@@ -494,7 +596,7 @@ def get_registry_stats_tool(
         }
         
         for entity_type_enum in EntityType:
-            entities = _get_entities_of_type(reg_path, entity_type_enum)
+            entities = operation.load_entities(entity_type_enum, include_file_metadata=False)
             type_name = entity_type_enum.value
             stats["by_type"][type_name] = len(entities)
             stats["total_entities"] += len(entities)
@@ -1006,97 +1108,6 @@ def _find_entity_file(
     return None
 
 
-def _get_entities_of_type(
-    registry_path: str,
-    entity_type: EntityType
-) -> List[Dict[str, Any]]:
-    """Get all entities of a specific type"""
-    entities = []
-
-    folder_name = entity_type.get_folder_name()
-    file_prefix = entity_type.get_file_prefix() + "-"
-
-    try:
-        type_dir = resolve_safe_path(registry_path, folder_name)
-    except PathSecurityError:
-        return []
-
-    if not type_dir.exists():
-        return []
-
-    for file_path in type_dir.glob(f"{file_prefix}*.yml"):
-        try:
-            secure_file_path = resolve_safe_path(registry_path, file_path)
-            with open(secure_file_path, 'r') as f:
-                entity_data = yaml.safe_load(f)
-                if entity_data and isinstance(entity_data, dict):
-                    entities.append(entity_data)
-        except (PathSecurityError, Exception):
-            continue
-
-    return entities
-
-
-def _filter_entities(
-    entities: List[Dict[str, Any]],
-    status: Optional[EntityStatus] = None,
-    tags: Optional[List[str]] = None,
-    category: Optional[str] = None,
-    parent: Optional[str] = None
-) -> List[Dict[str, Any]]:
-    """Filter entities based on criteria"""
-    filtered = []
-
-    for entity in entities:
-        if status is not None:
-            entity_status = entity.get("status")
-            if entity_status != status.value:
-                continue
-
-        if tags:
-            entity_tags = entity.get("tags", [])
-            if not all(tag in entity_tags for tag in tags):
-                continue
-
-        if category and entity.get("category") != category:
-            continue
-
-        if parent and entity.get("parent") != parent:
-            continue
-
-        filtered.append(entity)
-
-    return filtered
-
-
-def _sort_entities(
-    entities: List[Dict[str, Any]],
-    sort_field: SortField,
-    descending: bool
-) -> List[Dict[str, Any]]:
-    """Sort entities by specified field"""
-    if sort_field == SortField.CREATED:
-        entities = sorted(
-            entities,
-            key=lambda x: x.get("_file", {}).get("created", ""),
-            reverse=descending
-        )
-    elif sort_field == SortField.MODIFIED:
-        entities = sorted(
-            entities,
-            key=lambda x: x.get("_file", {}).get("modified", ""),
-            reverse=descending
-        )
-    else:
-        entities = sorted(
-            entities,
-            key=lambda x: x.get(sort_field.value, ""),
-            reverse=descending
-        )
-
-    return entities
-
-
 def _get_entities_by_ids(
     registry_path: str,
     identifiers: List[str],
@@ -1134,30 +1145,15 @@ def _load_existing_ids(registry_path: str, entity_type: EntityType) -> set:
     Returns:
         Set of existing IDs (strings). Missing/invalid ids are ignored.
     """
+    operation = ListOperation(registry_path)
+    entities = operation.load_entities(entity_type, include_file_metadata=False)
+    
     ids = set()
-    try:
-        type_dir = resolve_safe_path(registry_path, entity_type.get_folder_name())
-    except PathSecurityError:
-        return ids
-
-    if not type_dir.exists():
-        return ids
-
-    file_prefix = entity_type.get_file_prefix()
-    for file_path in type_dir.glob(f"{file_prefix}-*.yml"):
-        try:
-            secure_file_path = resolve_safe_path(registry_path, file_path)
-            with open(secure_file_path, "r") as f:
-                data = yaml.safe_load(f)
-            if isinstance(data, dict):
-                existing_id = data.get("id")
-                if isinstance(existing_id, str):
-                    ids.add(existing_id)
-        except PathSecurityError:
-            continue
-        except Exception:
-            continue
-
+    for entity in entities:
+        existing_id = entity.get("id")
+        if isinstance(existing_id, str):
+            ids.add(existing_id)
+    
     return ids
 
 

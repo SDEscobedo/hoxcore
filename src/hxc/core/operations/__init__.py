@@ -7,6 +7,7 @@ core business logic including:
 
 - Entity creation with git integration
 - Entity deletion with git integration
+- Entity listing with filtering and sorting
 - ID uniqueness validation
 - Path security enforcement
 - Structured commit message generation
@@ -26,6 +27,10 @@ from hxc.core.operations.delete import (
     EntityNotFoundError,
     AmbiguousEntityError,
 )
+from hxc.core.operations.list import (
+    ListOperation,
+    ListOperationError,
+)
 
 
 __all__ = [
@@ -36,4 +41,6 @@ __all__ = [
     "DeleteOperationError",
     "EntityNotFoundError",
     "AmbiguousEntityError",
+    "ListOperation",
+    "ListOperationError",
 ]
