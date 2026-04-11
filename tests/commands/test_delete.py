@@ -826,11 +826,12 @@ def test_delete_invalid_type_filter(mock_get_registry_path, temp_registry):
     """Test error handling for invalid entity type filter"""
     mock_get_registry_path.return_value = str(temp_registry)
     
-    with patch("builtins.print") as mock_print:
-        result = main(["delete", "12345678", "--type", "invalid_type", "--force"])
-        
-        assert result == 1
-        assert any("Invalid" in str(call) for call in mock_print.call_args_list)
+    # argparse validates choices before the command runs and raises SystemExit(2)
+    with pytest.raises(SystemExit) as exc_info:
+        main(["delete", "12345678", "--type", "invalid_type", "--force"])
+    
+    # argparse exits with code 2 for invalid arguments
+    assert exc_info.value.code == 2
 
 
 # --- Tests for Git Commit Output ---
