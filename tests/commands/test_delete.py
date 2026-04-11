@@ -15,6 +15,12 @@ from hxc.cli import main
 from hxc.commands.delete import DeleteCommand
 from hxc.commands.registry import RegistryCommand
 from hxc.utils.path_security import PathSecurityError
+from hxc.core.operations.delete import (
+    DeleteOperation,
+    DeleteOperationError,
+    EntityNotFoundError,
+    AmbiguousEntityError,
+)
 
 
 @pytest.fixture
@@ -122,6 +128,7 @@ def test_delete_command_parser():
     assert "type" in actions
     assert "force" in actions
     assert "registry" in actions
+    assert "no_commit" in actions
 
 
 @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
@@ -249,8 +256,8 @@ def test_delete_error_handling(mock_get_registry_path, temp_registry):
     # Configure mock to return the temp registry
     mock_get_registry_path.return_value = str(temp_registry)
     
-    # Force an error by patching os.remove
-    with patch("os.remove", side_effect=Exception("Test error")):
+    # Force an error by patching the delete operation
+    with patch.object(DeleteOperation, "delete_entity", side_effect=DeleteOperationError("Test error")):
         with patch("builtins.input", return_value="y"):
             with patch("builtins.print") as mock_print:
                 result = main(["delete", "12345678", "--no-commit"])
@@ -259,7 +266,7 @@ def test_delete_error_handling(mock_get_registry_path, temp_registry):
                 assert result == 1
                 
                 # Check error message
-                assert any("Error deleting entity" in call[0][0] for call in mock_print.call_args_list)
+                assert any("Error deleting entity" in str(call) for call in mock_print.call_args_list)
 
 
 @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
@@ -268,8 +275,8 @@ def test_delete_path_traversal_protection(mock_get_registry_path, temp_registry)
     # Configure mock to return the temp registry
     mock_get_registry_path.return_value = str(temp_registry)
     
-    # Mock _find_entity_files to raise PathSecurityError
-    with patch("hxc.commands.delete.DeleteCommand._find_entity_files", side_effect=PathSecurityError("Path traversal detected")):
+    # Mock DeleteOperation.find_entity_files to raise PathSecurityError
+    with patch.object(DeleteOperation, "find_entity_files", side_effect=PathSecurityError("Path traversal detected")):
         with patch("builtins.print") as mock_print:
             result = main(["delete", "12345678"])
             
@@ -277,7 +284,7 @@ def test_delete_path_traversal_protection(mock_get_registry_path, temp_registry)
             assert result == 1
             
             # Check that security error message is displayed
-            assert any("Security error" in call[0][0] for call in mock_print.call_args_list)
+            assert any("Security error" in str(call) for call in mock_print.call_args_list)
 
 
 @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
@@ -290,20 +297,32 @@ def test_delete_file_outside_registry_blocked(mock_get_registry_path, temp_regis
     external_file = tmp_path / "external_file.yml"
     external_file.write_text("external: data")
     
-    # Mock _find_entity_files to return the external file
-    with patch("hxc.commands.delete.DeleteCommand._find_entity_files", return_value=[(str(external_file), "project")]):
-        with patch("builtins.input", return_value="y"):
-            with patch("builtins.print") as mock_print:
-                result = main(["delete", "external"])
-                
-                # Check result indicates failure due to security error
-                assert result == 1
-                
-                # Check that security error is raised
-                assert any("Security error" in call[0][0] for call in mock_print.call_args_list)
-                
-                # Verify external file still exists
-                assert external_file.exists()
+    # Mock DeleteOperation.get_entity_info to return external file path
+    # This simulates finding an entity but the actual file path being external
+    with patch.object(DeleteOperation, "get_entity_info") as mock_get_info:
+        mock_get_info.return_value = {
+            "success": True,
+            "identifier": "external",
+            "entity_title": "External Entity",
+            "entity_type": "project",
+            "file_path": str(external_file),
+            "entity": {"type": "project", "uid": "external", "title": "External Entity"},
+        }
+        
+        # Mock delete_entity to raise PathSecurityError
+        with patch.object(DeleteOperation, "delete_entity", side_effect=PathSecurityError("Path outside registry")):
+            with patch("builtins.input", return_value="y"):
+                with patch("builtins.print") as mock_print:
+                    result = main(["delete", "external"])
+                    
+                    # Check result indicates failure due to security error
+                    assert result == 1
+                    
+                    # Check that security error is raised
+                    assert any("Security error" in str(call) for call in mock_print.call_args_list)
+                    
+                    # Verify external file still exists
+                    assert external_file.exists()
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="Symlinks require admin privileges on Windows")
@@ -389,7 +408,7 @@ def test_delete_with_relative_path_traversal(mock_get_registry_path, temp_regist
             
             # Verify appropriate error message
             assert any(
-                "Security error" in call[0][0] or "No entity found" in call[0][0]
+                "Security error" in str(call) or "No entity found" in str(call)
                 for call in mock_print.call_args_list
             )
 
@@ -406,7 +425,7 @@ def test_delete_find_entity_files_security(mock_get_registry_path, temp_registry
     external_file = external_dir / "proj-external.yml"
     external_file.write_text("type: project\nuid: external\ntitle: External")
     
-    # Call _find_entity_files directly
+    # Call _find_entity_files directly (backward compatibility method)
     files = DeleteCommand._find_entity_files(str(temp_registry), "external", None)
     
     # Verify that external file is not found
@@ -480,7 +499,7 @@ def test_delete_multiple_matches_with_type_filter(mock_get_registry_path, temp_r
         
         # Check result indicates failure due to ambiguity
         assert result == 1
-        assert any("Multiple entities found" in call[0][0] for call in mock_print.call_args_list)
+        assert any("Multiple entities found" in str(call) for call in mock_print.call_args_list)
     
     # Delete with type filter (should succeed)
     result = main(["delete", "duplicate", "--type", "mission", "--force", "--no-commit"])
@@ -489,6 +508,102 @@ def test_delete_multiple_matches_with_type_filter(mock_get_registry_path, temp_r
     # Verify only mission was deleted
     assert not (mission_dir / "miss-duplicate.yml").exists()
     assert (action_dir / "act-duplicate.yml").exists()
+
+
+# --- Tests for DeleteOperation Usage ---
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_delete_uses_delete_operation(mock_get_registry_path, temp_registry):
+    """Test that DeleteCommand uses DeleteOperation internally"""
+    mock_get_registry_path.return_value = str(temp_registry)
+    
+    with patch("hxc.commands.delete.DeleteOperation") as MockOperation:
+        mock_instance = MagicMock()
+        mock_instance.get_entity_info.return_value = {
+            "success": True,
+            "identifier": "12345678",
+            "entity_title": "Test Project",
+            "entity_type": "project",
+            "file_path": str(temp_registry / "projects" / "proj-12345678.yml"),
+            "entity": {"type": "project", "uid": "12345678", "title": "Test Project"},
+        }
+        mock_instance.delete_entity.return_value = {
+            "success": True,
+            "identifier": "12345678",
+            "deleted_title": "Test Project",
+            "deleted_type": "project",
+            "file_path": str(temp_registry / "projects" / "proj-12345678.yml"),
+            "entity": {"type": "project", "uid": "12345678", "title": "Test Project"},
+            "git_committed": False,
+        }
+        MockOperation.return_value = mock_instance
+        
+        result = main(["delete", "12345678", "--force", "--no-commit"])
+        
+        assert result == 0
+        MockOperation.assert_called_once_with(str(temp_registry))
+        mock_instance.delete_entity.assert_called_once()
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_delete_handles_entity_not_found_error(mock_get_registry_path, temp_registry):
+    """Test that EntityNotFoundError is handled correctly"""
+    mock_get_registry_path.return_value = str(temp_registry)
+    
+    with patch("hxc.commands.delete.DeleteOperation") as MockOperation:
+        mock_instance = MagicMock()
+        mock_instance.get_entity_info.side_effect = EntityNotFoundError("Entity not found: nonexistent")
+        MockOperation.return_value = mock_instance
+        
+        with patch("builtins.print") as mock_print:
+            result = main(["delete", "nonexistent", "--force"])
+            
+            assert result == 1
+            assert any("No entity found" in str(call) for call in mock_print.call_args_list)
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_delete_handles_ambiguous_entity_error(mock_get_registry_path, temp_registry):
+    """Test that AmbiguousEntityError is handled correctly"""
+    mock_get_registry_path.return_value = str(temp_registry)
+    
+    with patch("hxc.commands.delete.DeleteOperation") as MockOperation:
+        mock_instance = MagicMock()
+        mock_instance.get_entity_info.side_effect = AmbiguousEntityError(
+            "Multiple entities found with identifier 'duplicate'"
+        )
+        MockOperation.return_value = mock_instance
+        
+        with patch("builtins.print") as mock_print:
+            result = main(["delete", "duplicate", "--force"])
+            
+            assert result == 1
+            assert any("Multiple entities found" in str(call) for call in mock_print.call_args_list)
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_delete_backward_compatible_find_entity_files(mock_get_registry_path, temp_registry):
+    """Test that _find_entity_files method still works for backward compatibility"""
+    mock_get_registry_path.return_value = str(temp_registry)
+    
+    # Call the class method directly
+    results = DeleteCommand._find_entity_files(str(temp_registry), "12345678", None)
+    
+    assert len(results) == 1
+    file_path, entity_type = results[0]
+    assert "proj-12345678.yml" in file_path
+    assert entity_type == "project"
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_delete_backward_compatible_get_entity_name(mock_get_registry_path, temp_registry):
+    """Test that _get_entity_name method still works for backward compatibility"""
+    mock_get_registry_path.return_value = str(temp_registry)
+    
+    file_path = str(temp_registry / "projects" / "proj-12345678.yml")
+    name = DeleteCommand._get_entity_name(file_path)
+    
+    assert name == "Test Project"
 
 
 # --- Git Integration Tests ---
@@ -610,109 +725,212 @@ def test_delete_no_commit_flag(mock_get_registry_path, temp_git_registry):
     assert log_before == log_after
 
 
-@patch("hxc.commands.edit.EditCommand._git_available", return_value=False)
+@patch("hxc.core.operations.delete.git_available", return_value=False)
 @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
 def test_delete_git_not_available(mock_get_registry_path, mock_git_available, temp_git_registry):
-    """Test error handling when git is not available"""
+    """Test fallback to file deletion when git is not available"""
     mock_get_registry_path.return_value = str(temp_git_registry)
     
-    with patch("builtins.print") as mock_print:
-        result = main(["delete", "12345678", "--force"])
-        
-        assert result == 0
-        mock_print.assert_any_call("⚠️ Git is not installed.")
-        
-        # File should still be deleted
-        project_file = temp_git_registry / "projects" / "proj-12345678.yml"
-        assert not project_file.exists()
+    result = main(["delete", "12345678", "--force"])
+    
+    assert result == 0
+    
+    # File should still be deleted
+    project_file = temp_git_registry / "projects" / "proj-12345678.yml"
+    assert not project_file.exists()
 
 
-@patch("hxc.commands.edit.EditCommand._find_git_root", return_value=None)
+@patch("hxc.core.operations.delete.find_git_root", return_value=None)
 @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
 def test_delete_not_a_git_repo(mock_get_registry_path, mock_find_git_root, temp_registry):
-    """Test error handling when not in a git repository"""
+    """Test deletion when not in a git repository"""
     mock_get_registry_path.return_value = str(temp_registry)
     
-    with patch("builtins.print") as mock_print:
-        result = main(["delete", "12345678", "--force"])
-        
-        assert result == 0
-        mock_print.assert_any_call("⚠️  No git repository found. Deleting file from disk only.")
-        
-        # File should still be deleted
-        project_file = temp_registry / "projects" / "proj-12345678.yml"
-        assert not project_file.exists()
-
-
-@patch("subprocess.run")
-@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
-def test_delete_commit_message_generation(mock_get_registry_path, mock_subprocess_run, temp_git_registry):
-    """Test commit message generation includes entity title"""
-    mock_get_registry_path.return_value = str(temp_git_registry)
+    result = main(["delete", "12345678", "--force"])
     
-    # Mock git responses to inspect the commit message
-    mock_subprocess_run.return_value = MagicMock(returncode=0, stdout="[main 12345] ...", stderr="")
+    assert result == 0
+    
+    # File should still be deleted
+    project_file = temp_registry / "projects" / "proj-12345678.yml"
+    assert not project_file.exists()
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_delete_commit_message_format(mock_get_registry_path, temp_git_registry):
+    """Test commit message format includes entity metadata"""
+    mock_get_registry_path.return_value = str(temp_git_registry)
     
     main(["delete", "12345678", "--force"])
     
-    commit_call = None
-    for call in mock_subprocess_run.call_args_list:
-        if "commit" in call.args[0]:
-            commit_call = call
-            break
-            
-    assert commit_call is not None, "git commit was not called"
+    # Get full commit message
+    log_result = subprocess.run(
+        ["git", "log", "-1", "--pretty=%B"],
+        cwd=str(temp_git_registry),
+        capture_output=True,
+        text=True
+    )
     
-    commit_message = commit_call.args[0][3] if len(commit_call.args[0]) > 3 else ""
+    commit_message = log_result.stdout
+    
+    # Verify commit message format
     assert "Delete proj-12345678: Test Project" in commit_message
     assert "Entity type: project" in commit_message
     assert "Entity ID: P-001" in commit_message
     assert "Entity UID: 12345678" in commit_message
 
 
-@patch("subprocess.run")
 @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
-def test_delete_only_stages_deleted_file(mock_get_registry_path, mock_subprocess_run, temp_git_registry):
-    """Test that only the deleted file is staged"""
+def test_delete_only_stages_deleted_file(mock_get_registry_path, temp_git_registry):
+    """Test that only the deleted file is staged and committed"""
     mock_get_registry_path.return_value = str(temp_git_registry)
     
     # Create a dummy file with uncommitted changes
     (temp_git_registry / "dummy.txt").write_text("uncommitted changes")
     
-    # Mock git responses
-    mock_subprocess_run.return_value = MagicMock(returncode=0, stdout="[main 12345] ...", stderr="")
-    
     main(["delete", "12345678", "--force"])
     
-    rm_call = None
-    for call in mock_subprocess_run.call_args_list:
-        if "rm" in call.args[0]:
-            rm_call = call
-            break
-            
-    assert rm_call is not None, "git rm was not called"
-    deleted_file_path = rm_call.args[0][2]
-    assert deleted_file_path.endswith("projects/proj-12345678.yml")
-    
-    # Check that 'git add' was not called for the other file
-    for call in mock_subprocess_run.call_args_list:
-        if "add" in call.args[0] and "dummy.txt" in call.args[0]:
-            assert False, "'git add' was called on an unrelated file"
+    # Check that dummy.txt is still untracked
+    status_result = subprocess.run(
+        ["git", "status", "--porcelain"],
+        cwd=str(temp_git_registry),
+        capture_output=True,
+        text=True
+    )
+    assert "?? dummy.txt" in status_result.stdout
 
 
-@patch("subprocess.run")
 @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
-def test_delete_commit_with_user_confirmation(mock_get_registry_path, mock_subprocess_run, temp_git_registry):
+def test_delete_commit_with_user_confirmation(mock_get_registry_path, temp_git_registry):
     """Test commit still created when user confirms deletion (without --force)"""
     mock_get_registry_path.return_value = str(temp_git_registry)
-    
-    # Mock git responses
-    mock_subprocess_run.return_value = MagicMock(returncode=0, stdout="[main 12345] ...", stderr="")
     
     with patch("builtins.input", return_value="y"):
         result = main(["delete", "12345678"])
         
         assert result == 0
         
-        commit_called = any("commit" in call.args[0] for call in mock_subprocess_run.call_args_list)
-        assert commit_called, "git commit was not called"
+        # Verify commit was created
+        log_result = subprocess.run(
+            ["git", "log", "-1", "--pretty=%s"],
+            cwd=str(temp_git_registry),
+            capture_output=True,
+            text=True
+        )
+        assert "Delete proj-12345678: Test Project" in log_result.stdout
+
+
+# --- Tests for Invalid Type Filter ---
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_delete_invalid_type_filter(mock_get_registry_path, temp_registry):
+    """Test error handling for invalid entity type filter"""
+    mock_get_registry_path.return_value = str(temp_registry)
+    
+    # argparse validates choices before the command runs and raises SystemExit(2)
+    with pytest.raises(SystemExit) as exc_info:
+        main(["delete", "12345678", "--type", "invalid_type", "--force"])
+    
+    # argparse exits with code 2 for invalid arguments
+    assert exc_info.value.code == 2
+
+
+# --- Tests for Git Commit Output ---
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_delete_prints_git_committed_message(mock_get_registry_path, temp_git_registry, capsys):
+    """Test that successful git commit prints confirmation message"""
+    mock_get_registry_path.return_value = str(temp_git_registry)
+    
+    result = main(["delete", "12345678", "--force"])
+    
+    assert result == 0
+    
+    captured = capsys.readouterr()
+    assert "📦 Changes committed to git" in captured.out
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_delete_prints_no_commit_warning(mock_get_registry_path, temp_git_registry, capsys):
+    """Test that --no-commit prints a warning"""
+    mock_get_registry_path.return_value = str(temp_git_registry)
+    
+    result = main(["delete", "12345678", "--force", "--no-commit"])
+    
+    assert result == 0
+    
+    captured = capsys.readouterr()
+    assert "⚠️  Changes not committed (--no-commit flag used)" in captured.out
+
+
+# --- Tests for CLI and Core Operation Parity ---
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_delete_cli_uses_core_operation_for_git(mock_get_registry_path, temp_git_registry):
+    """Test that CLI uses core DeleteOperation for git operations"""
+    mock_get_registry_path.return_value = str(temp_git_registry)
+    
+    # Delete via CLI
+    result = main(["delete", "12345678", "--force"])
+    
+    assert result == 0
+    
+    # Verify git commit was created via DeleteOperation
+    log_result = subprocess.run(
+        ["git", "log", "-1", "--pretty=%B"],
+        cwd=str(temp_git_registry),
+        capture_output=True,
+        text=True
+    )
+    
+    # Commit message should follow the format from DeleteOperation
+    assert "Delete proj-12345678: Test Project" in log_result.stdout
+    assert "Entity type: project" in log_result.stdout
+    assert "Entity ID: P-001" in log_result.stdout
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_delete_returns_git_committed_status(mock_get_registry_path, temp_git_registry):
+    """Test that delete operation returns git_committed status"""
+    mock_get_registry_path.return_value = str(temp_git_registry)
+    
+    # Use DeleteOperation directly to verify return structure
+    operation = DeleteOperation(str(temp_git_registry))
+    result = operation.delete_entity("12345678", use_git=True)
+    
+    assert result["success"] is True
+    assert result["git_committed"] is True
+    assert result["deleted_type"] == "project"
+    assert result["deleted_title"] == "Test Project"
+
+
+@patch("hxc.commands.registry.RegistryCommand.get_registry_path")
+def test_delete_use_git_false_skips_git(mock_get_registry_path, temp_git_registry):
+    """Test that use_git=False skips git operations in DeleteOperation"""
+    mock_get_registry_path.return_value = str(temp_git_registry)
+    
+    # Get commit count before
+    log_before = subprocess.run(
+        ["git", "log", "--oneline"],
+        cwd=str(temp_git_registry),
+        capture_output=True,
+        text=True
+    ).stdout.strip()
+    commit_count_before = len(log_before.splitlines())
+    
+    # Use DeleteOperation with use_git=False
+    operation = DeleteOperation(str(temp_git_registry))
+    result = operation.delete_entity("12345678", use_git=False)
+    
+    assert result["success"] is True
+    assert result["git_committed"] is False
+    
+    # Verify no new commit was created
+    log_after = subprocess.run(
+        ["git", "log", "--oneline"],
+        cwd=str(temp_git_registry),
+        capture_output=True,
+        text=True
+    ).stdout.strip()
+    commit_count_after = len(log_after.splitlines())
+    
+    assert commit_count_before == commit_count_after

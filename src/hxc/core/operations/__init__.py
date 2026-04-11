@@ -6,6 +6,7 @@ consistency between the CLI commands and MCP tools. Operations handle the
 core business logic including:
 
 - Entity creation with git integration
+- Entity deletion with git integration
 - ID uniqueness validation
 - Path security enforcement
 - Structured commit message generation
@@ -14,9 +15,25 @@ All operations are designed to be used by both CLI and MCP interfaces,
 ensuring identical behavior regardless of the entry point.
 """
 
-from hxc.core.operations.create import CreateOperation
+from hxc.core.operations.create import (
+    CreateOperation,
+    CreateOperationError,
+    DuplicateIdError,
+)
+from hxc.core.operations.delete import (
+    DeleteOperation,
+    DeleteOperationError,
+    EntityNotFoundError,
+    AmbiguousEntityError,
+)
 
 
 __all__ = [
     "CreateOperation",
+    "CreateOperationError",
+    "DuplicateIdError",
+    "DeleteOperation",
+    "DeleteOperationError",
+    "EntityNotFoundError",
+    "AmbiguousEntityError",
 ]
