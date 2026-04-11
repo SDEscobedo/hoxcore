@@ -1,27 +1,29 @@
 """
 Edit command implementation for modifying entity properties.
 """
-import os
-import json
-import yaml
+
 import argparse
 import datetime
+import json
+import os
 from pathlib import Path
-from typing import Optional, Dict, Any, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
+
+import yaml
 
 from hxc.commands import register_command
 from hxc.commands.base import BaseCommand
 from hxc.commands.registry import RegistryCommand
-from hxc.utils.helpers import get_project_root
-from hxc.utils.path_security import resolve_safe_path, PathSecurityError
+from hxc.core.enums import EntityStatus, EntityType
 from hxc.utils.git import (
+    commit_entity_change,
     find_git_root,
     git_available,
     parse_commit_hash,
     summarise_changes,
-    commit_entity_change,
 )
-from hxc.core.enums import EntityType, EntityStatus
+from hxc.utils.helpers import get_project_root
+from hxc.utils.path_security import PathSecurityError, resolve_safe_path
 
 
 @register_command
@@ -33,34 +35,34 @@ class EditCommand(BaseCommand):
 
     # Define editable scalar fields
     SCALAR_FIELDS = {
-        'title': str,
-        'description': str,
-        'status': str,
-        'id': str,
-        'start_date': str,
-        'due_date': str,
-        'completion_date': str,
-        'duration_estimate': str,
-        'category': str,
-        'parent': str,
-        'template': str,
+        "title": str,
+        "description": str,
+        "status": str,
+        "id": str,
+        "start_date": str,
+        "due_date": str,
+        "completion_date": str,
+        "duration_estimate": str,
+        "category": str,
+        "parent": str,
+        "template": str,
     }
 
     # Define editable list fields
     LIST_FIELDS = {
-        'tags': list,
-        'children': list,
-        'related': list,
+        "tags": list,
+        "children": list,
+        "related": list,
     }
 
     # Define editable complex fields (list of dicts)
     COMPLEX_FIELDS = {
-        'repositories': list,
-        'storage': list,
-        'databases': list,
-        'tools': list,
-        'models': list,
-        'knowledge_bases': list,
+        "repositories": list,
+        "storage": list,
+        "databases": list,
+        "tools": list,
+        "models": list,
+        "knowledge_bases": list,
     }
 
     @classmethod
@@ -68,109 +70,186 @@ class EditCommand(BaseCommand):
         parser = super().register_subparser(subparsers)
 
         # Required argument: identifier
-        parser.add_argument(
-            'identifier',
-            help='ID or UID of the entity to edit'
-        )
+        parser.add_argument("identifier", help="ID or UID of the entity to edit")
 
         # Optional: entity type filter
         parser.add_argument(
-            '--type', '-t',
+            "--type",
+            "-t",
             choices=EntityType.values(),
-            help='Entity type (only needed if identifier is ambiguous)'
+            help="Entity type (only needed if identifier is ambiguous)",
         )
 
         # Scalar field setters
-        parser.add_argument('--set-title', metavar='VALUE', help='Set title')
-        parser.add_argument('--set-description', metavar='VALUE', help='Set description')
-        parser.add_argument('--set-status', metavar='VALUE',
-                            choices=EntityStatus.values(),
-                            help='Set status')
-        parser.add_argument('--set-id', metavar='VALUE', help='Set custom ID')
-        parser.add_argument('--set-start-date', metavar='YYYY-MM-DD', help='Set start date')
-        parser.add_argument('--set-due-date', metavar='YYYY-MM-DD', help='Set due date')
-        parser.add_argument('--set-completion-date', metavar='YYYY-MM-DD', help='Set completion date')
-        parser.add_argument('--set-duration-estimate', metavar='VALUE', help='Set duration estimate (e.g., 90d, 3w)')
-        parser.add_argument('--set-category', metavar='VALUE', help='Set category')
-        parser.add_argument('--set-parent', metavar='UID', help='Set parent UID')
-        parser.add_argument('--set-template', metavar='VALUE', help='Set template')
+        parser.add_argument("--set-title", metavar="VALUE", help="Set title")
+        parser.add_argument(
+            "--set-description", metavar="VALUE", help="Set description"
+        )
+        parser.add_argument(
+            "--set-status",
+            metavar="VALUE",
+            choices=EntityStatus.values(),
+            help="Set status",
+        )
+        parser.add_argument("--set-id", metavar="VALUE", help="Set custom ID")
+        parser.add_argument(
+            "--set-start-date", metavar="YYYY-MM-DD", help="Set start date"
+        )
+        parser.add_argument("--set-due-date", metavar="YYYY-MM-DD", help="Set due date")
+        parser.add_argument(
+            "--set-completion-date", metavar="YYYY-MM-DD", help="Set completion date"
+        )
+        parser.add_argument(
+            "--set-duration-estimate",
+            metavar="VALUE",
+            help="Set duration estimate (e.g., 90d, 3w)",
+        )
+        parser.add_argument("--set-category", metavar="VALUE", help="Set category")
+        parser.add_argument("--set-parent", metavar="UID", help="Set parent UID")
+        parser.add_argument("--set-template", metavar="VALUE", help="Set template")
 
         # List field operations
-        parser.add_argument('--add-tag', metavar='TAG', action='append', help='Add a tag (can be used multiple times)')
-        parser.add_argument('--remove-tag', metavar='TAG', action='append', help='Remove a tag (can be used multiple times)')
-        parser.add_argument('--set-tags', metavar='TAG', nargs='+', help='Set tags (replaces all existing tags)')
+        parser.add_argument(
+            "--add-tag",
+            metavar="TAG",
+            action="append",
+            help="Add a tag (can be used multiple times)",
+        )
+        parser.add_argument(
+            "--remove-tag",
+            metavar="TAG",
+            action="append",
+            help="Remove a tag (can be used multiple times)",
+        )
+        parser.add_argument(
+            "--set-tags",
+            metavar="TAG",
+            nargs="+",
+            help="Set tags (replaces all existing tags)",
+        )
 
-        parser.add_argument('--add-child', metavar='UID', action='append', help='Add a child UID')
-        parser.add_argument('--remove-child', metavar='UID', action='append', help='Remove a child UID')
-        parser.add_argument('--set-children', metavar='UID', nargs='+', help='Set children UIDs (replaces all)')
+        parser.add_argument(
+            "--add-child", metavar="UID", action="append", help="Add a child UID"
+        )
+        parser.add_argument(
+            "--remove-child", metavar="UID", action="append", help="Remove a child UID"
+        )
+        parser.add_argument(
+            "--set-children",
+            metavar="UID",
+            nargs="+",
+            help="Set children UIDs (replaces all)",
+        )
 
-        parser.add_argument('--add-related', metavar='UID', action='append', help='Add a related UID')
-        parser.add_argument('--remove-related', metavar='UID', action='append', help='Remove a related UID')
-        parser.add_argument('--set-related', metavar='UID', nargs='+', help='Set related UIDs (replaces all)')
+        parser.add_argument(
+            "--add-related", metavar="UID", action="append", help="Add a related UID"
+        )
+        parser.add_argument(
+            "--remove-related",
+            metavar="UID",
+            action="append",
+            help="Remove a related UID",
+        )
+        parser.add_argument(
+            "--set-related",
+            metavar="UID",
+            nargs="+",
+            help="Set related UIDs (replaces all)",
+        )
 
         # Complex field operations (JSON object format)
         parser.add_argument(
-            '--add-repository',
-            metavar='JSON',
-            action='append',
-            help='Add repository as JSON object (can be used multiple times), e.g.: \'{"name": "myrepo", "url": "https://github.com/org/repo"}\''
+            "--add-repository",
+            metavar="JSON",
+            action="append",
+            help='Add repository as JSON object (can be used multiple times), e.g.: \'{"name": "myrepo", "url": "https://github.com/org/repo"}\'',
         )
-        parser.add_argument('--remove-repository', metavar='NAME', action='append', help='Remove repository by name (can be used multiple times)')
+        parser.add_argument(
+            "--remove-repository",
+            metavar="NAME",
+            action="append",
+            help="Remove repository by name (can be used multiple times)",
+        )
 
         parser.add_argument(
-            '--add-storage',
-            metavar='JSON',
-            action='append',
-            help='Add storage as JSON object (can be used multiple times), e.g.: \'{"name": "docs", "provider": "gdrive", "url": "https://drive.google.com/..."}\''
+            "--add-storage",
+            metavar="JSON",
+            action="append",
+            help='Add storage as JSON object (can be used multiple times), e.g.: \'{"name": "docs", "provider": "gdrive", "url": "https://drive.google.com/..."}\'',
         )
-        parser.add_argument('--remove-storage', metavar='NAME', action='append', help='Remove storage by name (can be used multiple times)')
+        parser.add_argument(
+            "--remove-storage",
+            metavar="NAME",
+            action="append",
+            help="Remove storage by name (can be used multiple times)",
+        )
 
         parser.add_argument(
-            '--add-database',
-            metavar='JSON',
-            action='append',
-            help='Add database as JSON object (can be used multiple times), e.g.: \'{"name": "main", "type": "postgres", "url": "postgres://..."}\''
+            "--add-database",
+            metavar="JSON",
+            action="append",
+            help='Add database as JSON object (can be used multiple times), e.g.: \'{"name": "main", "type": "postgres", "url": "postgres://..."}\'',
         )
-        parser.add_argument('--remove-database', metavar='NAME', action='append', help='Remove database by name (can be used multiple times)')
+        parser.add_argument(
+            "--remove-database",
+            metavar="NAME",
+            action="append",
+            help="Remove database by name (can be used multiple times)",
+        )
 
         parser.add_argument(
-            '--add-tool',
-            metavar='JSON',
-            action='append',
-            help='Add tool as JSON object (can be used multiple times), e.g.: \'{"name": "jira", "provider": "atlassian", "url": "https://..."}\''
+            "--add-tool",
+            metavar="JSON",
+            action="append",
+            help='Add tool as JSON object (can be used multiple times), e.g.: \'{"name": "jira", "provider": "atlassian", "url": "https://..."}\'',
         )
-        parser.add_argument('--remove-tool', metavar='NAME', action='append', help='Remove tool by name (can be used multiple times)')
+        parser.add_argument(
+            "--remove-tool",
+            metavar="NAME",
+            action="append",
+            help="Remove tool by name (can be used multiple times)",
+        )
 
         parser.add_argument(
-            '--add-model',
-            metavar='JSON',
-            action='append',
-            help='Add model as JSON object (can be used multiple times), e.g.: \'{"id": "gpt-4", "provider": "openai", "url": "https://..."}\''
+            "--add-model",
+            metavar="JSON",
+            action="append",
+            help='Add model as JSON object (can be used multiple times), e.g.: \'{"id": "gpt-4", "provider": "openai", "url": "https://..."}\'',
         )
-        parser.add_argument('--remove-model', metavar='ID', action='append', help='Remove model by ID (can be used multiple times)')
+        parser.add_argument(
+            "--remove-model",
+            metavar="ID",
+            action="append",
+            help="Remove model by ID (can be used multiple times)",
+        )
 
         parser.add_argument(
-            '--add-kb',
-            metavar='JSON',
-            action='append',
-            help='Add knowledge base as JSON object (can be used multiple times), e.g.: \'{"id": "kb-001", "url": "https://..."}\''
+            "--add-kb",
+            metavar="JSON",
+            action="append",
+            help='Add knowledge base as JSON object (can be used multiple times), e.g.: \'{"id": "kb-001", "url": "https://..."}\'',
         )
-        parser.add_argument('--remove-kb', metavar='ID', action='append', help='Remove knowledge base by ID (can be used multiple times)')
+        parser.add_argument(
+            "--remove-kb",
+            metavar="ID",
+            action="append",
+            help="Remove knowledge base by ID (can be used multiple times)",
+        )
 
         # Other options
         parser.add_argument(
-            '--registry',
-            help='Path to registry (defaults to current or configured registry)'
+            "--registry",
+            help="Path to registry (defaults to current or configured registry)",
         )
         parser.add_argument(
-            '--dry-run',
-            action='store_true',
-            help='Show what would be changed without actually modifying the file'
+            "--dry-run",
+            action="store_true",
+            help="Show what would be changed without actually modifying the file",
         )
         parser.add_argument(
-            '--no-commit',
-            action='store_true',
-            help='Skip automatic git commit after editing'
+            "--no-commit",
+            action="store_true",
+            help="Skip automatic git commit after editing",
         )
 
         return parser
@@ -190,11 +269,15 @@ class EditCommand(BaseCommand):
             # Get registry path
             registry_path = cls._get_registry_path(args.registry)
             if not registry_path:
-                print("❌ No registry found. Please specify with --registry or initialize one with 'hxc init'")
+                print(
+                    "❌ No registry found. Please specify with --registry or initialize one with 'hxc init'"
+                )
                 return 1
 
             # Find the entity file
-            file_path = cls._find_entity_file(registry_path, args.identifier, entity_type)
+            file_path = cls._find_entity_file(
+                registry_path, args.identifier, entity_type
+            )
             if not file_path:
                 print(f"❌ No entity found with identifier '{args.identifier}'")
                 if entity_type:
@@ -204,7 +287,7 @@ class EditCommand(BaseCommand):
             # Load the entity
             try:
                 secure_file_path = resolve_safe_path(registry_path, file_path)
-                with open(secure_file_path, 'r') as f:
+                with open(secure_file_path, "r") as f:
                     entity_data = yaml.safe_load(f)
             except PathSecurityError as e:
                 print(f"❌ Security error: {e}")
@@ -257,7 +340,7 @@ class EditCommand(BaseCommand):
 
             # Write the updated entity back to file
             try:
-                with open(secure_file_path, 'w') as f:
+                with open(secure_file_path, "w") as f:
                     yaml.dump(entity_data, f, default_flow_style=False, sort_keys=False)
 
                 print(f"✅ Successfully updated entity at {secure_file_path}")
@@ -266,7 +349,7 @@ class EditCommand(BaseCommand):
                 return 1
 
             # Git commit (unless --no-commit is specified)
-            no_commit = getattr(args, 'no_commit', False)
+            no_commit = getattr(args, "no_commit", False)
             if no_commit:
                 print("⚠️  Changes not committed (--no-commit flag used)")
             else:
@@ -292,46 +375,43 @@ class EditCommand(BaseCommand):
 
     @classmethod
     def _check_id_uniqueness(
-        cls,
-        registry_path: str,
-        entity_data: Dict[str, Any],
-        new_id: str
+        cls, registry_path: str, entity_data: Dict[str, Any], new_id: str
     ) -> Optional[str]:
         """
         Check if the new ID is unique within the entity's type.
-        
+
         Args:
             registry_path: Path to the registry
             entity_data: The current entity data
             new_id: The new ID to set
-            
+
         Returns:
             None if the ID is valid/unique, or an error message string if not.
         """
         # Get the entity type from the loaded data
-        entity_type_value = entity_data.get('type')
+        entity_type_value = entity_data.get("type")
         if not entity_type_value:
             return None  # Can't validate without knowing the type
-        
+
         try:
             actual_entity_type = EntityType.from_string(entity_type_value)
         except ValueError:
             return None  # Invalid entity type in file, skip check
-        
+
         # Get current entity's ID
-        current_id = entity_data.get('id')
-        
+        current_id = entity_data.get("id")
+
         # If setting to the same ID, it's a no-op - allow it
         if current_id == new_id:
             return None
-        
+
         # Load all existing IDs for this entity type
         existing_ids = cls._load_existing_ids(registry_path, actual_entity_type)
-        
+
         # Check if new ID already exists
         if new_id in existing_ids:
             return f"❌ {actual_entity_type.value} with id '{new_id}' already exists in this registry"
-        
+
         return None
 
     @classmethod
@@ -342,7 +422,7 @@ class EditCommand(BaseCommand):
         Args:
             registry_path: Path to the registry
             entity_type: The entity type to load IDs for
-            
+
         Returns:
             Set of existing IDs (strings). Missing/invalid ids are ignored.
         """
@@ -351,7 +431,7 @@ class EditCommand(BaseCommand):
             type_dir = resolve_safe_path(registry_path, entity_type.get_folder_name())
         except PathSecurityError:
             return ids
-            
+
         if not type_dir.exists():
             return ids
 
@@ -439,7 +519,7 @@ class EditCommand(BaseCommand):
         cls,
         registry_path: str,
         identifier: str,
-        entity_type: Optional[EntityType] = None
+        entity_type: Optional[EntityType] = None,
     ) -> Optional[Path]:
         types_to_search = [entity_type] if entity_type else list(EntityType)
 
@@ -466,10 +546,13 @@ class EditCommand(BaseCommand):
             for file_path in type_dir.glob(f"{file_prefix}-*.yml"):
                 try:
                     secure_file_path = resolve_safe_path(registry_path, file_path)
-                    with open(secure_file_path, 'r') as f:
+                    with open(secure_file_path, "r") as f:
                         data = yaml.safe_load(f)
                         if data and isinstance(data, dict):
-                            if data.get('id') == identifier or data.get('uid') == identifier:
+                            if (
+                                data.get("id") == identifier
+                                or data.get("uid") == identifier
+                            ):
                                 return secure_file_path
                 except PathSecurityError:
                     continue
@@ -479,26 +562,28 @@ class EditCommand(BaseCommand):
         return None
 
     @classmethod
-    def _apply_scalar_edits(cls, entity_data: Dict[str, Any], args: argparse.Namespace) -> List[str]:
+    def _apply_scalar_edits(
+        cls, entity_data: Dict[str, Any], args: argparse.Namespace
+    ) -> List[str]:
         changes = []
         # Map of argument names to field names
         scalar_mappings = {
-            'set_title': 'title',
-            'set_description': 'description',
-            'set_status': 'status',
-            'set_id': 'id',
-            'set_start_date': 'start_date',
-            'set_due_date': 'due_date',
-            'set_completion_date': 'completion_date',
-            'set_duration_estimate': 'duration_estimate',
-            'set_category': 'category',
-            'set_parent': 'parent',
-            'set_template': 'template',
+            "set_title": "title",
+            "set_description": "description",
+            "set_status": "status",
+            "set_id": "id",
+            "set_start_date": "start_date",
+            "set_due_date": "due_date",
+            "set_completion_date": "completion_date",
+            "set_duration_estimate": "duration_estimate",
+            "set_category": "category",
+            "set_parent": "parent",
+            "set_template": "template",
         }
         for arg_name, field_name in scalar_mappings.items():
             value = getattr(args, arg_name, None)
             if value is not None:
-                old_value = entity_data.get(field_name, '(not set)')
+                old_value = entity_data.get(field_name, "(not set)")
                 # Skip if setting the same value (no-op)
                 if old_value == value:
                     continue
@@ -507,151 +592,173 @@ class EditCommand(BaseCommand):
         return changes
 
     @classmethod
-    def _apply_list_edits(cls, entity_data: Dict[str, Any], args: argparse.Namespace) -> List[str]:
+    def _apply_list_edits(
+        cls, entity_data: Dict[str, Any], args: argparse.Namespace
+    ) -> List[str]:
         changes = []
 
         # Tags operations
         if args.set_tags is not None:
-            old_tags = entity_data.get('tags', [])
-            entity_data['tags'] = args.set_tags
+            old_tags = entity_data.get("tags", [])
+            entity_data["tags"] = args.set_tags
             changes.append(f"Set tags: {old_tags} → {args.set_tags}")
         else:
             if args.add_tag:
-                tags = entity_data.get('tags', [])
+                tags = entity_data.get("tags", [])
                 for tag in args.add_tag:
                     if tag not in tags:
                         tags.append(tag)
                         changes.append(f"Added tag: '{tag}'")
-                entity_data['tags'] = tags
+                entity_data["tags"] = tags
 
             if args.remove_tag:
-                tags = entity_data.get('tags', [])
+                tags = entity_data.get("tags", [])
                 for tag in args.remove_tag:
                     if tag in tags:
                         tags.remove(tag)
                         changes.append(f"Removed tag: '{tag}'")
-                entity_data['tags'] = tags
+                entity_data["tags"] = tags
 
         # Children operations
         if args.set_children is not None:
-            old_children = entity_data.get('children', [])
-            entity_data['children'] = args.set_children
+            old_children = entity_data.get("children", [])
+            entity_data["children"] = args.set_children
             changes.append(f"Set children: {old_children} → {args.set_children}")
         else:
             if args.add_child:
-                children = entity_data.get('children', [])
+                children = entity_data.get("children", [])
                 for child in args.add_child:
                     if child not in children:
                         children.append(child)
                         changes.append(f"Added child: '{child}'")
-                entity_data['children'] = children
+                entity_data["children"] = children
 
             if args.remove_child:
-                children = entity_data.get('children', [])
+                children = entity_data.get("children", [])
                 for child in args.remove_child:
                     if child in children:
                         children.remove(child)
                         changes.append(f"Removed child: '{child}'")
-                entity_data['children'] = children
+                entity_data["children"] = children
 
         # Related operations
         if args.set_related is not None:
-            old_related = entity_data.get('related', [])
-            entity_data['related'] = args.set_related
+            old_related = entity_data.get("related", [])
+            entity_data["related"] = args.set_related
             changes.append(f"Set related: {old_related} → {args.set_related}")
         else:
             if args.add_related:
-                related = entity_data.get('related', [])
+                related = entity_data.get("related", [])
                 for rel in args.add_related:
                     if rel not in related:
                         related.append(rel)
                         changes.append(f"Added related: '{rel}'")
-                entity_data['related'] = related
+                entity_data["related"] = related
 
             if args.remove_related:
-                related = entity_data.get('related', [])
+                related = entity_data.get("related", [])
                 for rel in args.remove_related:
                     if rel in related:
                         related.remove(rel)
                         changes.append(f"Removed related: '{rel}'")
-                entity_data['related'] = related
+                entity_data["related"] = related
 
         return changes
 
     @classmethod
-    def _apply_complex_edits(cls, entity_data: Dict[str, Any], args: argparse.Namespace) -> List[str]:
+    def _apply_complex_edits(
+        cls, entity_data: Dict[str, Any], args: argparse.Namespace
+    ) -> List[str]:
         changes = []
         # Repository operations
         if args.add_repository:
             for repo_json in args.add_repository:
-                changes.extend(cls._add_complex_item(
-                    entity_data, 'repositories', repo_json, 'repository'
-                ))
+                changes.extend(
+                    cls._add_complex_item(
+                        entity_data, "repositories", repo_json, "repository"
+                    )
+                )
         if args.remove_repository:
             for repo_name in args.remove_repository:
-                changes.extend(cls._remove_complex_item(
-                    entity_data, 'repositories', repo_name, 'name', 'repository'
-                ))
+                changes.extend(
+                    cls._remove_complex_item(
+                        entity_data, "repositories", repo_name, "name", "repository"
+                    )
+                )
 
         # Storage operations
         if args.add_storage:
             for storage_json in args.add_storage:
-                changes.extend(cls._add_complex_item(
-                    entity_data, 'storage', storage_json, 'storage'
-                ))
+                changes.extend(
+                    cls._add_complex_item(
+                        entity_data, "storage", storage_json, "storage"
+                    )
+                )
         if args.remove_storage:
             for storage_name in args.remove_storage:
-                changes.extend(cls._remove_complex_item(
-                    entity_data, 'storage', storage_name, 'name', 'storage'
-                ))
+                changes.extend(
+                    cls._remove_complex_item(
+                        entity_data, "storage", storage_name, "name", "storage"
+                    )
+                )
 
         # Database operations
         if args.add_database:
             for db_json in args.add_database:
-                changes.extend(cls._add_complex_item(
-                    entity_data, 'databases', db_json, 'database'
-                ))
+                changes.extend(
+                    cls._add_complex_item(entity_data, "databases", db_json, "database")
+                )
         if args.remove_database:
             for db_name in args.remove_database:
-                changes.extend(cls._remove_complex_item(
-                    entity_data, 'databases', db_name, 'name', 'database'
-                ))
+                changes.extend(
+                    cls._remove_complex_item(
+                        entity_data, "databases", db_name, "name", "database"
+                    )
+                )
 
         # Tool operations
         if args.add_tool:
             for tool_json in args.add_tool:
-                changes.extend(cls._add_complex_item(
-                    entity_data, 'tools', tool_json, 'tool'
-                ))
+                changes.extend(
+                    cls._add_complex_item(entity_data, "tools", tool_json, "tool")
+                )
         if args.remove_tool:
             for tool_name in args.remove_tool:
-                changes.extend(cls._remove_complex_item(
-                    entity_data, 'tools', tool_name, 'name', 'tool'
-                ))
+                changes.extend(
+                    cls._remove_complex_item(
+                        entity_data, "tools", tool_name, "name", "tool"
+                    )
+                )
 
         # Model operations
         if args.add_model:
             for model_json in args.add_model:
-                changes.extend(cls._add_complex_item(
-                    entity_data, 'models', model_json, 'model'
-                ))
+                changes.extend(
+                    cls._add_complex_item(entity_data, "models", model_json, "model")
+                )
         if args.remove_model:
             for model_id in args.remove_model:
-                changes.extend(cls._remove_complex_item(
-                    entity_data, 'models', model_id, 'id', 'model'
-                ))
+                changes.extend(
+                    cls._remove_complex_item(
+                        entity_data, "models", model_id, "id", "model"
+                    )
+                )
 
         # Knowledge base operations
         if args.add_kb:
             for kb_json in args.add_kb:
-                changes.extend(cls._add_complex_item(
-                    entity_data, 'knowledge_bases', kb_json, 'knowledge base'
-                ))
+                changes.extend(
+                    cls._add_complex_item(
+                        entity_data, "knowledge_bases", kb_json, "knowledge base"
+                    )
+                )
         if args.remove_kb:
             for kb_id in args.remove_kb:
-                changes.extend(cls._remove_complex_item(
-                    entity_data, 'knowledge_bases', kb_id, 'id', 'knowledge base'
-                ))
+                changes.extend(
+                    cls._remove_complex_item(
+                        entity_data, "knowledge_bases", kb_id, "id", "knowledge base"
+                    )
+                )
 
         return changes
 
@@ -661,42 +768,44 @@ class EditCommand(BaseCommand):
         entity_data: Dict[str, Any],
         field_name: str,
         value_str: str,
-        item_type: str
+        item_type: str,
     ) -> List[str]:
         """
         Add a complex item to a list field by parsing JSON.
-        
+
         Args:
             entity_data: The entity data dictionary to modify
             field_name: The name of the field (e.g., 'repositories')
             value_str: JSON string representing the item to add
             item_type: Human-readable name for error messages (e.g., 'repository')
-            
+
         Returns:
             List of change descriptions
         """
         changes = []
-        
+
         # Parse the JSON object
         try:
             new_item = json.loads(value_str)
             if not isinstance(new_item, dict):
                 raise ValueError("Expected a JSON object")
         except (json.JSONDecodeError, ValueError) as e:
-            print(f"⚠️  Warning: Invalid format for {item_type}. Expected a JSON object.")
-            print(f"   Example: '{{\"name\": \"example\", \"url\": \"https://...\"}}'")
+            print(
+                f"⚠️  Warning: Invalid format for {item_type}. Expected a JSON object."
+            )
+            print(f'   Example: \'{{"name": "example", "url": "https://..."}}\'')
             return changes
-        
+
         # Get or create the list
         items = entity_data.get(field_name, [])
         if not isinstance(items, list):
             items = []
-        
+
         # Add the item
         items.append(new_item)
         entity_data[field_name] = items
         changes.append(f"Added {item_type}: {new_item}")
-        
+
         return changes
 
     @classmethod
@@ -706,14 +815,14 @@ class EditCommand(BaseCommand):
         field_name: str,
         identifier: str,
         key: str,
-        item_type: str
+        item_type: str,
     ) -> List[str]:
         """Remove a complex item from a list field by identifier"""
         changes = []
         items = entity_data.get(field_name, [])
         if not isinstance(items, list):
             return changes
-        
+
         # Find and remove the item
         original_len = len(items)
         items = [item for item in items if item.get(key) != identifier]

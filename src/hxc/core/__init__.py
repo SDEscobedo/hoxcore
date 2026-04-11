@@ -7,12 +7,11 @@ including configuration management, entity type definitions, and core operations
 
 from hxc.core.config import Config
 from hxc.core.enums import (
-    EntityType,
     EntityStatus,
+    EntityType,
     OutputFormat,
     SortField,
 )
-
 
 __all__ = [
     "Config",

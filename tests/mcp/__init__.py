@@ -6,8 +6,8 @@ that enable LLM interaction with HoxCore registries.
 """
 
 __all__ = [
-    'test_server',
-    'test_tools',
-    'test_resources',
-    'test_prompts',
+    "test_server",
+    "test_tools",
+    "test_resources",
+    "test_prompts",
 ]
