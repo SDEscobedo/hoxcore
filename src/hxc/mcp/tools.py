@@ -17,6 +17,12 @@ from hxc.core.operations.create import (
     CreateOperationError,
     DuplicateIdError,
 )
+from hxc.core.operations.delete import (
+    DeleteOperation,
+    DeleteOperationError,
+    EntityNotFoundError,
+    AmbiguousEntityError,
+)
 
 
 def list_entities_tool(
@@ -820,26 +826,30 @@ def delete_entity_tool(
     identifier: str,
     force: bool = False,
     entity_type: Optional[str] = None,
+    use_git: bool = True,
     registry_path: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Delete an entity from the registry.
 
-    When force is False (the default), returns a confirmation prompt and takes no
-    action. Call again with force=True to proceed with deletion.
+    This tool performs git-aware deletion by default, using `git rm` and creating
+    a structured commit message with entity metadata. When force is False (the
+    default), returns a confirmation prompt and takes no action. Call again with
+    force=True to proceed with deletion.
 
     Args:
         identifier: UID or human-readable ID of the entity to delete
         force: If False, returns a confirmation prompt without deleting.
                Set True to confirm deletion.
         entity_type: Optional type filter to disambiguate the identifier
+        use_git: Whether to commit the deletion to git (default: True)
         registry_path: Optional registry path (uses default if not provided)
 
     Returns:
-        Dictionary indicating success, or a confirmation_required flag when force is False.
+        Dictionary indicating success with deleted_title, deleted_type, file_path,
+        and git_committed; or a confirmation_required flag when force is False;
+        or an error message on failure.
     """
-    import os
-
     try:
         reg_path = _get_registry_path(registry_path)
         if not reg_path:
@@ -852,23 +862,33 @@ def delete_entity_tool(
             except ValueError as e:
                 return {"success": False, "error": str(e), "identifier": identifier}
 
-        file_path = _find_entity_file(reg_path, identifier, entity_type_enum)
-        if not file_path:
+        operation = DeleteOperation(reg_path)
+
+        # Get entity info for confirmation or deletion
+        try:
+            info = operation.get_entity_info(identifier, entity_type_enum)
+        except EntityNotFoundError:
             return {
                 "success": False,
                 "error": f"Entity not found: {identifier}",
                 "identifier": identifier,
             }
+        except AmbiguousEntityError as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "identifier": identifier,
+            }
+        except DeleteOperationError as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "identifier": identifier,
+            }
 
-        try:
-            secure_file_path = resolve_safe_path(reg_path, file_path)
-            with open(secure_file_path, "r") as f:
-                entity_data = yaml.safe_load(f) or {}
-        except PathSecurityError as e:
-            return {"success": False, "error": f"Security error: {e}", "identifier": identifier}
-
-        entity_title = entity_data.get("title", identifier)
-        entity_type_value = entity_data.get("type", "entity")
+        entity_title = info["entity_title"]
+        entity_type_value = info["entity_type"]
+        file_path = info["file_path"]
 
         if not force:
             return {
@@ -877,25 +897,47 @@ def delete_entity_tool(
                 "identifier": identifier,
                 "entity_title": entity_title,
                 "entity_type": entity_type_value,
-                "file_path": str(secure_file_path),
+                "file_path": file_path,
                 "message": (
                     f"Confirmation required: about to permanently delete {entity_type_value} "
-                    f"'{entity_title}' at {secure_file_path}. "
+                    f"'{entity_title}' at {file_path}. "
                     "Call delete_entity_tool again with force=True to proceed."
                 ),
             }
 
+        # Perform the deletion
         try:
-            os.remove(str(secure_file_path))
-        except Exception as e:
-            return {"success": False, "error": f"Error deleting entity: {e}", "identifier": identifier}
+            result = operation.delete_entity(
+                identifier=identifier,
+                entity_type=entity_type_enum,
+                use_git=use_git,
+            )
+        except EntityNotFoundError as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "identifier": identifier,
+            }
+        except AmbiguousEntityError as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "identifier": identifier,
+            }
+        except DeleteOperationError as e:
+            return {
+                "success": False,
+                "error": f"Error deleting entity: {e}",
+                "identifier": identifier,
+            }
 
         return {
             "success": True,
             "identifier": identifier,
-            "deleted_title": entity_title,
-            "deleted_type": entity_type_value,
-            "file_path": str(secure_file_path),
+            "deleted_title": result["deleted_title"],
+            "deleted_type": result["deleted_type"],
+            "file_path": result["file_path"],
+            "git_committed": result.get("git_committed", False),
         }
 
     except PathSecurityError as e:

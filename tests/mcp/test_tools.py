@@ -26,6 +26,12 @@ from hxc.mcp.tools import (
 )
 from hxc.core.enums import EntityType
 from hxc.core.operations.create import CreateOperation, DuplicateIdError
+from hxc.core.operations.delete import (
+    DeleteOperation,
+    DeleteOperationError,
+    EntityNotFoundError,
+    AmbiguousEntityError,
+)
 
 
 @pytest.fixture
@@ -168,6 +174,69 @@ registry:
     
     # Cleanup
     shutil.rmtree(temp_dir)
+
+
+@pytest.fixture
+def git_registry_with_entities(git_registry):
+    """Create a git registry with tracked entity files for deletion testing."""
+    registry_path = Path(git_registry)
+    
+    # Create test project
+    project_content = {
+        "type": "project",
+        "uid": "proj0001",
+        "id": "P-001",
+        "title": "Git Project",
+        "status": "active",
+        "start_date": "2024-01-01",
+    }
+    with open(registry_path / "projects" / "proj-proj0001.yml", "w") as f:
+        yaml.dump(project_content, f)
+    
+    # Create test program
+    program_content = {
+        "type": "program",
+        "uid": "prog0001",
+        "id": "PRG-001",
+        "title": "Git Program",
+        "status": "active",
+        "start_date": "2024-01-01",
+    }
+    with open(registry_path / "programs" / "prog-prog0001.yml", "w") as f:
+        yaml.dump(program_content, f)
+    
+    # Create test mission
+    mission_content = {
+        "type": "mission",
+        "uid": "miss0001",
+        "id": "M-001",
+        "title": "Git Mission",
+        "status": "planned",
+        "start_date": "2024-01-01",
+    }
+    with open(registry_path / "missions" / "miss-miss0001.yml", "w") as f:
+        yaml.dump(mission_content, f)
+    
+    # Create test action
+    action_content = {
+        "type": "action",
+        "uid": "act0001",
+        "id": "A-001",
+        "title": "Git Action",
+        "status": "active",
+        "start_date": "2024-01-01",
+    }
+    with open(registry_path / "actions" / "act-act0001.yml", "w") as f:
+        yaml.dump(action_content, f)
+    
+    # Stage and commit the entity files
+    subprocess.run(["git", "add", "."], cwd=registry_path, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", "Add test entities"],
+        cwd=registry_path, check=True, capture_output=True
+    )
+    
+    return git_registry
 
 
 class TestListEntitiesTool:
@@ -2041,6 +2110,7 @@ class TestDeleteEntityTool:
         result = delete_entity_tool(
             identifier="P-001",
             force=True,
+            use_git=False,
             registry_path=temp_registry,
         )
  
@@ -2052,6 +2122,7 @@ class TestDeleteEntityTool:
         result = delete_entity_tool(
             identifier="P-001",
             force=True,
+            use_git=False,
             registry_path=temp_registry,
         )
  
@@ -2076,6 +2147,7 @@ class TestDeleteEntityTool:
         result = delete_entity_tool(
             identifier="proj-test-002",
             force=True,
+            use_git=False,
             registry_path=temp_registry,
         )
  
@@ -2105,6 +2177,373 @@ class TestDeleteEntityTool:
         assert result["entity_title"] == "Test Project One"
         assert result["entity_type"] == "project"
         assert "file_path" in result
+
+    def test_delete_returns_git_committed_field(self, temp_registry):
+        """Test that delete returns git_committed field"""
+        result = delete_entity_tool(
+            identifier="P-001",
+            force=True,
+            use_git=False,
+            registry_path=temp_registry,
+        )
+        
+        assert result["success"] is True
+        assert "git_committed" in result
+        assert result["git_committed"] is False
+
+    def test_delete_uses_shared_delete_operation(self, temp_registry):
+        """Test that delete_entity_tool uses DeleteOperation internally"""
+        with patch("hxc.mcp.tools.DeleteOperation") as MockOperation:
+            mock_instance = MagicMock()
+            mock_instance.get_entity_info.return_value = {
+                "success": True,
+                "identifier": "P-001",
+                "entity_title": "Test Project",
+                "entity_type": "project",
+                "file_path": str(Path(temp_registry) / "projects" / "proj-test-001.yml"),
+                "entity": {"type": "project", "uid": "proj-test-001", "title": "Test Project"},
+            }
+            mock_instance.delete_entity.return_value = {
+                "success": True,
+                "identifier": "P-001",
+                "deleted_title": "Test Project",
+                "deleted_type": "project",
+                "file_path": str(Path(temp_registry) / "projects" / "proj-test-001.yml"),
+                "entity": {"type": "project", "uid": "proj-test-001", "title": "Test Project"},
+                "git_committed": False,
+            }
+            MockOperation.return_value = mock_instance
+            
+            result = delete_entity_tool(
+                identifier="P-001",
+                force=True,
+                use_git=False,
+                registry_path=temp_registry,
+            )
+        
+        assert result["success"] is True
+        MockOperation.assert_called_once_with(temp_registry)
+        mock_instance.delete_entity.assert_called_once()
+
+    def test_delete_handles_entity_not_found_error(self, temp_registry):
+        """Test that EntityNotFoundError is handled correctly"""
+        with patch("hxc.mcp.tools.DeleteOperation") as MockOperation:
+            mock_instance = MagicMock()
+            mock_instance.get_entity_info.side_effect = EntityNotFoundError(
+                "Entity not found: nonexistent"
+            )
+            MockOperation.return_value = mock_instance
+            
+            result = delete_entity_tool(
+                identifier="nonexistent",
+                force=True,
+                registry_path=temp_registry,
+            )
+        
+        assert result["success"] is False
+        assert "not found" in result["error"].lower()
+
+    def test_delete_handles_ambiguous_entity_error(self, temp_registry):
+        """Test that AmbiguousEntityError is handled correctly"""
+        with patch("hxc.mcp.tools.DeleteOperation") as MockOperation:
+            mock_instance = MagicMock()
+            mock_instance.get_entity_info.side_effect = AmbiguousEntityError(
+                "Multiple entities found with identifier 'duplicate'"
+            )
+            MockOperation.return_value = mock_instance
+            
+            result = delete_entity_tool(
+                identifier="duplicate",
+                force=True,
+                registry_path=temp_registry,
+            )
+        
+        assert result["success"] is False
+        assert "Multiple entities found" in result["error"]
+
+    def test_delete_with_entity_type_filter(self, temp_registry):
+        """Test delete with entity_type filter"""
+        result = delete_entity_tool(
+            identifier="P-001",
+            force=True,
+            entity_type="project",
+            use_git=False,
+            registry_path=temp_registry,
+        )
+        
+        assert result["success"] is True
+        assert result["deleted_type"] == "project"
+
+    def test_delete_with_invalid_entity_type(self, temp_registry):
+        """Test delete with invalid entity type"""
+        result = delete_entity_tool(
+            identifier="P-001",
+            force=True,
+            entity_type="invalid_type",
+            registry_path=temp_registry,
+        )
+        
+        assert result["success"] is False
+        assert "error" in result
+
+
+class TestDeleteEntityToolGitIntegration:
+    """Tests for git integration in delete_entity_tool"""
+    
+    def test_delete_with_use_git_true_creates_commit(self, git_registry_with_entities):
+        """Test that use_git=True creates a git commit"""
+        result = delete_entity_tool(
+            identifier="P-001",
+            force=True,
+            use_git=True,
+            registry_path=git_registry_with_entities,
+        )
+        
+        assert result["success"] is True
+        assert result["git_committed"] is True
+        
+        # Verify commit exists
+        log = subprocess.run(
+            ["git", "log", "--oneline"],
+            cwd=git_registry_with_entities,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        assert "Delete" in log.stdout
+        assert "proj-proj0001" in log.stdout
+    
+    def test_delete_with_use_git_false_skips_commit(self, git_registry_with_entities):
+        """Test that use_git=False skips git commit"""
+        # Get initial commit count
+        log_before = subprocess.run(
+            ["git", "log", "--oneline"],
+            cwd=git_registry_with_entities,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        initial_count = len(log_before.stdout.strip().splitlines())
+        
+        result = delete_entity_tool(
+            identifier="P-001",
+            force=True,
+            use_git=False,
+            registry_path=git_registry_with_entities,
+        )
+        
+        assert result["success"] is True
+        assert result["git_committed"] is False
+        
+        # Verify no new commit
+        log_after = subprocess.run(
+            ["git", "log", "--oneline"],
+            cwd=git_registry_with_entities,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        final_count = len(log_after.stdout.strip().splitlines())
+        
+        assert final_count == initial_count
+    
+    def test_delete_default_use_git_is_true(self, git_registry_with_entities):
+        """Test that use_git defaults to True"""
+        result = delete_entity_tool(
+            identifier="P-001",
+            force=True,
+            registry_path=git_registry_with_entities,
+        )
+        
+        assert result["success"] is True
+        assert result["git_committed"] is True
+    
+    def test_delete_commit_message_format(self, git_registry_with_entities):
+        """Test that commit message follows expected format"""
+        result = delete_entity_tool(
+            identifier="P-001",
+            force=True,
+            use_git=True,
+            registry_path=git_registry_with_entities,
+        )
+        
+        assert result["success"] is True
+        
+        # Get commit message
+        log = subprocess.run(
+            ["git", "log", "-1", "--format=%B"],
+            cwd=git_registry_with_entities,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        
+        message = log.stdout
+        
+        # Verify message components
+        assert "Delete proj-proj0001: Git Project" in message
+        assert "Entity type: project" in message
+        assert "Entity ID: P-001" in message
+        assert "Entity UID: proj0001" in message
+    
+    def test_delete_in_non_git_registry_handles_gracefully(self, temp_registry):
+        """Test that git operations handle non-git registry gracefully"""
+        result = delete_entity_tool(
+            identifier="P-001",
+            force=True,
+            use_git=True,  # Requesting git, but registry is not git
+            registry_path=temp_registry,
+        )
+        
+        assert result["success"] is True
+        assert result["git_committed"] is False
+        
+        # File should still be deleted
+        assert not Path(temp_registry, "projects", "proj-test-001.yml").exists()
+    
+    def test_delete_sequential_commits(self, git_registry_with_entities):
+        """Test that multiple deletions produce separate commits"""
+        # Delete first entity
+        result1 = delete_entity_tool(
+            identifier="P-001",
+            force=True,
+            use_git=True,
+            registry_path=git_registry_with_entities,
+        )
+        
+        # Delete second entity
+        result2 = delete_entity_tool(
+            identifier="PRG-001",
+            force=True,
+            use_git=True,
+            registry_path=git_registry_with_entities,
+        )
+        
+        assert result1["success"] is True
+        assert result2["success"] is True
+        
+        # Verify both commits exist
+        log = subprocess.run(
+            ["git", "log", "--oneline"],
+            cwd=git_registry_with_entities,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        
+        assert "proj-proj0001" in log.stdout or "Git Project" in log.stdout
+        assert "prog-prog0001" in log.stdout or "Git Program" in log.stdout
+        
+        # Count commits (initial + add entities + 2 deletes)
+        commit_count = len(log.stdout.strip().splitlines())
+        assert commit_count >= 4
+    
+    def test_delete_all_entity_types_with_git(self, git_registry_with_entities):
+        """Test deleting all entity types with git integration"""
+        entity_tests = [
+            ("P-001", "project", "proj-proj0001"),
+            ("PRG-001", "program", "prog-prog0001"),
+            ("M-001", "mission", "miss-miss0001"),
+            ("A-001", "action", "act-act0001"),
+        ]
+        
+        for entity_id, entity_type, expected_prefix in entity_tests:
+            result = delete_entity_tool(
+                identifier=entity_id,
+                force=True,
+                use_git=True,
+                registry_path=git_registry_with_entities,
+            )
+            
+            assert result["success"] is True, f"Failed for {entity_type}: {result.get('error')}"
+            assert result["git_committed"] is True
+            assert result["deleted_type"] == entity_type
+        
+        # Verify all commits exist
+        log = subprocess.run(
+            ["git", "log", "--oneline"],
+            cwd=git_registry_with_entities,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        
+        # Should have at least 6 commits (initial + add entities + 4 deletes)
+        commit_count = len(log.stdout.strip().splitlines())
+        assert commit_count >= 6
+    
+    def test_delete_file_removed_from_git_index(self, git_registry_with_entities):
+        """Test that file is removed from git index after deletion"""
+        result = delete_entity_tool(
+            identifier="P-001",
+            force=True,
+            use_git=True,
+            registry_path=git_registry_with_entities,
+        )
+        
+        assert result["success"] is True
+        
+        # Check git status
+        status = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=git_registry_with_entities,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        
+        # File should not appear in status (committed)
+        assert "proj-proj0001.yml" not in status.stdout
+
+
+class TestDeleteEntityToolErrorHandling:
+    """Tests for error handling in delete_entity_tool"""
+    
+    def test_delete_handles_path_security_error(self, temp_registry):
+        """Test that path security errors are handled"""
+        from hxc.utils.path_security import PathSecurityError
+        
+        with patch("hxc.mcp.tools.DeleteOperation") as MockOperation:
+            mock_instance = MagicMock()
+            mock_instance.get_entity_info.side_effect = PathSecurityError(
+                "Path traversal detected"
+            )
+            MockOperation.return_value = mock_instance
+            
+            result = delete_entity_tool(
+                identifier="../../../etc/passwd",
+                force=True,
+                registry_path=temp_registry,
+            )
+        
+        assert result["success"] is False
+        assert "Security error" in result["error"]
+    
+    def test_delete_handles_delete_operation_error(self, temp_registry):
+        """Test that DeleteOperationError is handled correctly"""
+        with patch("hxc.mcp.tools.DeleteOperation") as MockOperation:
+            mock_instance = MagicMock()
+            mock_instance.get_entity_info.return_value = {
+                "success": True,
+                "identifier": "P-001",
+                "entity_title": "Test Project",
+                "entity_type": "project",
+                "file_path": str(Path(temp_registry) / "projects" / "proj-test-001.yml"),
+                "entity": {"type": "project", "uid": "proj-test-001", "title": "Test Project"},
+            }
+            mock_instance.delete_entity.side_effect = DeleteOperationError(
+                "Delete operation failed"
+            )
+            MockOperation.return_value = mock_instance
+            
+            result = delete_entity_tool(
+                identifier="P-001",
+                force=True,
+                registry_path=temp_registry,
+            )
+        
+        assert result["success"] is False
+        assert "Error deleting entity" in result["error"]
  
  
 class TestReadOnlyServer:
@@ -2246,6 +2685,7 @@ class TestWriteToolsIntegration:
         delete_result = delete_entity_tool(
             identifier=uid,
             force=True,
+            use_git=False,
             registry_path=temp_registry,
         )
         assert delete_result["success"] is True
@@ -2284,6 +2724,89 @@ class TestWriteToolsIntegration:
         
         assert "Git Integration Test" in log.stdout
         assert "P-GIT-INT" in log.stdout
+
+    def test_create_then_delete_with_git(self, git_registry):
+        """Test creating and then deleting an entity with git integration"""
+        # Create
+        create_result = create_entity_tool(
+            type="project",
+            title="Git Delete Test",
+            id="P-GIT-DEL",
+            use_git=True,
+            registry_path=git_registry,
+        )
+        
+        assert create_result["success"] is True
+        uid = create_result["uid"]
+        
+        # Delete
+        delete_result = delete_entity_tool(
+            identifier=uid,
+            force=True,
+            use_git=True,
+            registry_path=git_registry,
+        )
+        
+        assert delete_result["success"] is True
+        assert delete_result["git_committed"] is True
+        
+        # Verify both commits exist
+        log = subprocess.run(
+            ["git", "log", "--oneline"],
+            cwd=git_registry,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        
+        # Should have create and delete commits
+        assert "Create" in log.stdout or "Git Delete Test" in log.stdout
+        assert "Delete" in log.stdout
+
+    def test_full_lifecycle_with_git(self, git_registry):
+        """Test full create -> edit -> delete lifecycle with git"""
+        # Create
+        create_result = create_entity_tool(
+            type="project",
+            title="Lifecycle Git Test",
+            id="P-LIFECYCLE",
+            use_git=True,
+            registry_path=git_registry,
+        )
+        assert create_result["success"] is True
+        assert create_result["git_committed"] is True
+        uid = create_result["uid"]
+        
+        # Edit (note: edit doesn't have git integration in the current implementation)
+        edit_result = edit_entity_tool(
+            identifier=uid,
+            set_title="Lifecycle Git Test - Edited",
+            registry_path=git_registry,
+        )
+        assert edit_result["success"] is True
+        
+        # Delete
+        delete_result = delete_entity_tool(
+            identifier=uid,
+            force=True,
+            use_git=True,
+            registry_path=git_registry,
+        )
+        assert delete_result["success"] is True
+        assert delete_result["git_committed"] is True
+        
+        # Verify git history
+        log = subprocess.run(
+            ["git", "log", "--oneline"],
+            cwd=git_registry,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        
+        # Should have at least initial + create + delete
+        commit_count = len(log.stdout.strip().splitlines())
+        assert commit_count >= 3
 
 
 class TestMCPCLIBehavioralParity:
@@ -2392,3 +2915,141 @@ class TestMCPCLIBehavioralParity:
         assert entity["tools"] == []
         assert entity["models"] == []
         assert entity["knowledge_bases"] == []
+
+    def test_delete_commit_message_matches_cli(self, git_registry_with_entities):
+        """Test that delete commit message format matches CLI"""
+        result = delete_entity_tool(
+            identifier="P-001",
+            force=True,
+            use_git=True,
+            registry_path=git_registry_with_entities,
+        )
+        
+        assert result["success"] is True
+        
+        # Get commit message
+        log = subprocess.run(
+            ["git", "log", "-1", "--format=%B"],
+            cwd=git_registry_with_entities,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        
+        message = log.stdout
+        
+        # Subject line format: "Delete {prefix}-{uid}: {title}"
+        assert "Delete proj-proj0001: Git Project" in message
+        
+        # Body contains entity metadata
+        assert "Entity type: project" in message
+        assert "Entity ID: P-001" in message
+        assert "Entity UID: proj0001" in message
+
+    def test_delete_file_prefix_conventions(self, git_registry_with_entities):
+        """Test that delete file prefixes match expected conventions"""
+        tests = [
+            ("P-001", "proj-"),
+            ("PRG-001", "prog-"),
+            ("M-001", "miss-"),
+            ("A-001", "act-"),
+        ]
+        
+        for entity_id, expected_prefix in tests:
+            result = delete_entity_tool(
+                identifier=entity_id,
+                force=True,
+                use_git=True,
+                registry_path=git_registry_with_entities,
+            )
+            
+            assert result["success"] is True
+            assert expected_prefix in result["file_path"]
+
+    def test_delete_return_structure_matches_cli(self, temp_registry):
+        """Test that delete return structure is consistent"""
+        result = delete_entity_tool(
+            identifier="P-001",
+            force=True,
+            use_git=False,
+            registry_path=temp_registry,
+        )
+        
+        assert result["success"] is True
+        
+        # All expected keys should be present
+        expected_keys = {
+            "success",
+            "identifier",
+            "deleted_title",
+            "deleted_type",
+            "file_path",
+            "git_committed",
+        }
+        
+        for key in expected_keys:
+            assert key in result, f"Missing key: {key}"
+
+    def test_delete_mcp_and_cli_produce_same_git_history(self, git_registry_with_entities):
+        """Test that MCP and CLI produce identical git history structure"""
+        # Use MCP to delete
+        result = delete_entity_tool(
+            identifier="P-001",
+            force=True,
+            use_git=True,
+            registry_path=git_registry_with_entities,
+        )
+        
+        assert result["success"] is True
+        assert result["git_committed"] is True
+        
+        # Verify commit structure
+        log = subprocess.run(
+            ["git", "log", "-1", "--format=%B"],
+            cwd=git_registry_with_entities,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        
+        message = log.stdout
+        
+        # Verify CLI-compatible format
+        lines = message.strip().split('\n')
+        
+        # Subject line
+        assert lines[0].startswith("Delete ")
+        assert ":" in lines[0]
+        
+        # Body (after blank line)
+        body = '\n'.join(lines[2:])
+        assert "Entity type:" in body
+        assert "Entity ID:" in body
+        assert "Entity UID:" in body
+
+    def test_delete_handles_untracked_files_like_cli(self, git_registry):
+        """Test that MCP handles untracked files the same as CLI"""
+        # Create an untracked entity file
+        untracked_entity = {
+            "type": "project",
+            "uid": "untracked",
+            "id": "P-UNTRACKED",
+            "title": "Untracked Project",
+            "status": "active",
+        }
+        untracked_file = Path(git_registry) / "projects" / "proj-untracked.yml"
+        with open(untracked_file, "w") as f:
+            yaml.dump(untracked_entity, f)
+        
+        # Delete via MCP
+        result = delete_entity_tool(
+            identifier="P-UNTRACKED",
+            force=True,
+            use_git=True,
+            registry_path=git_registry,
+        )
+        
+        # Should succeed (fallback to simple deletion)
+        assert result["success"] is True
+        # git_committed may be False for untracked files
+        assert not untracked_file.exists()
