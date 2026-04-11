@@ -23,6 +23,18 @@ from hxc.core.operations.delete import (
     DeleteOperationError,
     EntityNotFoundError,
 )
+from hxc.core.operations.edit import (
+    EditOperation,
+    EditOperationError,
+    InvalidValueError,
+    NoChangesError,
+)
+from hxc.core.operations.edit import (
+    DuplicateIdError as EditDuplicateIdError,
+)
+from hxc.core.operations.edit import (
+    EntityNotFoundError as EditEntityNotFoundError,
+)
 from hxc.core.operations.list import (
     ListOperation,
     ListOperationError,
@@ -716,17 +728,22 @@ def edit_entity_tool(
     add_related: Optional[List[str]] = None,
     remove_related: Optional[List[str]] = None,
     entity_type: Optional[str] = None,
+    use_git: bool = True,
     registry_path: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Edit properties of an existing registry entity.
+
+    This tool performs git-aware editing by default, staging and committing the
+    modified entity file with a structured commit message. ID uniqueness is
+    validated when changing the ID field to ensure data integrity.
 
     Args:
         identifier: UID or human-readable ID of the entity to edit
         set_title: New title value
         set_description: New description value
         set_status: New status value
-        set_id: New human-readable ID
+        set_id: New human-readable ID. Must be unique within entity type.
         set_category: New category path
         set_parent: New parent UID or ID
         set_start_date: New start date (YYYY-MM-DD)
@@ -739,10 +756,12 @@ def edit_entity_tool(
         add_related: Related entity UIDs/IDs to add
         remove_related: Related entity UIDs/IDs to remove
         entity_type: Optional type filter to disambiguate the identifier
+        use_git: Whether to commit the change to git (default: True)
         registry_path: Optional registry path (uses default if not provided)
 
     Returns:
-        Dictionary with updated entity on success; error message on failure.
+        Dictionary with identifier, changes, entity, file_path, and git_committed
+        on success; error message on failure.
     """
     try:
         reg_path = _get_registry_path(registry_path)
@@ -760,159 +779,72 @@ def edit_entity_tool(
             except ValueError as e:
                 return {"success": False, "error": str(e), "identifier": identifier}
 
-        file_path = _find_entity_file(reg_path, identifier, entity_type_enum)
-        if not file_path:
-            return {
-                "success": False,
-                "error": f"Entity not found: {identifier}",
-                "identifier": identifier,
-            }
+        # Use shared EditOperation
+        operation = EditOperation(reg_path)
 
-        try:
-            secure_file_path = resolve_safe_path(reg_path, file_path)
-            with open(secure_file_path, "r") as f:
-                entity_data = yaml.safe_load(f)
-        except PathSecurityError as e:
-            return {
-                "success": False,
-                "error": f"Security error: {e}",
-                "identifier": identifier,
-            }
-
-        if not entity_data or not isinstance(entity_data, dict):
-            return {
-                "success": False,
-                "error": f"Invalid entity data for {identifier}",
-                "identifier": identifier,
-            }
-
-        # Check ID uniqueness if set_id is provided
-        if set_id is not None:
-            id_check_error = _check_id_uniqueness(reg_path, entity_data, set_id)
-            if id_check_error is not None:
-                return {
-                    "success": False,
-                    "error": id_check_error,
-                    "identifier": identifier,
-                }
-
-        changes: List[str] = []
-        # Track whether the caller specified any arguments at all (even no-ops)
-        anything_specified = False
-
-        # Scalar fields
-        scalar_mappings = {
-            "title": set_title,
-            "description": set_description,
-            "status": set_status,
-            "id": set_id,
-            "category": set_category,
-            "parent": set_parent,
-            "start_date": set_start_date,
-            "due_date": set_due_date,
-            "completion_date": set_completion_date,
-        }
-        for field, value in scalar_mappings.items():
-            if value is not None:
-                anything_specified = True
-                if field == "status":
-                    try:
-                        value = EntityStatus.from_string(value).value
-                    except ValueError as e:
-                        return {
-                            "success": False,
-                            "error": str(e),
-                            "identifier": identifier,
-                        }
-                old = entity_data.get(field)
-                # Skip if setting the same value (no-op)
-                if old == value:
-                    continue
-                entity_data[field] = value
-                changes.append(f"Set {field}: {old!r} → {value!r}")
-
-        # Tag operations
-        if add_tags:
-            anything_specified = True
-            tags = entity_data.get("tags") or []
-            for tag in add_tags:
-                if tag not in tags:
-                    tags.append(tag)
-                    changes.append(f"Added tag: {tag!r}")
-            entity_data["tags"] = tags
-
-        if remove_tags:
-            anything_specified = True
-            tags = entity_data.get("tags") or []
-            for tag in remove_tags:
-                if tag in tags:
-                    tags.remove(tag)
-                    changes.append(f"Removed tag: {tag!r}")
-            entity_data["tags"] = tags
-
-        # Children operations
-        if add_children:
-            anything_specified = True
-            children = entity_data.get("children") or []
-            for child in add_children:
-                if child not in children:
-                    children.append(child)
-                    changes.append(f"Added child: {child!r}")
-            entity_data["children"] = children
-
-        if remove_children:
-            anything_specified = True
-            children = entity_data.get("children") or []
-            for child in remove_children:
-                if child in children:
-                    children.remove(child)
-                    changes.append(f"Removed child: {child!r}")
-            entity_data["children"] = children
-
-        # Related operations
-        if add_related:
-            anything_specified = True
-            related = entity_data.get("related") or []
-            for rel in add_related:
-                if rel not in related:
-                    related.append(rel)
-                    changes.append(f"Added related: {rel!r}")
-            entity_data["related"] = related
-
-        if remove_related:
-            anything_specified = True
-            related = entity_data.get("related") or []
-            for rel in remove_related:
-                if rel in related:
-                    related.remove(rel)
-                    changes.append(f"Removed related: {rel!r}")
-            entity_data["related"] = related
-
-        if not anything_specified:
-            return {
-                "success": False,
-                "error": "No changes specified",
-                "identifier": identifier,
-            }
-
-        try:
-            with open(secure_file_path, "w") as f:
-                yaml.dump(entity_data, f, default_flow_style=False, sort_keys=False)
-        except Exception as e:
-            return {
-                "success": False,
-                "error": f"Error writing changes: {e}",
-                "identifier": identifier,
-            }
+        result = operation.edit_entity(
+            identifier=identifier,
+            entity_type=entity_type_enum,
+            # Scalar fields
+            set_title=set_title,
+            set_description=set_description,
+            set_status=set_status,
+            set_id=set_id,
+            set_start_date=set_start_date,
+            set_due_date=set_due_date,
+            set_completion_date=set_completion_date,
+            set_category=set_category,
+            set_parent=set_parent,
+            # List fields
+            add_tags=add_tags,
+            remove_tags=remove_tags,
+            add_children=add_children,
+            remove_children=remove_children,
+            add_related=add_related,
+            remove_related=remove_related,
+            # Options
+            use_git=use_git,
+        )
 
         return {
             "success": True,
             "identifier": identifier,
-            "changes": changes,
-            "entity": entity_data,
-            "file_path": str(secure_file_path),
+            "changes": result["changes"],
+            "entity": result["entity"],
+            "file_path": result["file_path"],
+            "git_committed": result.get("git_committed", False),
         }
 
+    except EditEntityNotFoundError as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "identifier": identifier,
+        }
+    except EditDuplicateIdError as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "identifier": identifier,
+        }
+    except InvalidValueError as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "identifier": identifier,
+        }
+    except NoChangesError as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "identifier": identifier,
+        }
+    except EditOperationError as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "identifier": identifier,
+        }
     except PathSecurityError as e:
         return {
             "success": False,
@@ -1081,49 +1013,6 @@ def _get_registry_path(specified_path: Optional[str] = None) -> Optional[str]:
     return None
 
 
-def _find_entity_file(
-    registry_path: str, identifier: str, entity_type: Optional[EntityType] = None
-) -> Optional[Path]:
-    """Find an entity file by ID or UID"""
-    types_to_search = [entity_type] if entity_type else list(EntityType)
-
-    for entity_type_enum in types_to_search:
-        folder_name = entity_type_enum.get_folder_name()
-        file_prefix = entity_type_enum.get_file_prefix()
-
-        try:
-            type_dir = resolve_safe_path(registry_path, folder_name)
-        except PathSecurityError:
-            continue
-
-        if not type_dir.exists():
-            continue
-
-        uid_pattern = f"{file_prefix}-{identifier}.yml"
-        for file_path in type_dir.glob(uid_pattern):
-            try:
-                secure_file_path = resolve_safe_path(registry_path, file_path)
-                return secure_file_path
-            except PathSecurityError:
-                continue
-
-        for file_path in type_dir.glob(f"{file_prefix}-*.yml"):
-            try:
-                secure_file_path = resolve_safe_path(registry_path, file_path)
-                with open(secure_file_path, "r") as f:
-                    data = yaml.safe_load(f)
-                    if data and isinstance(data, dict):
-                        if (
-                            data.get("id") == identifier
-                            or data.get("uid") == identifier
-                        ):
-                            return secure_file_path
-            except (PathSecurityError, Exception):
-                continue
-
-    return None
-
-
 def _get_entities_by_ids(
     registry_path: str, identifiers: List[str], recursive: bool = False
 ) -> List[Dict[str, Any]]:
@@ -1148,67 +1037,3 @@ def _get_entities_by_ids(
             continue
 
     return entities
-
-
-def _load_existing_ids(registry_path: str, entity_type: EntityType) -> set:
-    """
-    Load all `id` fields for existing entities of this type into a set.
-
-    Args:
-        registry_path: Path to the registry
-        entity_type: The entity type to load IDs for
-
-    Returns:
-        Set of existing IDs (strings). Missing/invalid ids are ignored.
-    """
-    operation = ListOperation(registry_path)
-    entities = operation.load_entities(entity_type, include_file_metadata=False)
-
-    ids = set()
-    for entity in entities:
-        existing_id = entity.get("id")
-        if isinstance(existing_id, str):
-            ids.add(existing_id)
-
-    return ids
-
-
-def _check_id_uniqueness(
-    registry_path: str, entity_data: Dict[str, Any], new_id: str
-) -> Optional[str]:
-    """
-    Check if the new ID is unique within the entity's type.
-
-    Args:
-        registry_path: Path to the registry
-        entity_data: The current entity data
-        new_id: The new ID to set
-
-    Returns:
-        None if the ID is valid/unique, or an error message string if not.
-    """
-    # Get the entity type from the loaded data
-    entity_type_value = entity_data.get("type")
-    if not entity_type_value:
-        return None  # Can't validate without knowing the type
-
-    try:
-        actual_entity_type = EntityType.from_string(entity_type_value)
-    except ValueError:
-        return None  # Invalid entity type in file, skip check
-
-    # Get current entity's ID
-    current_id = entity_data.get("id")
-
-    # If setting to the same ID, it's a no-op - allow it
-    if current_id == new_id:
-        return None
-
-    # Load all existing IDs for this entity type
-    existing_ids = _load_existing_ids(registry_path, actual_entity_type)
-
-    # Check if new ID already exists
-    if new_id in existing_ids:
-        return f"{actual_entity_type.value} with id '{new_id}' already exists in this registry"
-
-    return None
