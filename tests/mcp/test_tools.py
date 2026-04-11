@@ -23,17 +23,15 @@ from hxc.core.operations.delete import (
     DeleteOperationError,
     EntityNotFoundError,
 )
+from hxc.core.operations.edit import DuplicateIdError as EditDuplicateIdError
 from hxc.core.operations.edit import (
     EditOperation,
     EditOperationError,
+)
+from hxc.core.operations.edit import EntityNotFoundError as EditEntityNotFoundError
+from hxc.core.operations.edit import (
     InvalidValueError,
     NoChangesError,
-)
-from hxc.core.operations.edit import (
-    DuplicateIdError as EditDuplicateIdError,
-)
-from hxc.core.operations.edit import (
-    EntityNotFoundError as EditEntityNotFoundError,
 )
 from hxc.core.operations.list import ListOperation, ListOperationError
 from hxc.mcp.tools import (
@@ -2704,7 +2702,9 @@ class TestEditEntityToolUsesSharedOperation:
         """Test that NoChangesError is handled correctly"""
         with patch("hxc.mcp.tools.EditOperation") as MockOperation:
             mock_instance = MagicMock()
-            mock_instance.edit_entity.side_effect = NoChangesError("No changes specified")
+            mock_instance.edit_entity.side_effect = NoChangesError(
+                "No changes specified"
+            )
             MockOperation.return_value = mock_instance
 
             result = edit_entity_tool(
@@ -4321,4 +4321,6 @@ class TestEditEntityToolBehavioralParityWithCLI:
 
         assert result["success"] is False
         # Error should mention the status or valid options
-        assert "status" in result["error"].lower() or "invalid" in result["error"].lower()
+        assert (
+            "status" in result["error"].lower() or "invalid" in result["error"].lower()
+        )

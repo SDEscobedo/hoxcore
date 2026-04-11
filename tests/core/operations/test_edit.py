@@ -588,9 +588,7 @@ class TestApplyScalarEdits:
         operation = EditOperation(temp_registry)
         entity_data = {"type": "project", "category": "old/category"}
 
-        changes = operation.apply_scalar_edits(
-            entity_data, set_category="new/category"
-        )
+        changes = operation.apply_scalar_edits(entity_data, set_category="new/category")
 
         assert entity_data["category"] == "new/category"
         assert len(changes) == 1
@@ -719,9 +717,7 @@ class TestApplyListEdits:
         operation = EditOperation(temp_registry)
         entity_data = {"tags": ["existing"]}
 
-        changes = operation.apply_list_edits(
-            entity_data, remove_tags=["nonexistent"]
-        )
+        changes = operation.apply_list_edits(entity_data, remove_tags=["nonexistent"])
 
         assert entity_data["tags"] == ["existing"]
         assert len(changes) == 0
@@ -774,9 +770,7 @@ class TestApplyListEdits:
         operation = EditOperation(temp_registry)
         entity_data = {"children": ["existing"]}
 
-        changes = operation.apply_list_edits(
-            entity_data, add_children=["new-child"]
-        )
+        changes = operation.apply_list_edits(entity_data, add_children=["new-child"])
 
         assert "existing" in entity_data["children"]
         assert "new-child" in entity_data["children"]
@@ -787,9 +781,7 @@ class TestApplyListEdits:
         operation = EditOperation(temp_registry)
         entity_data = {"children": ["existing"]}
 
-        changes = operation.apply_list_edits(
-            entity_data, add_children=["existing"]
-        )
+        changes = operation.apply_list_edits(entity_data, add_children=["existing"])
 
         assert entity_data["children"].count("existing") == 1
         assert len(changes) == 0
@@ -799,9 +791,7 @@ class TestApplyListEdits:
         operation = EditOperation(temp_registry)
         entity_data = {"children": ["keep", "remove"]}
 
-        changes = operation.apply_list_edits(
-            entity_data, remove_children=["remove"]
-        )
+        changes = operation.apply_list_edits(entity_data, remove_children=["remove"])
 
         assert entity_data["children"] == ["keep"]
         assert len(changes) == 1
@@ -811,9 +801,7 @@ class TestApplyListEdits:
         operation = EditOperation(temp_registry)
         entity_data = {"related": ["old-rel"]}
 
-        changes = operation.apply_list_edits(
-            entity_data, set_related=["rel1", "rel2"]
-        )
+        changes = operation.apply_list_edits(entity_data, set_related=["rel1", "rel2"])
 
         assert entity_data["related"] == ["rel1", "rel2"]
         assert len(changes) == 1
@@ -824,9 +812,7 @@ class TestApplyListEdits:
         operation = EditOperation(temp_registry)
         entity_data = {"related": ["existing"]}
 
-        changes = operation.apply_list_edits(
-            entity_data, add_related=["new-rel"]
-        )
+        changes = operation.apply_list_edits(entity_data, add_related=["new-rel"])
 
         assert "existing" in entity_data["related"]
         assert "new-rel" in entity_data["related"]
@@ -837,9 +823,7 @@ class TestApplyListEdits:
         operation = EditOperation(temp_registry)
         entity_data = {"related": ["keep", "remove"]}
 
-        changes = operation.apply_list_edits(
-            entity_data, remove_related=["remove"]
-        )
+        changes = operation.apply_list_edits(entity_data, remove_related=["remove"])
 
         assert entity_data["related"] == ["keep"]
         assert len(changes) == 1
