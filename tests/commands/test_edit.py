@@ -1712,7 +1712,12 @@ class TestEditCommandUsesEditOperation:
     def test_edit_handles_invalid_value_error_from_operation(
         self, mock_get_registry_path, temp_registry
     ):
-        """Test that InvalidValueError from EditOperation is handled correctly"""
+        """Test that InvalidValueError from EditOperation is handled correctly.
+        
+        Since argparse validates --set-status choices at parse time, we test this
+        by mocking EditOperation to raise InvalidValueError for a different field
+        that doesn't have argparse validation.
+        """
         mock_get_registry_path.return_value = str(temp_registry)
 
         with patch("hxc.commands.edit.EditOperation") as MockOperation:
@@ -1728,13 +1733,15 @@ class TestEditCommandUsesEditOperation:
                 "title": "Test",
                 "status": "active",
             }
+            # Simulate InvalidValueError being raised during scalar edit
             mock_instance.apply_scalar_edits.side_effect = InvalidValueError(
-                "Invalid status 'banana'"
+                "Invalid date format 'not-a-date'"
             )
             MockOperation.return_value = mock_instance
 
             with patch("builtins.print") as mock_print:
-                result = main(["edit", "12345678", "--set-status", "banana"])
+                # Use a field that doesn't have argparse choices validation
+                result = main(["edit", "12345678", "--set-start-date", "not-a-date"])
 
         assert result == 1
         printed_output = " ".join(str(call) for call in mock_print.call_args_list)
@@ -1858,11 +1865,13 @@ class TestEditCommandMCPParity:
             result = main(["edit", "12345678", "--set-status", status, "--no-commit"])
             assert result == 0, f"Status '{status}' should be valid"
 
-        # Invalid status should fail
-        with patch("builtins.print"):
-            result = main(["edit", "12345678", "--set-status", "invalid-status"])
-        # Note: argparse may handle this, or it may pass to EditOperation
-        # The command should return non-zero for invalid status
+        # Invalid status should fail at argparse level (choices validation)
+        # argparse validates choices and exits with code 2
+        with pytest.raises(SystemExit) as exc_info:
+            main(["edit", "12345678", "--set-status", "invalid-status"])
+        
+        # argparse exits with code 2 for invalid argument values
+        assert exc_info.value.code == 2
 
     @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
     def test_edit_preserves_field_order_like_mcp(
