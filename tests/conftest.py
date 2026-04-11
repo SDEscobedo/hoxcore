@@ -1,7 +1,7 @@
 import os
+import shutil
 import stat
 import sys
-import shutil
 from pathlib import Path
 
 import pytest
@@ -41,6 +41,8 @@ def _patch_tmp_path_cleanup(tmp_path_factory, monkeypatch):
         # Otherwise inject our read-only fix so Windows .git cleanup works.
         if onerror is None and not ignore_errors:
             onerror = _remove_readonly
-        return original_rmtree(path, ignore_errors=ignore_errors, onerror=onerror, **kwargs)
+        return original_rmtree(
+            path, ignore_errors=ignore_errors, onerror=onerror, **kwargs
+        )
 
     monkeypatch.setattr(shutil, "rmtree", safe_rmtree)

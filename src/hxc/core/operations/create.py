@@ -9,18 +9,23 @@ behavioral consistency between the CLI commands and MCP tools. It handles:
 - Path security enforcement
 - Structured commit message generation
 """
-import uuid
+
 import datetime
 import re
 import unicodedata
+import uuid
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set
+
 import yaml
 
-from hxc.core.enums import EntityType, EntityStatus
-from hxc.utils.path_security import get_safe_entity_path, resolve_safe_path, PathSecurityError
+from hxc.core.enums import EntityStatus, EntityType
 from hxc.utils.git import commit_entity_change
-
+from hxc.utils.path_security import (
+    PathSecurityError,
+    get_safe_entity_path,
+    resolve_safe_path,
+)
 
 MAX_ID_LENGTH = 255
 _ID_ALLOWED_RE = re.compile(r"[^a-z0-9_]+")
@@ -30,18 +35,20 @@ _UNDERSCORE_RE = re.compile(r"_+")
 
 class CreateOperationError(Exception):
     """Base exception for create operation errors"""
+
     pass
 
 
 class DuplicateIdError(CreateOperationError):
     """Raised when attempting to create an entity with a duplicate ID"""
+
     pass
 
 
 class CreateOperation:
     """
     Shared create operation for CLI and MCP interfaces.
-    
+
     This class provides the core entity creation logic including:
     - UID generation
     - ID uniqueness validation
@@ -49,40 +56,40 @@ class CreateOperation:
     - File writing with path security
     - Optional git integration
     """
-    
+
     def __init__(self, registry_path: str):
         """
         Initialize the create operation.
-        
+
         Args:
             registry_path: Path to the registry root directory
         """
         self.registry_path = registry_path
-    
+
     @staticmethod
     def generate_uid() -> str:
         """
         Generate a unique identifier for an entity.
-        
+
         Returns:
             8-character unique identifier string
         """
         return str(uuid.uuid4())[:8]
-    
+
     @staticmethod
     def _transliterate_to_ascii(text: str) -> str:
         """
         Convert non-ASCII characters to their closest ASCII representation.
-        
+
         Args:
             text: Input text with potentially non-ASCII characters
-            
+
         Returns:
             ASCII-only string
         """
         normalized = unicodedata.normalize("NFKD", text)
         return normalized.encode("ascii", "ignore").decode("ascii")
-    
+
     @classmethod
     def title_to_id(cls, title: str, entity_type: str) -> str:
         """
@@ -94,11 +101,11 @@ class CreateOperation:
         - Consecutive underscores collapse; leading/trailing underscores removed
         - Non-ASCII is transliterated/removed via NFKD -> ascii ignore
         - Result length is capped to 255 chars
-        
+
         Args:
             title: The entity title
             entity_type: The entity type (used as fallback if title is empty)
-            
+
         Returns:
             Generated ID string
         """
@@ -113,23 +120,25 @@ class CreateOperation:
             slug = entity_type
 
         return slug[:MAX_ID_LENGTH]
-    
+
     def load_existing_ids(self, entity_type: EntityType) -> Set[str]:
         """
         Load all `id` fields for existing entities of a given type.
-        
+
         Args:
             entity_type: The entity type to load IDs for
-            
+
         Returns:
             Set of existing IDs (strings). Missing/invalid ids are ignored.
         """
         ids: Set[str] = set()
         try:
-            type_dir = resolve_safe_path(self.registry_path, entity_type.get_folder_name())
+            type_dir = resolve_safe_path(
+                self.registry_path, entity_type.get_folder_name()
+            )
         except PathSecurityError:
             return ids
-            
+
         if not type_dir.exists():
             return ids
 
@@ -149,64 +158,61 @@ class CreateOperation:
                 continue
 
         return ids
-    
+
     def validate_id_uniqueness(
         self,
         entity_type: EntityType,
         entity_id: str,
-        existing_ids: Optional[Set[str]] = None
+        existing_ids: Optional[Set[str]] = None,
     ) -> bool:
         """
         Validate that an ID is unique within the entity type.
-        
+
         Args:
             entity_type: The entity type to check against
             entity_id: The ID to validate
             existing_ids: Optional pre-loaded set of existing IDs
-            
+
         Returns:
             True if ID is unique, False if it already exists
         """
         if existing_ids is None:
             existing_ids = self.load_existing_ids(entity_type)
         return entity_id not in existing_ids
-    
+
     @classmethod
     def _truncate_base_for_suffix(cls, base_id: str, suffix_len: int) -> str:
         """
         Truncate base_id to ensure (base_id + suffix) stays within MAX_ID_LENGTH.
-        
+
         Args:
             base_id: The base ID to potentially truncate
             suffix_len: Length of the suffix to be added
-            
+
         Returns:
             Truncated base ID
         """
         max_base_len = MAX_ID_LENGTH - suffix_len
         return base_id[:max_base_len]
-    
+
     @classmethod
     def resolve_auto_id(
-        cls,
-        existing_ids: Set[str],
-        base_id: str,
-        uid: str
+        cls, existing_ids: Set[str], base_id: str, uid: str
     ) -> Optional[str]:
         """
         Resolve a unique ID using collision avoidance strategy.
-        
+
         Strategy:
         1. base_id (no suffix) if unique
         2. base_id + '_' + first 3 chars of uid
         3. if still not unique: increase the chars of uid to append
         4. if still not unique: return None
-        
+
         Args:
             existing_ids: Set of existing IDs
             base_id: The base ID to try
             uid: The entity UID for suffix generation
-            
+
         Returns:
             Unique ID string, or None if no unique ID could be generated
         """
@@ -225,7 +231,7 @@ class CreateOperation:
                 return candidate
 
         return None
-    
+
     def build_entity_data(
         self,
         entity_type: EntityType,
@@ -244,7 +250,7 @@ class CreateOperation:
     ) -> Dict[str, Any]:
         """
         Build entity data dictionary from parameters.
-        
+
         Args:
             entity_type: Type of entity
             title: Entity title
@@ -258,12 +264,12 @@ class CreateOperation:
             tags: Optional list of tags
             parent: Optional parent entity ID/UID
             template: Optional template reference
-            
+
         Returns:
             Entity data dictionary ready for YAML serialization
         """
         today = datetime.date.today().isoformat()
-        
+
         entity: Dict[str, Any] = {
             "type": entity_type.value,
             "uid": uid,
@@ -271,30 +277,30 @@ class CreateOperation:
             "status": status.value,
             "start_date": start_date or today,
         }
-        
+
         if entity_id:
             entity["id"] = entity_id
         else:
             entity["id"] = self.title_to_id(title, entity_type.value)
-        
+
         if description:
             entity["description"] = description
-            
+
         if due_date:
             entity["due_date"] = due_date
-            
+
         if category:
             entity["category"] = category
-            
+
         if tags:
             entity["tags"] = tags
-            
+
         if parent:
             entity["parent"] = parent
-            
+
         if template:
             entity["template"] = template
-            
+
         entity["children"] = []
         entity["related"] = []
         entity["repositories"] = []
@@ -303,26 +309,23 @@ class CreateOperation:
         entity["tools"] = []
         entity["models"] = []
         entity["knowledge_bases"] = []
-        
+
         return entity
-    
+
     def write_entity_file(
-        self,
-        entity_type: EntityType,
-        uid: str,
-        entity_data: Dict[str, Any]
+        self, entity_type: EntityType, uid: str, entity_data: Dict[str, Any]
     ) -> Path:
         """
         Write entity data to a YAML file.
-        
+
         Args:
             entity_type: Type of entity
             uid: Unique identifier
             entity_data: Entity data dictionary
-            
+
         Returns:
             Path to the created file
-            
+
         Raises:
             PathSecurityError: If path validation fails
             ValueError: If entity type is invalid
@@ -330,16 +333,18 @@ class CreateOperation:
         """
         file_prefix = entity_type.get_file_prefix()
         file_name = f"{file_prefix}-{uid}.yml"
-        
-        file_path = get_safe_entity_path(self.registry_path, entity_type.value, file_name)
-        
+
+        file_path = get_safe_entity_path(
+            self.registry_path, entity_type.value, file_name
+        )
+
         file_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        with open(file_path, 'w') as f:
+
+        with open(file_path, "w") as f:
             yaml.dump(entity_data, f, default_flow_style=False, sort_keys=False)
-        
+
         return file_path
-    
+
     def create_entity(
         self,
         entity_type: EntityType,
@@ -358,14 +363,14 @@ class CreateOperation:
     ) -> Dict[str, Any]:
         """
         Create a new entity in the registry.
-        
+
         This is the main entry point for entity creation, handling:
         - UID generation
         - ID uniqueness validation
         - Entity data construction
         - File writing with path security
         - Optional git integration
-        
+
         Args:
             entity_type: Type of entity to create
             title: Entity title
@@ -379,7 +384,7 @@ class CreateOperation:
             parent: Optional parent entity ID/UID
             template: Optional template reference
             use_git: Whether to commit the change to git (default: True)
-            
+
         Returns:
             Dictionary containing:
             - success: bool
@@ -388,7 +393,7 @@ class CreateOperation:
             - file_path: str (on success)
             - entity: dict (on success)
             - git_committed: bool (on success, if use_git=True)
-            
+
         Raises:
             DuplicateIdError: If entity_id is provided and already exists
             CreateOperationError: If a unique ID cannot be generated
@@ -396,9 +401,9 @@ class CreateOperation:
             ValueError: If entity type is invalid
         """
         uid = self.generate_uid()
-        
+
         existing_ids = self.load_existing_ids(entity_type)
-        
+
         if entity_id is not None:
             if entity_id in existing_ids:
                 raise DuplicateIdError(
@@ -412,7 +417,7 @@ class CreateOperation:
                 raise CreateOperationError(
                     f"Could not generate a unique {entity_type.value} id for title '{title}'"
                 )
-        
+
         entity_data = self.build_entity_data(
             entity_type=entity_type,
             title=title,
@@ -427,9 +432,9 @@ class CreateOperation:
             parent=parent,
             template=template,
         )
-        
+
         file_path = self.write_entity_file(entity_type, uid, entity_data)
-        
+
         git_committed = False
         if use_git:
             git_committed = commit_entity_change(
@@ -438,7 +443,7 @@ class CreateOperation:
                 action="Create",
                 entity_data=entity_data,
             )
-        
+
         return {
             "success": True,
             "uid": uid,

@@ -4,34 +4,35 @@ MCP Server implementation for HoxCore Registry Access.
 This module provides a Model Context Protocol (MCP) server that allows LLMs
 to interact with HoxCore registries through standardized protocol interfaces.
 """
+
 import json
 import sys
-from typing import Dict, Any, List, Optional, Callable
 from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional
 
 from hxc.commands.registry import RegistryCommand
-from hxc.utils.helpers import get_project_root
-from hxc.utils.path_security import PathSecurityError
-from hxc.mcp.tools import (
-    list_entities_tool,
-    get_entity_tool,
-    search_entities_tool,
-    get_entity_property_tool,
-    create_entity_tool,
-    edit_entity_tool,
-    delete_entity_tool,
-)
-from hxc.mcp.resources import (
-    get_entity_resource,
-    list_entities_resource,
-    get_entity_hierarchy_resource,
-    get_registry_stats_resource,
-    search_entities_resource,
-)
 from hxc.mcp.prompts import (
     get_all_prompts,
     get_prompt_by_name,
 )
+from hxc.mcp.resources import (
+    get_entity_hierarchy_resource,
+    get_entity_resource,
+    get_registry_stats_resource,
+    list_entities_resource,
+    search_entities_resource,
+)
+from hxc.mcp.tools import (
+    create_entity_tool,
+    delete_entity_tool,
+    edit_entity_tool,
+    get_entity_property_tool,
+    get_entity_tool,
+    list_entities_tool,
+    search_entities_tool,
+)
+from hxc.utils.helpers import get_project_root
+from hxc.utils.path_security import PathSecurityError
 
 
 class MCPServer:
@@ -45,6 +46,7 @@ class MCPServer:
     class _DateEncoder(json.JSONEncoder):
         def default(self, obj):
             from datetime import date, datetime
+
             if isinstance(obj, (date, datetime)):
                 return obj.isoformat()
             return super().default(obj)
@@ -88,11 +90,13 @@ class MCPServer:
             "get_entity_property": get_entity_property_tool,
         }
         if not self.read_only:
-            self._tools.update({
-                "create_entity": create_entity_tool,
-                "edit_entity": edit_entity_tool,
-                "delete_entity": delete_entity_tool,
-            })
+            self._tools.update(
+                {
+                    "create_entity": create_entity_tool,
+                    "edit_entity": edit_entity_tool,
+                    "delete_entity": delete_entity_tool,
+                }
+            )
 
     def _register_resources(self) -> None:
         """Register all available resources"""
@@ -107,7 +111,7 @@ class MCPServer:
     def _register_prompts(self) -> None:
         """Register all available prompts"""
         for prompt in get_all_prompts():
-            self._prompts[prompt['name']] = prompt
+            self._prompts[prompt["name"]] = prompt
 
     def handle_request(self, request: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -119,61 +123,45 @@ class MCPServer:
         Returns:
             MCP response dictionary
         """
-        method = request.get('method')
-        params = request.get('params', {})
-        request_id = request.get('id')
+        method = request.get("method")
+        params = request.get("params", {})
+        request_id = request.get("id")
 
         try:
-            if method == 'tools/list':
+            if method == "tools/list":
                 result = self._handle_list_tools()
-            elif method == 'tools/call':
+            elif method == "tools/call":
                 result = self._handle_call_tool(params)
-            elif method == 'resources/list':
+            elif method == "resources/list":
                 result = self._handle_list_resources()
-            elif method == 'resources/read':
+            elif method == "resources/read":
                 result = self._handle_read_resource(params)
-            elif method == 'prompts/list':
+            elif method == "prompts/list":
                 result = self._handle_list_prompts()
-            elif method == 'prompts/get':
+            elif method == "prompts/get":
                 result = self._handle_get_prompt(params)
-            elif method == 'initialize':
+            elif method == "initialize":
                 result = self._handle_initialize(params)
             else:
                 return self._error_response(
-                    request_id,
-                    -32601,
-                    f"Method not found: {method}"
+                    request_id, -32601, f"Method not found: {method}"
                 )
 
             return self._success_response(request_id, result)
 
         except Exception as e:
-            return self._error_response(
-                request_id,
-                -32603,
-                f"Internal error: {str(e)}"
-            )
+            return self._error_response(request_id, -32603, f"Internal error: {str(e)}")
 
     def _handle_initialize(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """Handle initialization request"""
         return {
             "protocolVersion": "2024-11-05",
             "capabilities": {
-                "tools": {
-                    "listChanged": False
-                },
-                "resources": {
-                    "subscribe": False,
-                    "listChanged": False
-                },
-                "prompts": {
-                    "listChanged": False
-                }
+                "tools": {"listChanged": False},
+                "resources": {"subscribe": False, "listChanged": False},
+                "prompts": {"listChanged": False},
             },
-            "serverInfo": {
-                "name": "hoxcore-mcp-server",
-                "version": "0.1.0"
-            }
+            "serverInfo": {"name": "hoxcore-mcp-server", "version": "0.1.0"},
         }
 
     def _handle_list_tools(self) -> Dict[str, Any]:
@@ -184,7 +172,7 @@ class MCPServer:
             tool_info = {
                 "name": tool_name,
                 "description": tool_func.__doc__ or f"Execute {tool_name}",
-                "inputSchema": self._get_tool_schema(tool_name)
+                "inputSchema": self._get_tool_schema(tool_name),
             }
             tools.append(tool_info)
 
@@ -192,19 +180,19 @@ class MCPServer:
 
     def _handle_call_tool(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """Handle tools/call request"""
-        tool_name = params.get('name')
-        arguments = params.get('arguments', {})
+        tool_name = params.get("name")
+        arguments = params.get("arguments", {})
 
         if tool_name not in self._tools:
             raise ValueError(f"Unknown tool: {tool_name}")
 
         # Add registry path to arguments if not provided
-        if 'registry_path' not in arguments:
-            arguments['registry_path'] = self.registry_path
+        if "registry_path" not in arguments:
+            arguments["registry_path"] = self.registry_path
 
         # Remap 'property' (reserved Python keyword) to 'property_name'
-        if tool_name == 'get_entity_property' and 'property' in arguments:
-            arguments['property_name'] = arguments.pop('property')
+        if tool_name == "get_entity_property" and "property" in arguments:
+            arguments["property_name"] = arguments.pop("property")
 
         tool_func = self._tools[tool_name]
         result = tool_func(**arguments)
@@ -213,7 +201,13 @@ class MCPServer:
             "content": [
                 {
                     "type": "text",
-                    "text": json.dumps(result, indent=2, default=lambda o: o.isoformat() if hasattr(o, 'isoformat') else str(o))
+                    "text": json.dumps(
+                        result,
+                        indent=2,
+                        default=lambda o: (
+                            o.isoformat() if hasattr(o, "isoformat") else str(o)
+                        ),
+                    ),
                 }
             ]
         }
@@ -263,39 +257,39 @@ class MCPServer:
 
     def _handle_read_resource(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """Handle resources/read request"""
-        uri = params.get('uri', '')
+        uri = params.get("uri", "")
 
         result = None
         content_uri = uri
 
-        if uri.startswith('hxc://entity/'):
-            identifier = uri[len('hxc://entity/'):]
-            resource_func = self._resources.get('entity')
+        if uri.startswith("hxc://entity/"):
+            identifier = uri[len("hxc://entity/") :]
+            resource_func = self._resources.get("entity")
             if resource_func:
                 result = resource_func(identifier, registry_path=self.registry_path)
 
-        elif uri.startswith('hxc://entities/'):
-            entity_type = uri[len('hxc://entities/'):]
-            resource_func = self._resources.get('entities')
+        elif uri.startswith("hxc://entities/"):
+            entity_type = uri[len("hxc://entities/") :]
+            resource_func = self._resources.get("entities")
             if resource_func:
                 result = resource_func(entity_type, registry_path=self.registry_path)
 
-        elif uri.startswith('hxc://hierarchy/'):
-            identifier = uri[len('hxc://hierarchy/'):]
-            resource_func = self._resources.get('hierarchy')
+        elif uri.startswith("hxc://hierarchy/"):
+            identifier = uri[len("hxc://hierarchy/") :]
+            resource_func = self._resources.get("hierarchy")
             if resource_func:
                 result = resource_func(identifier, registry_path=self.registry_path)
 
-        elif uri == 'hxc://registry/stats':
-            resource_func = self._resources.get('stats')
+        elif uri == "hxc://registry/stats":
+            resource_func = self._resources.get("stats")
             if resource_func:
                 result = resource_func(registry_path=self.registry_path)
 
-        elif uri.startswith('hxc://search'):
-            query = ''
-            if '?q=' in uri:
-                query = uri.split('?q=')[1]
-            resource_func = self._resources.get('search')
+        elif uri.startswith("hxc://search"):
+            query = ""
+            if "?q=" in uri:
+                query = uri.split("?q=")[1]
+            resource_func = self._resources.get("search")
             if resource_func:
                 result = resource_func(query, registry_path=self.registry_path)
 
@@ -303,9 +297,9 @@ class MCPServer:
             raise ValueError(f"Resource not found: {uri}")
 
         content_text = json.dumps(
-            result['content'],
+            result["content"],
             indent=2,
-            default=lambda o: o.isoformat() if hasattr(o, 'isoformat') else str(o),
+            default=lambda o: o.isoformat() if hasattr(o, "isoformat") else str(o),
         )
 
         return {
@@ -327,8 +321,8 @@ class MCPServer:
 
     def _handle_get_prompt(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """Handle prompts/get request"""
-        prompt_name = params.get('name')
-        arguments = params.get('arguments', {})
+        prompt_name = params.get("name")
+        arguments = params.get("arguments", {})
 
         if prompt_name not in self._prompts:
             raise ValueError(f"Unknown prompt: {prompt_name}")
@@ -373,114 +367,156 @@ class MCPServer:
                 "properties": {
                     "entity_type": {
                         "type": "string",
-                        "description": "Type of entity (program, project, mission, action, all)"
+                        "description": "Type of entity (program, project, mission, action, all)",
                     },
                     "status": {
                         "type": "string",
-                        "description": "Filter by status (active, completed, on-hold, cancelled, planned, any)"
+                        "description": "Filter by status (active, completed, on-hold, cancelled, planned, any)",
                     },
                     "tags": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "Filter by tags (AND logic - entity must have ALL specified tags)"
+                        "description": "Filter by tags (AND logic - entity must have ALL specified tags)",
                     },
                     "category": {
                         "type": "string",
-                        "description": "Filter by category (exact match)"
+                        "description": "Filter by category (exact match)",
                     },
                     "parent": {
                         "type": "string",
-                        "description": "Filter by parent ID (exact match)"
+                        "description": "Filter by parent ID (exact match)",
                     },
                     "identifier": {
                         "type": "string",
-                        "description": "Filter by ID or UID (exact match)"
+                        "description": "Filter by ID or UID (exact match)",
                     },
                     "query": {
                         "type": "string",
-                        "description": "Text search in title and description (case-insensitive)"
+                        "description": "Text search in title and description (case-insensitive)",
                     },
                     "due_before": {
                         "type": "string",
-                        "description": "Filter by due date before YYYY-MM-DD (inclusive)"
+                        "description": "Filter by due date before YYYY-MM-DD (inclusive)",
                     },
                     "due_after": {
                         "type": "string",
-                        "description": "Filter by due date after YYYY-MM-DD (inclusive)"
+                        "description": "Filter by due date after YYYY-MM-DD (inclusive)",
                     },
                     "max_items": {
                         "type": "integer",
-                        "description": "Maximum items to return (0 = all)"
+                        "description": "Maximum items to return (0 = all)",
                     },
                     "sort_by": {
                         "type": "string",
-                        "description": "Sort field (title, id, due_date, status, created, modified)"
+                        "description": "Sort field (title, id, due_date, status, created, modified)",
                     },
                     "descending": {
                         "type": "boolean",
-                        "description": "Sort in descending order"
+                        "description": "Sort in descending order",
                     },
                     "include_file_metadata": {
                         "type": "boolean",
-                        "description": "Include file metadata (_file field with path, created, modified)"
+                        "description": "Include file metadata (_file field with path, created, modified)",
                     },
-                }
+                },
             },
             "get_entity": {
                 "type": "object",
                 "properties": {
-                    "identifier": {"type": "string", "description": "ID or UID of the entity"},
-                    "entity_type": {"type": "string", "description": "Optional type filter"},
+                    "identifier": {
+                        "type": "string",
+                        "description": "ID or UID of the entity",
+                    },
+                    "entity_type": {
+                        "type": "string",
+                        "description": "Optional type filter",
+                    },
                 },
-                "required": ["identifier"]
+                "required": ["identifier"],
             },
             "search_entities": {
                 "type": "object",
                 "properties": {
                     "query": {"type": "string", "description": "Search query"},
-                    "entity_type": {"type": "string", "description": "Optional type filter"},
-                    "status": {"type": "string", "description": "Optional status filter"},
+                    "entity_type": {
+                        "type": "string",
+                        "description": "Optional type filter",
+                    },
+                    "status": {
+                        "type": "string",
+                        "description": "Optional status filter",
+                    },
                     "tags": {"type": "array", "items": {"type": "string"}},
                     "max_items": {"type": "integer"},
                 },
-                "required": ["query"]
+                "required": ["query"],
             },
             "get_entity_property": {
                 "type": "object",
                 "properties": {
-                    "identifier": {"type": "string", "description": "ID or UID of the entity"},
-                    "property": {"type": "string", "description": "Property name to retrieve"},
+                    "identifier": {
+                        "type": "string",
+                        "description": "ID or UID of the entity",
+                    },
+                    "property": {
+                        "type": "string",
+                        "description": "Property name to retrieve",
+                    },
                     "entity_type": {"type": "string"},
                     "index": {"type": "integer"},
                     "key": {"type": "string"},
                 },
-                "required": ["identifier", "property"]
+                "required": ["identifier", "property"],
             },
             "create_entity": {
                 "type": "object",
                 "properties": {
-                    "type": {"type": "string", "description": "Entity type: program | project | mission | action"},
+                    "type": {
+                        "type": "string",
+                        "description": "Entity type: program | project | mission | action",
+                    },
                     "title": {"type": "string", "description": "Human-readable title"},
                     "description": {"type": "string"},
-                    "status": {"type": "string", "description": "Initial status (default: active)"},
-                    "id": {"type": "string", "description": "Optional custom human-readable ID (e.g. P-042). Must be unique within entity type."},
+                    "status": {
+                        "type": "string",
+                        "description": "Initial status (default: active)",
+                    },
+                    "id": {
+                        "type": "string",
+                        "description": "Optional custom human-readable ID (e.g. P-042). Must be unique within entity type.",
+                    },
                     "category": {"type": "string"},
                     "tags": {"type": "array", "items": {"type": "string"}},
-                    "parent": {"type": "string", "description": "Parent entity UID or ID"},
-                    "start_date": {"type": "string", "description": "YYYY-MM-DD (default: today)"},
+                    "parent": {
+                        "type": "string",
+                        "description": "Parent entity UID or ID",
+                    },
+                    "start_date": {
+                        "type": "string",
+                        "description": "YYYY-MM-DD (default: today)",
+                    },
                     "due_date": {"type": "string", "description": "YYYY-MM-DD"},
-                    "use_git": {"type": "boolean", "description": "Whether to commit the change to git (default: true). Set false to skip git operations."},
+                    "use_git": {
+                        "type": "boolean",
+                        "description": "Whether to commit the change to git (default: true). Set false to skip git operations.",
+                    },
                 },
-                "required": ["type", "title"]
+                "required": ["type", "title"],
             },
             "edit_entity": {
                 "type": "object",
                 "properties": {
-                    "identifier": {"type": "string", "description": "UID or human-readable ID"},
+                    "identifier": {
+                        "type": "string",
+                        "description": "UID or human-readable ID",
+                    },
                     "set_title": {"type": "string"},
                     "set_description": {"type": "string"},
                     "set_status": {"type": "string"},
-                    "set_id": {"type": "string", "description": "New human-readable ID. Must be unique within entity type."},
+                    "set_id": {
+                        "type": "string",
+                        "description": "New human-readable ID. Must be unique within entity type.",
+                    },
                     "set_category": {"type": "string"},
                     "set_parent": {"type": "string"},
                     "set_start_date": {"type": "string"},
@@ -488,42 +524,64 @@ class MCPServer:
                     "set_completion_date": {"type": "string"},
                     "add_tags": {"type": "array", "items": {"type": "string"}},
                     "remove_tags": {"type": "array", "items": {"type": "string"}},
-                    "add_children": {"type": "array", "items": {"type": "string"}, "description": "Child entity UIDs/IDs to add"},
-                    "remove_children": {"type": "array", "items": {"type": "string"}, "description": "Child entity UIDs/IDs to remove"},
-                    "add_related": {"type": "array", "items": {"type": "string"}, "description": "Related entity UIDs/IDs to add"},
-                    "remove_related": {"type": "array", "items": {"type": "string"}, "description": "Related entity UIDs/IDs to remove"},
+                    "add_children": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Child entity UIDs/IDs to add",
+                    },
+                    "remove_children": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Child entity UIDs/IDs to remove",
+                    },
+                    "add_related": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Related entity UIDs/IDs to add",
+                    },
+                    "remove_related": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Related entity UIDs/IDs to remove",
+                    },
                     "entity_type": {"type": "string"},
                 },
-                "required": ["identifier"]
+                "required": ["identifier"],
             },
             "delete_entity": {
                 "type": "object",
                 "properties": {
-                    "identifier": {"type": "string", "description": "UID or human-readable ID"},
-                    "force": {"type": "boolean", "description": "Set True to confirm deletion (default: False returns a confirmation prompt)"},
+                    "identifier": {
+                        "type": "string",
+                        "description": "UID or human-readable ID",
+                    },
+                    "force": {
+                        "type": "boolean",
+                        "description": "Set True to confirm deletion (default: False returns a confirmation prompt)",
+                    },
                     "entity_type": {"type": "string"},
-                    "use_git": {"type": "boolean", "description": "Whether to commit the deletion to git (default: true). Set false to skip git operations."},
+                    "use_git": {
+                        "type": "boolean",
+                        "description": "Whether to commit the deletion to git (default: true). Set false to skip git operations.",
+                    },
                 },
-                "required": ["identifier"]
+                "required": ["identifier"],
             },
         }
         return schemas.get(tool_name, {"type": "object", "properties": {}})
 
-    def _success_response(self, request_id: Any, result: Dict[str, Any]) -> Dict[str, Any]:
-        return {
-            "jsonrpc": "2.0",
-            "id": request_id,
-            "result": result
-        }
+    def _success_response(
+        self, request_id: Any, result: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        return {"jsonrpc": "2.0", "id": request_id, "result": result}
 
-    def _error_response(self, request_id: Any, code: int, message: str) -> Dict[str, Any]:
+    def _error_response(
+        self, request_id: Any, code: int, message: str
+    ) -> Dict[str, Any]:
         return {
             "jsonrpc": "2.0",
             "id": request_id,
-            "error": {
-                "code": code,
-                "message": message
-            }
+            "error": {"code": code, "message": message},
         }
 
     def run_stdio(self) -> None:
@@ -532,8 +590,12 @@ class MCPServer:
 
         This method reads JSON-RPC requests from stdin and writes responses to stdout.
         """
+
         def _json_dumps(obj):
-            return json.dumps(obj, default=lambda o: o.isoformat() if hasattr(o, 'isoformat') else str(o))
+            return json.dumps(
+                obj,
+                default=lambda o: o.isoformat() if hasattr(o, "isoformat") else str(o),
+            )
 
         try:
             for line in sys.stdin:
@@ -547,16 +609,12 @@ class MCPServer:
                     print(_json_dumps(response), flush=True)
                 except json.JSONDecodeError as e:
                     error_response = self._error_response(
-                        None,
-                        -32700,
-                        f"Parse error: {str(e)}"
+                        None, -32700, f"Parse error: {str(e)}"
                     )
                     print(_json_dumps(error_response), flush=True)
                 except Exception as e:
                     error_response = self._error_response(
-                        None,
-                        -32603,
-                        f"Internal error: {str(e)}"
+                        None, -32603, f"Internal error: {str(e)}"
                     )
                     print(_json_dumps(error_response), flush=True)
 
@@ -588,13 +646,15 @@ class MCPServer:
 
     def register_prompt(self, prompt_data: Dict[str, Any]) -> None:
         """Register a custom prompt."""
-        name = prompt_data.get('name')
+        name = prompt_data.get("name")
         if not name:
             raise ValueError("Prompt must have a name")
         self._prompts[name] = prompt_data
 
 
-def create_server(registry_path: Optional[str] = None, read_only: bool = False) -> MCPServer:
+def create_server(
+    registry_path: Optional[str] = None, read_only: bool = False
+) -> MCPServer:
     """
     Create and configure an MCP server instance.
 
@@ -617,21 +677,21 @@ def main() -> int:
     """
     import argparse
 
-    parser = argparse.ArgumentParser(description='HoxCore MCP Server')
+    parser = argparse.ArgumentParser(description="HoxCore MCP Server")
     parser.add_argument(
-        '--registry',
-        help='Path to the registry (defaults to current or configured registry)'
+        "--registry",
+        help="Path to the registry (defaults to current or configured registry)",
     )
     parser.add_argument(
-        '--transport',
-        choices=['stdio'],
-        default='stdio',
-        help='Transport protocol (default: stdio)'
+        "--transport",
+        choices=["stdio"],
+        default="stdio",
+        help="Transport protocol (default: stdio)",
     )
     parser.add_argument(
-        '--read-only',
-        action='store_true',
-        help='Start in read-only mode: omit write tools (create_entity, edit_entity, delete_entity)'
+        "--read-only",
+        action="store_true",
+        help="Start in read-only mode: omit write tools (create_entity, edit_entity, delete_entity)",
     )
 
     args = parser.parse_args()
@@ -640,10 +700,13 @@ def main() -> int:
         server = create_server(registry_path=args.registry, read_only=args.read_only)
 
         if not server.registry_path:
-            print("Error: No registry found. Please specify with --registry or initialize one.", file=sys.stderr)
+            print(
+                "Error: No registry found. Please specify with --registry or initialize one.",
+                file=sys.stderr,
+            )
             return 1
 
-        if args.transport == 'stdio':
+        if args.transport == "stdio":
             server.run_stdio()
 
         return 0
@@ -653,5 +716,5 @@ def main() -> int:
         return 1
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

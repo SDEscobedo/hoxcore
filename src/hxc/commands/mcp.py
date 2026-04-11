@@ -1,6 +1,7 @@
 """
 MCP command implementation for starting the Model Context Protocol server.
 """
+
 import argparse
 import sys
 from typing import Optional
@@ -25,18 +26,18 @@ class MCPCommand(BaseCommand):
         # Server configuration
         parser.add_argument(
             "--registry",
-            help="Path to the registry (defaults to current or configured registry)"
+            help="Path to the registry (defaults to current or configured registry)",
         )
         parser.add_argument(
             "--transport",
             choices=["stdio"],
             default="stdio",
-            help="Transport protocol (default: stdio)"
+            help="Transport protocol (default: stdio)",
         )
         parser.add_argument(
             "--capabilities",
             action="store_true",
-            help="Show server capabilities and exit"
+            help="Show server capabilities and exit",
         )
         parser.add_argument(
             "--read-only",
@@ -45,7 +46,7 @@ class MCPCommand(BaseCommand):
             help=(
                 "Start in read-only mode: only read tools are registered. "
                 "Write tools (create_entity, edit_entity, delete_entity) are omitted."
-            )
+            ),
         )
 
         return parser
@@ -57,7 +58,9 @@ class MCPCommand(BaseCommand):
             registry_path = cls._get_registry_path(args.registry)
 
             if not registry_path:
-                print("❌ No registry found. Please specify with --registry or initialize one with 'hxc init'")
+                print(
+                    "❌ No registry found. Please specify with --registry or initialize one with 'hxc init'"
+                )
                 return 1
 
             # Import MCP server (lazy import to avoid loading if not needed)
