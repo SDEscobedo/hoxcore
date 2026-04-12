@@ -1,5 +1,5 @@
 """
-MCP command implementation for starting the Model Context Protocol server.
+MCP command implementation for starting the Model Context Protocol server
 """
 
 import argparse
