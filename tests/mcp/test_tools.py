@@ -255,6 +255,44 @@ class TestListEntitiesTool:
         
         for entity in result["entities"]:
             assert entity.get("parent") == "prog-test-001"
+
+    def test_list_with_identifier_filter(self, temp_registry):
+        """Test listing with ID or UID filter"""
+        result = list_entities_tool(
+            entity_type="all",
+            identifier="P-001",
+            registry_path=temp_registry
+        )
+
+        assert result["success"] is True
+        assert result["count"] == 1
+        assert result["entities"][0]["id"] == "P-001"
+
+    def test_list_with_query_filter(self, temp_registry):
+        """Test listing with query filter"""
+        result = list_entities_tool(
+            entity_type="all",
+            query="another test project",
+            registry_path=temp_registry
+        )
+
+        assert result["success"] is True
+        assert result["count"] == 1
+        assert result["entities"][0]["id"] == "P-002"
+
+    def test_list_includes_file_metadata(self, temp_registry):
+        """Test list results include file metadata like CLI output"""
+        result = list_entities_tool(
+            entity_type="project",
+            registry_path=temp_registry
+        )
+
+        assert result["success"] is True
+        assert result["count"] == 2
+        for entity in result["entities"]:
+            assert "_file" in entity
+            assert entity["_file"]["name"].endswith(".yml")
+            assert entity["_file"]["path"].endswith(".yml")
     
     def test_list_with_max_items(self, temp_registry):
         """Test listing with max items limit"""

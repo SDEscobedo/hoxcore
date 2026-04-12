@@ -6,8 +6,10 @@ HoxCore registries through the MCP protocol.
 """
 from typing import Dict, Any, List, Optional
 from pathlib import Path
+import argparse
 import yaml
 
+from hxc.commands.cmd_list import ListCommand
 from hxc.commands.registry import RegistryCommand
 from hxc.utils.helpers import get_project_root
 from hxc.utils.path_security import get_safe_entity_path, resolve_safe_path, PathSecurityError
@@ -20,6 +22,10 @@ def list_entities_tool(
     tags: Optional[List[str]] = None,
     category: Optional[str] = None,
     parent: Optional[str] = None,
+    identifier: Optional[str] = None,
+    query: Optional[str] = None,
+    before: Optional[str] = None,
+    after: Optional[str] = None,
     max_items: int = 0,
     sort_by: str = "title",
     descending: bool = False,
@@ -34,6 +40,10 @@ def list_entities_tool(
         tags: Optional list of tags to filter by
         category: Optional category filter
         parent: Optional parent ID filter
+        identifier: Optional ID or UID filter
+        query: Optional title/description search query
+        before: Optional due date upper bound (YYYY-MM-DD)
+        after: Optional due date lower bound (YYYY-MM-DD)
         max_items: Maximum number of items to return (0 for all)
         sort_by: Sort field (title, id, due_date, status, created, modified)
         descending: Sort in descending order
@@ -59,19 +69,23 @@ def list_entities_tool(
         status_filter = None if status == "any" or status is None else EntityStatus.from_string(status)
         sort_field = SortField.from_string(sort_by)
         
+        filter_args = argparse.Namespace(
+            tags=tags,
+            category=category,
+            parent=parent,
+            id=identifier,
+            query=query,
+            before=before,
+            after=after,
+        )
+
         all_entities = []
         for entity_type_enum in types_to_search:
-            entities = _get_entities_of_type(reg_path, entity_type_enum)
-            filtered = _filter_entities(
-                entities,
-                status=status_filter,
-                tags=tags,
-                category=category,
-                parent=parent
-            )
+            entities = ListCommand._get_items(reg_path, entity_type_enum)
+            filtered = ListCommand._filter_items(entities, filter_args, status_filter)
             all_entities.extend(filtered)
         
-        all_entities = _sort_entities(all_entities, sort_field, descending)
+        all_entities = ListCommand._sort_items(all_entities, sort_field, descending)
         
         if max_items > 0:
             all_entities = all_entities[:max_items]
@@ -85,7 +99,11 @@ def list_entities_tool(
                 "status": status,
                 "tags": tags,
                 "category": category,
-                "parent": parent
+                "parent": parent,
+                "id": identifier,
+                "query": query,
+                "before": before,
+                "after": after
             },
             "sort": {
                 "field": sort_by,
