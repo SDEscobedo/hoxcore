@@ -206,9 +206,7 @@ class TestRegistryOperationGetPath:
         mock_config = MagicMock(spec=Config)
         mock_config.get.return_value = None
 
-        with patch(
-            "hxc.core.operations.registry.get_project_root", return_value=None
-        ):
+        with patch("hxc.core.operations.registry.get_project_root", return_value=None):
             operation = RegistryOperation(config=mock_config)
             result = operation.get_registry_path(include_discovery=False)
 
@@ -222,9 +220,7 @@ class TestRegistryOperationGetPath:
         mock_config = MagicMock(spec=Config)
         mock_config.get.return_value = temp_dir  # Empty dir, not a valid registry
 
-        with patch(
-            "hxc.core.operations.registry.get_project_root", return_value=None
-        ):
+        with patch("hxc.core.operations.registry.get_project_root", return_value=None):
             operation = RegistryOperation(config=mock_config)
             result = operation.get_registry_path(include_discovery=True)
 
@@ -371,9 +367,7 @@ class TestRegistryOperationListRegistries:
         mock_config = MagicMock(spec=Config)
         mock_config.get.return_value = valid_registry
 
-        with patch(
-            "hxc.core.operations.registry.get_project_root", return_value=None
-        ):
+        with patch("hxc.core.operations.registry.get_project_root", return_value=None):
             operation = RegistryOperation(config=mock_config)
             result = operation.list_registries()
 
@@ -392,9 +386,7 @@ class TestRegistryOperationListRegistries:
         mock_config = MagicMock(spec=Config)
         mock_config.get.return_value = None
 
-        with patch(
-            "hxc.core.operations.registry.get_project_root", return_value=None
-        ):
+        with patch("hxc.core.operations.registry.get_project_root", return_value=None):
             operation = RegistryOperation(config=mock_config)
             result = operation.list_registries()
 
@@ -448,7 +440,9 @@ class TestRegistryOperationListRegistries:
             assert result["count"] == 2
 
             # Find configured and discovered
-            configured = next(r for r in result["registries"] if r["source"] == "config")
+            configured = next(
+                r for r in result["registries"] if r["source"] == "config"
+            )
             discovered = next(
                 r for r in result["registries"] if r["source"] == "discovered"
             )
@@ -481,9 +475,7 @@ class TestRegistryOperationListRegistries:
         mock_config = MagicMock(spec=Config)
         mock_config.get.return_value = temp_dir  # Invalid
 
-        with patch(
-            "hxc.core.operations.registry.get_project_root", return_value=None
-        ):
+        with patch("hxc.core.operations.registry.get_project_root", return_value=None):
             operation = RegistryOperation(config=mock_config)
             result = operation.list_registries()
 
@@ -517,9 +509,7 @@ class TestRegistryOperationDiscoverRegistry:
         """Test discovery when no registry exists"""
         mock_config = MagicMock(spec=Config)
 
-        with patch(
-            "hxc.core.operations.registry.get_project_root", return_value=None
-        ):
+        with patch("hxc.core.operations.registry.get_project_root", return_value=None):
             operation = RegistryOperation(config=mock_config)
             result = operation.discover_registry()
 
@@ -773,9 +763,7 @@ class TestRegistryOperationEdgeCases:
         mock_config = MagicMock(spec=Config)
         mock_config.get.return_value = "/path/that/does/not/exist/xyz123"
 
-        with patch(
-            "hxc.core.operations.registry.get_project_root", return_value=None
-        ):
+        with patch("hxc.core.operations.registry.get_project_root", return_value=None):
             operation = RegistryOperation(config=mock_config)
             result = operation.get_registry_path(include_discovery=False)
 
@@ -819,7 +807,13 @@ class TestRegistryOperationBehavioralParity:
         result = RegistryOperation.validate_registry_path(temp_dir)
         assert result["valid"] is False
 
-        expected_missing = {"config.yml", "programs/", "projects/", "missions/", "actions/"}
+        expected_missing = {
+            "config.yml",
+            "programs/",
+            "projects/",
+            "missions/",
+            "actions/",
+        }
         assert set(result["missing"]) == expected_missing
 
     def test_config_key_matches_cli(self):
@@ -870,9 +864,7 @@ class TestRegistryOperationBehavioralParity:
         mock_config = MagicMock(spec=Config)
         mock_config.get.return_value = valid_registry
 
-        with patch(
-            "hxc.core.operations.registry.get_project_root", return_value=None
-        ):
+        with patch("hxc.core.operations.registry.get_project_root", return_value=None):
             operation = RegistryOperation(config=mock_config)
             result = operation.list_registries()
 
@@ -884,5 +876,11 @@ class TestRegistryOperationBehavioralParity:
         # Check registry object structure
         if result["count"] > 0:
             registry = result["registries"][0]
-            expected_registry_keys = {"path", "is_current", "is_valid", "name", "source"}
+            expected_registry_keys = {
+                "path",
+                "is_current",
+                "is_valid",
+                "name",
+                "source",
+            }
             assert set(registry.keys()) == expected_registry_keys

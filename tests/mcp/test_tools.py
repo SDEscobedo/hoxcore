@@ -2501,7 +2501,9 @@ class TestGetRegistryStatsTool:
 class TestGetRegistryPathTool:
     """Tests for get_registry_path_tool"""
 
-    def test_get_registry_path_returns_configured_path(self, valid_registry_for_path_tests):
+    def test_get_registry_path_returns_configured_path(
+        self, valid_registry_for_path_tests
+    ):
         """Test getting a configured registry path"""
         with patch("hxc.mcp.tools.RegistryOperation") as MockOperation:
             mock_instance = MagicMock()
@@ -3358,7 +3360,13 @@ class TestRegistryToolsBehavioralParityWithCLI:
             assert result["valid"] is False
 
             # Should check same components as CLI
-            expected_missing = {"config.yml", "programs/", "projects/", "missions/", "actions/"}
+            expected_missing = {
+                "config.yml",
+                "programs/",
+                "projects/",
+                "missions/",
+                "actions/",
+            }
             assert set(result["missing"]) == expected_missing
         finally:
             shutil.rmtree(temp_dir)
@@ -3378,7 +3386,9 @@ class TestRegistryToolsBehavioralParityWithCLI:
         expected = ["config.yml"]
         assert RegistryOperation.REQUIRED_FILES == expected
 
-    def test_get_registry_path_structure_matches_cli(self, valid_registry_for_path_tests):
+    def test_get_registry_path_structure_matches_cli(
+        self, valid_registry_for_path_tests
+    ):
         """Test that get_registry_path result structure matches CLI expectations"""
         with patch("hxc.mcp.tools.RegistryOperation") as MockOperation:
             mock_instance = MagicMock()
@@ -3399,7 +3409,9 @@ class TestRegistryToolsBehavioralParityWithCLI:
         assert "is_valid" in result
         assert "source" in result
 
-    def test_set_registry_path_structure_matches_cli(self, valid_registry_for_path_tests):
+    def test_set_registry_path_structure_matches_cli(
+        self, valid_registry_for_path_tests
+    ):
         """Test that set_registry_path result structure matches CLI expectations"""
         with patch("hxc.mcp.tools.RegistryOperation") as MockOperation:
             mock_instance = MagicMock()
