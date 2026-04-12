@@ -195,17 +195,21 @@ class InitOperation:
                 try:
                     cursor = conn.cursor()
                     # Create basic table structure
-                    cursor.execute("""
+                    cursor.execute(
+                        """
                         CREATE TABLE registry_info (
                             key TEXT PRIMARY KEY,
                             value TEXT
                         )
-                        """)
+                        """
+                    )
                     # Add creation timestamp
-                    cursor.execute("""
+                    cursor.execute(
+                        """
                         INSERT INTO registry_info (key, value) 
                         VALUES ('created_at', datetime('now'))
-                        """)
+                        """
+                    )
                     conn.commit()
                 finally:
                     conn.close()
