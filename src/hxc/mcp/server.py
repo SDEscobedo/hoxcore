@@ -23,14 +23,20 @@ from hxc.mcp.resources import (
     search_entities_resource,
 )
 from hxc.mcp.tools import (
+    clear_registry_path_tool,
     create_entity_tool,
     delete_entity_tool,
+    discover_registry_tool,
     edit_entity_tool,
     get_entity_property_tool,
     get_entity_tool,
+    get_registry_path_tool,
     init_registry_tool,
     list_entities_tool,
+    list_registries_tool,
     search_entities_tool,
+    set_registry_path_tool,
+    validate_registry_path_tool,
 )
 from hxc.utils.helpers import get_project_root
 from hxc.utils.path_security import PathSecurityError
@@ -84,11 +90,17 @@ class MCPServer:
 
     def _register_tools(self) -> None:
         """Register all available tools. Write tools are omitted in read-only mode."""
+        # Read-only tools (always available)
         self._tools = {
             "list_entities": list_entities_tool,
             "get_entity": get_entity_tool,
             "search_entities": search_entities_tool,
             "get_entity_property": get_entity_property_tool,
+            # Registry management tools (read operations)
+            "get_registry_path": get_registry_path_tool,
+            "validate_registry_path": validate_registry_path_tool,
+            "list_registries": list_registries_tool,
+            "discover_registry": discover_registry_tool,
         }
         if not self.read_only:
             self._tools.update(
@@ -97,6 +109,9 @@ class MCPServer:
                     "create_entity": create_entity_tool,
                     "edit_entity": edit_entity_tool,
                     "delete_entity": delete_entity_tool,
+                    # Registry management tools (write operations)
+                    "set_registry_path": set_registry_path_tool,
+                    "clear_registry_path": clear_registry_path_tool,
                 }
             )
 
@@ -634,6 +649,52 @@ class MCPServer:
                 },
                 "required": ["identifier"],
             },
+            # Registry management tools
+            "get_registry_path": {
+                "type": "object",
+                "properties": {
+                    "include_discovery": {
+                        "type": "boolean",
+                        "description": "Whether to attempt auto-discovery if not configured (default: true)",
+                    },
+                },
+            },
+            "set_registry_path": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Path to set as the default registry",
+                    },
+                    "validate": {
+                        "type": "boolean",
+                        "description": "Whether to validate the path before setting (default: true)",
+                    },
+                },
+                "required": ["path"],
+            },
+            "validate_registry_path": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Path to validate as a HoxCore registry",
+                    },
+                },
+                "required": ["path"],
+            },
+            "list_registries": {
+                "type": "object",
+                "properties": {},
+            },
+            "discover_registry": {
+                "type": "object",
+                "properties": {},
+            },
+            "clear_registry_path": {
+                "type": "object",
+                "properties": {},
+            },
         }
         return schemas.get(tool_name, {"type": "object", "properties": {}})
 
@@ -758,7 +819,7 @@ def main() -> int:
     parser.add_argument(
         "--read-only",
         action="store_true",
-        help="Start in read-only mode: omit write tools (init_registry, create_entity, edit_entity, delete_entity)",
+        help="Start in read-only mode: omit write tools (init_registry, create_entity, edit_entity, delete_entity, set_registry_path, clear_registry_path)",
     )
 
     args = parser.parse_args()
