@@ -590,7 +590,9 @@ class TestInitRegistryTool:
 
         assert result["success"] is False
         assert "error" in result
-        assert "not empty" in result["error"].lower() or "empty" in result["error"].lower()
+        assert (
+            "not empty" in result["error"].lower() or "empty" in result["error"].lower()
+        )
 
     def test_init_returns_absolute_path(self, empty_temp_dir):
         """Test that returned path is absolute"""
