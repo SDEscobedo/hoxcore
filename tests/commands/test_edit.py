@@ -178,9 +178,7 @@ def test_edit_set_description(mock_get_registry_path, temp_registry):
     """Test editing the description field"""
     mock_get_registry_path.return_value = str(temp_registry)
 
-    result = main(
-        ["edit", "P-001", "--set-description", "New description", "--no-commit"]
-    )
+    result = main(["edit", "P-001", "--set-description", "New description", "--no-commit"])
 
     assert result == 0
 
@@ -267,9 +265,7 @@ def test_edit_add_multiple_tags(mock_get_registry_path, temp_registry):
     """Test adding multiple tags"""
     mock_get_registry_path.return_value = str(temp_registry)
 
-    result = main(
-        ["edit", "12345678", "--add-tag", "tag1", "--add-tag", "tag2", "--no-commit"]
-    )
+    result = main(["edit", "12345678", "--add-tag", "tag1", "--add-tag", "tag2", "--no-commit"])
 
     assert result == 0
 
@@ -306,9 +302,7 @@ def test_edit_set_tags(mock_get_registry_path, temp_registry):
     """Test replacing all tags"""
     mock_get_registry_path.return_value = str(temp_registry)
 
-    result = main(
-        ["edit", "12345678", "--set-tags", "new1", "new2", "new3", "--no-commit"]
-    )
+    result = main(["edit", "12345678", "--set-tags", "new1", "new2", "new3", "--no-commit"])
 
     assert result == 0
 
@@ -361,16 +355,7 @@ def test_edit_set_children(mock_get_registry_path, temp_registry):
     """Test replacing all children"""
     mock_get_registry_path.return_value = str(temp_registry)
 
-    result = main(
-        [
-            "edit",
-            "12345678",
-            "--set-children",
-            "new-child-1",
-            "new-child-2",
-            "--no-commit",
-        ]
-    )
+    result = main(["edit", "12345678", "--set-children", "new-child-1", "new-child-2", "--no-commit"])
 
     assert result == 0
 
@@ -905,15 +890,7 @@ def test_edit_with_type_filter(mock_get_registry_path, temp_registry):
     mock_get_registry_path.return_value = str(temp_registry)
 
     result = main(
-        [
-            "edit",
-            "12345678",
-            "--type",
-            "project",
-            "--set-title",
-            "Filtered Title",
-            "--no-commit",
-        ]
+        ["edit", "12345678", "--type", "project", "--set-title", "Filtered Title", "--no-commit"]
     )
 
     assert result == 0
@@ -1168,9 +1145,7 @@ def test_edit_invalid_json_format_for_complex_field(
 
     with patch("builtins.print") as mock_print:
         # Pass an invalid JSON string
-        result = main(
-            ["edit", "12345678", "--add-repository", "not_valid_json", "--no-commit"]
-        )
+        result = main(["edit", "12345678", "--add-repository", "not_valid_json", "--no-commit"])
 
         # Should show warning about invalid format
         printed_output = " ".join(str(call) for call in mock_print.call_args_list)
@@ -1188,13 +1163,7 @@ def test_edit_invalid_json_array_instead_of_object(
     with patch("builtins.print") as mock_print:
         # Pass a JSON array instead of object
         result = main(
-            [
-                "edit",
-                "12345678",
-                "--add-repository",
-                '["not", "an", "object"]',
-                "--no-commit",
-            ]
+            ["edit", "12345678", "--add-repository", '["not", "an", "object"]', "--no-commit"]
         )
 
         # Should show warning about invalid format
@@ -1210,13 +1179,7 @@ def test_edit_malformed_json_syntax(mock_get_registry_path, temp_registry):
     with patch("builtins.print") as mock_print:
         # Pass malformed JSON
         result = main(
-            [
-                "edit",
-                "12345678",
-                "--add-repository",
-                '{"name": "test", "url":}',
-                "--no-commit",
-            ]
+            ["edit", "12345678", "--add-repository", '{"name": "test", "url":}', "--no-commit"]
         )
 
         # Should show warning about invalid format
@@ -1230,9 +1193,7 @@ def test_edit_remove_nonexistent_repository(mock_get_registry_path, temp_registr
     mock_get_registry_path.return_value = str(temp_registry)
 
     with patch("builtins.print") as mock_print:
-        result = main(
-            ["edit", "12345678", "--remove-repository", "nonexistent", "--no-commit"]
-        )
+        result = main(["edit", "12345678", "--remove-repository", "nonexistent", "--no-commit"])
 
         assert result == 0
 
@@ -1308,15 +1269,7 @@ def test_edit_shows_changes_summary(mock_get_registry_path, temp_registry):
 
     with patch("builtins.print") as mock_print:
         result = main(
-            [
-                "edit",
-                "12345678",
-                "--set-title",
-                "Changed Title",
-                "--add-tag",
-                "newtag",
-                "--no-commit",
-            ]
+            ["edit", "12345678", "--set-title", "Changed Title", "--add-tag", "newtag", "--no-commit"]
         )
 
         assert result == 0
@@ -1684,9 +1637,7 @@ class TestEditCommandUsesEditOperation:
             mock_instance.apply_list_edits.return_value = []
             MockOperation.return_value = mock_instance
 
-            result = main(
-                ["edit", "12345678", "--set-title", "New Title", "--no-commit"]
-            )
+            result = main(["edit", "12345678", "--set-title", "New Title", "--no-commit"])
 
         # Verify EditOperation was instantiated and methods were called
         MockOperation.assert_called_once_with(str(temp_registry))
@@ -1762,7 +1713,7 @@ class TestEditCommandUsesEditOperation:
         self, mock_get_registry_path, temp_registry
     ):
         """Test that InvalidValueError from EditOperation is handled correctly.
-
+        
         Since argparse validates --set-status choices at parse time, we test this
         by mocking EditOperation to raise InvalidValueError for a different field
         that doesn't have argparse validation.
@@ -1918,7 +1869,7 @@ class TestEditCommandMCPParity:
         # argparse validates choices and exits with code 2
         with pytest.raises(SystemExit) as exc_info:
             main(["edit", "12345678", "--set-status", "invalid-status"])
-
+        
         # argparse exits with code 2 for invalid argument values
         assert exc_info.value.code == 2
 
@@ -1954,9 +1905,7 @@ class TestEditNoCommitFlag:
         mock_get_registry_path.return_value = str(temp_registry)
 
         with patch("hxc.commands.edit.commit_entity_change") as mock_commit:
-            result = main(
-                ["edit", "12345678", "--set-title", "No Commit", "--no-commit"]
-            )
+            result = main(["edit", "12345678", "--set-title", "No Commit", "--no-commit"])
 
         assert result == 0
         mock_commit.assert_not_called()
@@ -1968,9 +1917,7 @@ class TestEditNoCommitFlag:
         """Test that --no-commit flag prints a warning"""
         mock_get_registry_path.return_value = str(temp_registry)
 
-        result = main(
-            ["edit", "12345678", "--set-title", "No Commit Warning", "--no-commit"]
-        )
+        result = main(["edit", "12345678", "--set-title", "No Commit Warning", "--no-commit"])
 
         assert result == 0
         captured = capsys.readouterr()

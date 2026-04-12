@@ -588,7 +588,9 @@ class TestApplyScalarEdits:
         operation = EditOperation(temp_registry)
         entity_data = {"type": "project", "category": "old/category"}
 
-        changes = operation.apply_scalar_edits(entity_data, set_category="new/category")
+        changes = operation.apply_scalar_edits(
+            entity_data, set_category="new/category"
+        )
 
         assert entity_data["category"] == "new/category"
         assert len(changes) == 1
@@ -717,7 +719,9 @@ class TestApplyListEdits:
         operation = EditOperation(temp_registry)
         entity_data = {"tags": ["existing"]}
 
-        changes = operation.apply_list_edits(entity_data, remove_tags=["nonexistent"])
+        changes = operation.apply_list_edits(
+            entity_data, remove_tags=["nonexistent"]
+        )
 
         assert entity_data["tags"] == ["existing"]
         assert len(changes) == 0
@@ -770,7 +774,9 @@ class TestApplyListEdits:
         operation = EditOperation(temp_registry)
         entity_data = {"children": ["existing"]}
 
-        changes = operation.apply_list_edits(entity_data, add_children=["new-child"])
+        changes = operation.apply_list_edits(
+            entity_data, add_children=["new-child"]
+        )
 
         assert "existing" in entity_data["children"]
         assert "new-child" in entity_data["children"]
@@ -781,7 +787,9 @@ class TestApplyListEdits:
         operation = EditOperation(temp_registry)
         entity_data = {"children": ["existing"]}
 
-        changes = operation.apply_list_edits(entity_data, add_children=["existing"])
+        changes = operation.apply_list_edits(
+            entity_data, add_children=["existing"]
+        )
 
         assert entity_data["children"].count("existing") == 1
         assert len(changes) == 0
@@ -791,7 +799,9 @@ class TestApplyListEdits:
         operation = EditOperation(temp_registry)
         entity_data = {"children": ["keep", "remove"]}
 
-        changes = operation.apply_list_edits(entity_data, remove_children=["remove"])
+        changes = operation.apply_list_edits(
+            entity_data, remove_children=["remove"]
+        )
 
         assert entity_data["children"] == ["keep"]
         assert len(changes) == 1
@@ -801,7 +811,9 @@ class TestApplyListEdits:
         operation = EditOperation(temp_registry)
         entity_data = {"related": ["old-rel"]}
 
-        changes = operation.apply_list_edits(entity_data, set_related=["rel1", "rel2"])
+        changes = operation.apply_list_edits(
+            entity_data, set_related=["rel1", "rel2"]
+        )
 
         assert entity_data["related"] == ["rel1", "rel2"]
         assert len(changes) == 1
@@ -812,7 +824,9 @@ class TestApplyListEdits:
         operation = EditOperation(temp_registry)
         entity_data = {"related": ["existing"]}
 
-        changes = operation.apply_list_edits(entity_data, add_related=["new-rel"])
+        changes = operation.apply_list_edits(
+            entity_data, add_related=["new-rel"]
+        )
 
         assert "existing" in entity_data["related"]
         assert "new-rel" in entity_data["related"]
@@ -823,7 +837,9 @@ class TestApplyListEdits:
         operation = EditOperation(temp_registry)
         entity_data = {"related": ["keep", "remove"]}
 
-        changes = operation.apply_list_edits(entity_data, remove_related=["remove"])
+        changes = operation.apply_list_edits(
+            entity_data, remove_related=["remove"]
+        )
 
         assert entity_data["related"] == ["keep"]
         assert len(changes) == 1
@@ -1634,8 +1650,13 @@ class TestEditOperationPathSecurity:
         )
 
         assert result["success"] is True
+
+        # Resolve both paths to handle symlinks (macOS) and short paths (Windows)
+        resolved_registry = str(Path(temp_registry).resolve())
+        resolved_file_path = str(Path(result["file_path"]).resolve())
+
         # File path should be within registry
-        assert temp_registry in result["file_path"]
+        assert resolved_file_path.startswith(resolved_registry)
 
     def test_edit_uses_safe_path_resolution(self, temp_registry):
         """Test that edit uses secure path resolution"""
@@ -1659,5 +1680,10 @@ class TestEditOperationPathSecurity:
         assert result is not None
 
         file_path, _ = result
+
+        # Resolve both paths to handle symlinks (macOS) and short paths (Windows)
+        resolved_registry = str(Path(temp_registry).resolve())
+        resolved_file_path = str(file_path.resolve())
+
         # Path should be within registry
-        assert str(file_path).startswith(temp_registry)
+        assert resolved_file_path.startswith(resolved_registry)
