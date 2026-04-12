@@ -508,22 +508,54 @@ class MCPServer:
                 "properties": {
                     "identifier": {
                         "type": "string",
-                        "description": "UID or human-readable ID",
+                        "description": "UID or human-readable ID of the entity to edit",
                     },
-                    "set_title": {"type": "string"},
-                    "set_description": {"type": "string"},
-                    "set_status": {"type": "string"},
+                    "set_title": {
+                        "type": "string",
+                        "description": "New title value",
+                    },
+                    "set_description": {
+                        "type": "string",
+                        "description": "New description value",
+                    },
+                    "set_status": {
+                        "type": "string",
+                        "description": "New status value (active, completed, on-hold, cancelled, planned)",
+                    },
                     "set_id": {
                         "type": "string",
                         "description": "New human-readable ID. Must be unique within entity type.",
                     },
-                    "set_category": {"type": "string"},
-                    "set_parent": {"type": "string"},
-                    "set_start_date": {"type": "string"},
-                    "set_due_date": {"type": "string"},
-                    "set_completion_date": {"type": "string"},
-                    "add_tags": {"type": "array", "items": {"type": "string"}},
-                    "remove_tags": {"type": "array", "items": {"type": "string"}},
+                    "set_category": {
+                        "type": "string",
+                        "description": "New category path",
+                    },
+                    "set_parent": {
+                        "type": "string",
+                        "description": "New parent UID or ID",
+                    },
+                    "set_start_date": {
+                        "type": "string",
+                        "description": "New start date (YYYY-MM-DD)",
+                    },
+                    "set_due_date": {
+                        "type": "string",
+                        "description": "New due date (YYYY-MM-DD)",
+                    },
+                    "set_completion_date": {
+                        "type": "string",
+                        "description": "New completion date (YYYY-MM-DD)",
+                    },
+                    "add_tags": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Tags to add (idempotent - duplicates ignored)",
+                    },
+                    "remove_tags": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Tags to remove (silently ignores missing)",
+                    },
                     "add_children": {
                         "type": "array",
                         "items": {"type": "string"},
@@ -544,7 +576,14 @@ class MCPServer:
                         "items": {"type": "string"},
                         "description": "Related entity UIDs/IDs to remove",
                     },
-                    "entity_type": {"type": "string"},
+                    "entity_type": {
+                        "type": "string",
+                        "description": "Optional type filter to disambiguate the identifier (program, project, mission, action)",
+                    },
+                    "use_git": {
+                        "type": "boolean",
+                        "description": "Whether to commit the change to git (default: true). Set false to skip git operations.",
+                    },
                 },
                 "required": ["identifier"],
             },

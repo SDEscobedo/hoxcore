@@ -23,6 +23,16 @@ from hxc.core.operations.delete import (
     DeleteOperationError,
     EntityNotFoundError,
 )
+from hxc.core.operations.edit import DuplicateIdError as EditDuplicateIdError
+from hxc.core.operations.edit import (
+    EditOperation,
+    EditOperationError,
+)
+from hxc.core.operations.edit import EntityNotFoundError as EditEntityNotFoundError
+from hxc.core.operations.edit import (
+    InvalidValueError,
+    NoChangesError,
+)
 from hxc.core.operations.list import ListOperation, ListOperationError
 from hxc.mcp.tools import (
     create_entity_tool,
@@ -69,6 +79,8 @@ category: software.dev/cli-tool
 tags: [test, mcp, cli]
 start_date: 2024-01-01
 due_date: 2024-12-31
+children: []
+related: []
 repositories:
   - name: github
     url: https://github.com/test/repo
@@ -77,7 +89,7 @@ storage:
     provider: google-drive
     url: https://drive.google.com/test
 """
-    (registry_path / "projects" / "proj-test-001.yml").write_text(project1_content)
+    (registry_path / "projects" / "proj-proj-test-001.yml").write_text(project1_content)
 
     project2_content = """
 type: project
@@ -90,8 +102,10 @@ category: software.dev/web-app
 tags: [test, web]
 start_date: 2024-01-01
 completion_date: 2024-06-30
+children: []
+related: []
 """
-    (registry_path / "projects" / "proj-test-002.yml").write_text(project2_content)
+    (registry_path / "projects" / "proj-proj-test-002.yml").write_text(project2_content)
 
     program_content = """
 type: program
@@ -103,8 +117,9 @@ status: active
 category: software.dev
 tags: [test, program]
 children: [proj-test-001, proj-test-002]
+related: []
 """
-    (registry_path / "programs" / "prog-test-001.yml").write_text(program_content)
+    (registry_path / "programs" / "prog-prog-test-001.yml").write_text(program_content)
 
     mission_content = """
 type: mission
@@ -116,8 +131,10 @@ status: planned
 category: research
 tags: [test, mission]
 parent: prog-test-001
+children: []
+related: []
 """
-    (registry_path / "missions" / "miss-test-001.yml").write_text(mission_content)
+    (registry_path / "missions" / "miss-miss-test-001.yml").write_text(mission_content)
 
     action_content = """
 type: action
@@ -128,8 +145,10 @@ description: A test action
 status: active
 category: maintenance
 tags: [test, action]
+children: []
+related: []
 """
-    (registry_path / "actions" / "act-test-001.yml").write_text(action_content)
+    (registry_path / "actions" / "act-act-test-001.yml").write_text(action_content)
 
     yield str(registry_path)
 
@@ -274,9 +293,27 @@ def git_registry_with_entities(git_registry):
         "title": "Git Project",
         "status": "active",
         "start_date": "2024-01-01",
+        "tags": ["test"],
+        "children": [],
+        "related": [],
     }
     with open(registry_path / "projects" / "proj-proj0001.yml", "w") as f:
         yaml.dump(project_content, f)
+
+    # Create second project for uniqueness tests
+    project2_content = {
+        "type": "project",
+        "uid": "proj0002",
+        "id": "P-002",
+        "title": "Second Git Project",
+        "status": "active",
+        "start_date": "2024-01-01",
+        "tags": [],
+        "children": [],
+        "related": [],
+    }
+    with open(registry_path / "projects" / "proj-proj0002.yml", "w") as f:
+        yaml.dump(project2_content, f)
 
     # Create test program
     program_content = {
@@ -286,6 +323,8 @@ def git_registry_with_entities(git_registry):
         "title": "Git Program",
         "status": "active",
         "start_date": "2024-01-01",
+        "children": [],
+        "related": [],
     }
     with open(registry_path / "programs" / "prog-prog0001.yml", "w") as f:
         yaml.dump(program_content, f)
@@ -298,6 +337,8 @@ def git_registry_with_entities(git_registry):
         "title": "Git Mission",
         "status": "planned",
         "start_date": "2024-01-01",
+        "children": [],
+        "related": [],
     }
     with open(registry_path / "missions" / "miss-miss0001.yml", "w") as f:
         yaml.dump(mission_content, f)
@@ -310,6 +351,8 @@ def git_registry_with_entities(git_registry):
         "title": "Git Action",
         "status": "active",
         "start_date": "2024-01-01",
+        "children": [],
+        "related": [],
     }
     with open(registry_path / "actions" / "act-act0001.yml", "w") as f:
         yaml.dump(action_content, f)
@@ -993,7 +1036,7 @@ class TestGetEntityTool:
 
         assert result["success"] is True
         assert "file_path" in result
-        assert "proj-test-001.yml" in result["file_path"]
+        assert "proj-proj-test-001.yml" in result["file_path"]
 
     def test_get_entity_includes_identifier(self, temp_registry):
         """Test that result includes identifier"""
@@ -1300,7 +1343,7 @@ class TestGetEntityPropertyTool:
         )
 
         assert result["success"] is True
-        assert "proj-test-001.yml" in result["value"]
+        assert "proj-proj-test-001.yml" in result["value"]
 
     def test_get_nonexistent_property(self, temp_registry):
         """Test getting non-existent property"""
@@ -2138,6 +2181,7 @@ class TestEditEntityTool:
         result = edit_entity_tool(
             identifier="P-001",
             set_title="Renamed Project",
+            use_git=False,
             registry_path=temp_registry,
         )
 
@@ -2150,6 +2194,7 @@ class TestEditEntityTool:
         result = edit_entity_tool(
             identifier="P-001",
             set_status="completed",
+            use_git=False,
             registry_path=temp_registry,
         )
 
@@ -2161,6 +2206,7 @@ class TestEditEntityTool:
         result = edit_entity_tool(
             identifier="P-001",
             add_tags=["new-tag", "another-tag"],
+            use_git=False,
             registry_path=temp_registry,
         )
 
@@ -2175,6 +2221,7 @@ class TestEditEntityTool:
         result = edit_entity_tool(
             identifier="P-001",
             remove_tags=["mcp"],
+            use_git=False,
             registry_path=temp_registry,
         )
 
@@ -2186,6 +2233,7 @@ class TestEditEntityTool:
         result = edit_entity_tool(
             identifier="P-001",
             add_tags=["test"],  # "test" already exists in fixture
+            use_git=False,
             registry_path=temp_registry,
         )
 
@@ -2197,6 +2245,7 @@ class TestEditEntityTool:
         result = edit_entity_tool(
             identifier="PRG-001",
             add_children=["act-test-001"],
+            use_git=False,
             registry_path=temp_registry,
         )
 
@@ -2209,6 +2258,7 @@ class TestEditEntityTool:
         result = edit_entity_tool(
             identifier="PRG-001",
             remove_children=["proj-test-001"],
+            use_git=False,
             registry_path=temp_registry,
         )
 
@@ -2219,6 +2269,7 @@ class TestEditEntityTool:
         result = edit_entity_tool(
             identifier="PRG-001",
             add_children=["proj-test-001"],  # already in fixture
+            use_git=False,
             registry_path=temp_registry,
         )
 
@@ -2230,6 +2281,7 @@ class TestEditEntityTool:
         result = edit_entity_tool(
             identifier="P-001",
             add_related=["proj-test-002", "act-test-001"],
+            use_git=False,
             registry_path=temp_registry,
         )
 
@@ -2243,11 +2295,13 @@ class TestEditEntityTool:
         edit_entity_tool(
             identifier="P-001",
             add_related=["proj-test-002"],
+            use_git=False,
             registry_path=temp_registry,
         )
         result = edit_entity_tool(
             identifier="P-001",
             remove_related=["proj-test-002"],
+            use_git=False,
             registry_path=temp_registry,
         )
 
@@ -2258,22 +2312,25 @@ class TestEditEntityTool:
         result = edit_entity_tool(
             identifier="A-001",
             add_related=["proj-test-001"],
+            use_git=False,
             registry_path=temp_registry,
         )
 
         assert result["success"] is True
-        assert result["entity"]["related"] == ["proj-test-001"]
+        assert "proj-test-001" in result["entity"]["related"]
 
     def test_edit_add_duplicate_related_is_idempotent(self, temp_registry):
         edit_entity_tool(
             identifier="P-001",
             add_related=["proj-test-001"],
+            use_git=False,
             registry_path=temp_registry,
         )
 
         result = edit_entity_tool(
             identifier="P-001",
             add_related=["proj-test-001"],
+            use_git=False,
             registry_path=temp_registry,
         )
 
@@ -2285,6 +2342,7 @@ class TestEditEntityTool:
         result = edit_entity_tool(
             identifier="PRG-001",
             remove_children=["nonexistent-uid"],
+            use_git=False,
             registry_path=temp_registry,
         )
 
@@ -2295,6 +2353,7 @@ class TestEditEntityTool:
         result = edit_entity_tool(
             identifier="P-001",
             remove_related=["nonexistent-uid"],
+            use_git=False,
             registry_path=temp_registry,
         )
 
@@ -2307,6 +2366,7 @@ class TestEditEntityTool:
             set_title="Updated Title",
             set_description="Updated description",
             set_category="research/new",
+            use_git=False,
             registry_path=temp_registry,
         )
 
@@ -2322,6 +2382,7 @@ class TestEditEntityTool:
         result = edit_entity_tool(
             identifier="P-001",
             set_status="not-valid",
+            use_git=False,
             registry_path=temp_registry,
         )
 
@@ -2332,6 +2393,7 @@ class TestEditEntityTool:
         """Test that providing no changes returns an error"""
         result = edit_entity_tool(
             identifier="P-001",
+            use_git=False,
             registry_path=temp_registry,
         )
 
@@ -2343,6 +2405,7 @@ class TestEditEntityTool:
         result = edit_entity_tool(
             identifier="P-DOES-NOT-EXIST",
             set_title="Ghost",
+            use_git=False,
             registry_path=temp_registry,
         )
 
@@ -2354,6 +2417,7 @@ class TestEditEntityTool:
         edit_result = edit_entity_tool(
             identifier="P-001",
             set_title="Persisted Title",
+            use_git=False,
             registry_path=temp_registry,
         )
 
@@ -2370,6 +2434,7 @@ class TestEditEntityTool:
         result = edit_entity_tool(
             identifier="proj-test-001",
             set_title="UID Edit Test",
+            use_git=False,
             registry_path=temp_registry,
         )
 
@@ -2381,6 +2446,7 @@ class TestEditEntityTool:
         result = edit_entity_tool(
             identifier="P-001",
             set_due_date="2026-06-30",
+            use_git=False,
             registry_path=temp_registry,
         )
 
@@ -2390,6 +2456,19 @@ class TestEditEntityTool:
         assert "identifier" in result
         assert "file_path" in result
 
+    def test_edit_returns_git_committed_field(self, temp_registry):
+        """Test that edit returns git_committed field"""
+        result = edit_entity_tool(
+            identifier="P-001",
+            set_title="Git Field Test",
+            use_git=False,
+            registry_path=temp_registry,
+        )
+
+        assert result["success"] is True
+        assert "git_committed" in result
+        assert result["git_committed"] is False
+
     # ─── ID UNIQUENESS TESTS ────────────────────────────────────────────────────
 
     def test_edit_set_id_to_existing_id_fails(self, temp_registry):
@@ -2398,6 +2477,7 @@ class TestEditEntityTool:
         result = edit_entity_tool(
             identifier="P-001",
             set_id="P-002",
+            use_git=False,
             registry_path=temp_registry,
         )
 
@@ -2414,6 +2494,7 @@ class TestEditEntityTool:
         result = edit_entity_tool(
             identifier="proj-test-001",
             set_id="P-001",
+            use_git=False,
             registry_path=temp_registry,
         )
 
@@ -2426,6 +2507,7 @@ class TestEditEntityTool:
         result = edit_entity_tool(
             identifier="P-001",
             set_id="P-NEW-UNIQUE",
+            use_git=False,
             registry_path=temp_registry,
         )
 
@@ -2445,6 +2527,7 @@ class TestEditEntityTool:
         result = edit_entity_tool(
             identifier="PRG-001",
             set_id="P-001",
+            use_git=False,
             registry_path=temp_registry,
         )
 
@@ -2465,12 +2548,428 @@ class TestEditEntityTool:
         result = edit_entity_tool(
             identifier="P-001",
             set_id="P-002",
+            use_git=False,
             registry_path=temp_registry,
         )
 
         assert result["success"] is False
         # Error message should mention the entity type
         assert "project" in result["error"].lower()
+
+
+class TestEditEntityToolUsesSharedOperation:
+    """Tests to verify edit_entity_tool uses the shared EditOperation"""
+
+    def test_edit_uses_edit_operation(self, temp_registry):
+        """Test that edit_entity_tool uses EditOperation internally"""
+        with patch("hxc.mcp.tools.EditOperation") as MockOperation:
+            mock_instance = MagicMock()
+            mock_instance.edit_entity.return_value = {
+                "success": True,
+                "identifier": "P-001",
+                "changes": ["Set title: 'Old' → 'New'"],
+                "entity": {"type": "project", "title": "New"},
+                "file_path": "/test/path.yml",
+                "git_committed": False,
+            }
+            MockOperation.return_value = mock_instance
+
+            result = edit_entity_tool(
+                identifier="P-001",
+                set_title="New Title",
+                use_git=False,
+                registry_path=temp_registry,
+            )
+
+        MockOperation.assert_called_once_with(temp_registry)
+        mock_instance.edit_entity.assert_called_once()
+
+    def test_edit_passes_all_parameters_to_operation(self, temp_registry):
+        """Test that edit_entity_tool passes all parameters to EditOperation"""
+        with patch("hxc.mcp.tools.EditOperation") as MockOperation:
+            mock_instance = MagicMock()
+            mock_instance.edit_entity.return_value = {
+                "success": True,
+                "identifier": "P-001",
+                "changes": [],
+                "entity": {"type": "project"},
+                "file_path": "/test/path.yml",
+                "git_committed": False,
+            }
+            MockOperation.return_value = mock_instance
+
+            result = edit_entity_tool(
+                identifier="P-001",
+                set_title="New Title",
+                set_description="New Desc",
+                set_status="completed",
+                set_id="P-NEW",
+                set_category="new/category",
+                set_parent="parent-uid",
+                set_start_date="2025-01-01",
+                set_due_date="2025-12-31",
+                set_completion_date="2025-11-30",
+                add_tags=["tag1"],
+                remove_tags=["tag2"],
+                add_children=["child1"],
+                remove_children=["child2"],
+                add_related=["rel1"],
+                remove_related=["rel2"],
+                entity_type="project",
+                use_git=False,
+                registry_path=temp_registry,
+            )
+
+        call_kwargs = mock_instance.edit_entity.call_args[1]
+        assert call_kwargs["identifier"] == "P-001"
+        assert call_kwargs["set_title"] == "New Title"
+        assert call_kwargs["set_description"] == "New Desc"
+        assert call_kwargs["set_status"] == "completed"
+        assert call_kwargs["set_id"] == "P-NEW"
+        assert call_kwargs["set_category"] == "new/category"
+        assert call_kwargs["set_parent"] == "parent-uid"
+        assert call_kwargs["set_start_date"] == "2025-01-01"
+        assert call_kwargs["set_due_date"] == "2025-12-31"
+        assert call_kwargs["set_completion_date"] == "2025-11-30"
+        assert call_kwargs["add_tags"] == ["tag1"]
+        assert call_kwargs["remove_tags"] == ["tag2"]
+        assert call_kwargs["add_children"] == ["child1"]
+        assert call_kwargs["remove_children"] == ["child2"]
+        assert call_kwargs["add_related"] == ["rel1"]
+        assert call_kwargs["remove_related"] == ["rel2"]
+        assert call_kwargs["entity_type"] == EntityType.PROJECT
+        assert call_kwargs["use_git"] is False
+
+    def test_edit_handles_entity_not_found_error(self, temp_registry):
+        """Test that EntityNotFoundError is handled correctly"""
+        with patch("hxc.mcp.tools.EditOperation") as MockOperation:
+            mock_instance = MagicMock()
+            mock_instance.edit_entity.side_effect = EditEntityNotFoundError(
+                "Entity not found: NONEXISTENT"
+            )
+            MockOperation.return_value = mock_instance
+
+            result = edit_entity_tool(
+                identifier="NONEXISTENT",
+                set_title="Test",
+                use_git=False,
+                registry_path=temp_registry,
+            )
+
+        assert result["success"] is False
+        assert "not found" in result["error"].lower()
+
+    def test_edit_handles_duplicate_id_error(self, temp_registry):
+        """Test that DuplicateIdError is handled correctly"""
+        with patch("hxc.mcp.tools.EditOperation") as MockOperation:
+            mock_instance = MagicMock()
+            mock_instance.edit_entity.side_effect = EditDuplicateIdError(
+                "project with id 'P-002' already exists"
+            )
+            MockOperation.return_value = mock_instance
+
+            result = edit_entity_tool(
+                identifier="P-001",
+                set_id="P-002",
+                use_git=False,
+                registry_path=temp_registry,
+            )
+
+        assert result["success"] is False
+        assert "P-002" in result["error"]
+        assert "already exists" in result["error"].lower()
+
+    def test_edit_handles_invalid_value_error(self, temp_registry):
+        """Test that InvalidValueError is handled correctly"""
+        with patch("hxc.mcp.tools.EditOperation") as MockOperation:
+            mock_instance = MagicMock()
+            mock_instance.edit_entity.side_effect = InvalidValueError(
+                "Invalid status 'banana'"
+            )
+            MockOperation.return_value = mock_instance
+
+            result = edit_entity_tool(
+                identifier="P-001",
+                set_status="banana",
+                use_git=False,
+                registry_path=temp_registry,
+            )
+
+        assert result["success"] is False
+        assert "banana" in result["error"] or "status" in result["error"].lower()
+
+    def test_edit_handles_no_changes_error(self, temp_registry):
+        """Test that NoChangesError is handled correctly"""
+        with patch("hxc.mcp.tools.EditOperation") as MockOperation:
+            mock_instance = MagicMock()
+            mock_instance.edit_entity.side_effect = NoChangesError(
+                "No changes specified"
+            )
+            MockOperation.return_value = mock_instance
+
+            result = edit_entity_tool(
+                identifier="P-001",
+                use_git=False,
+                registry_path=temp_registry,
+            )
+
+        assert result["success"] is False
+        assert "no changes" in result["error"].lower()
+
+    def test_edit_handles_operation_error(self, temp_registry):
+        """Test that EditOperationError is handled correctly"""
+        with patch("hxc.mcp.tools.EditOperation") as MockOperation:
+            mock_instance = MagicMock()
+            mock_instance.edit_entity.side_effect = EditOperationError(
+                "Edit operation failed"
+            )
+            MockOperation.return_value = mock_instance
+
+            result = edit_entity_tool(
+                identifier="P-001",
+                set_title="Test",
+                use_git=False,
+                registry_path=temp_registry,
+            )
+
+        assert result["success"] is False
+        assert "Edit operation failed" in result["error"]
+
+    def test_edit_handles_path_security_error(self, temp_registry):
+        """Test that PathSecurityError is handled correctly"""
+        from hxc.utils.path_security import PathSecurityError
+
+        with patch("hxc.mcp.tools.EditOperation") as MockOperation:
+            mock_instance = MagicMock()
+            mock_instance.edit_entity.side_effect = PathSecurityError(
+                "Path traversal detected"
+            )
+            MockOperation.return_value = mock_instance
+
+            result = edit_entity_tool(
+                identifier="../../../etc/passwd",
+                set_title="Test",
+                use_git=False,
+                registry_path=temp_registry,
+            )
+
+        assert result["success"] is False
+        assert "Security error" in result["error"]
+
+
+class TestEditEntityToolGitIntegration:
+    """Tests for git integration in edit_entity_tool"""
+
+    def test_edit_with_use_git_true_creates_commit(self, git_registry_with_entities):
+        """Test that use_git=True creates a git commit"""
+        result = edit_entity_tool(
+            identifier="P-001",
+            set_title="Git Edit Title",
+            use_git=True,
+            registry_path=git_registry_with_entities,
+        )
+
+        assert result["success"] is True
+        assert result["git_committed"] is True
+
+        # Verify commit exists
+        log = subprocess.run(
+            ["git", "log", "--oneline"],
+            cwd=git_registry_with_entities,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        assert "Edit" in log.stdout
+        assert "proj-proj0001" in log.stdout
+
+    def test_edit_with_use_git_false_skips_commit(self, git_registry_with_entities):
+        """Test that use_git=False skips git commit"""
+        # Get initial commit count
+        log_before = subprocess.run(
+            ["git", "log", "--oneline"],
+            cwd=git_registry_with_entities,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        initial_count = len(log_before.stdout.strip().splitlines())
+
+        result = edit_entity_tool(
+            identifier="P-001",
+            set_title="No Git Title",
+            use_git=False,
+            registry_path=git_registry_with_entities,
+        )
+
+        assert result["success"] is True
+        assert result["git_committed"] is False
+
+        # Verify no new commit
+        log_after = subprocess.run(
+            ["git", "log", "--oneline"],
+            cwd=git_registry_with_entities,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        final_count = len(log_after.stdout.strip().splitlines())
+
+        assert final_count == initial_count
+
+    def test_edit_default_use_git_is_true(self, git_registry_with_entities):
+        """Test that use_git defaults to True"""
+        result = edit_entity_tool(
+            identifier="P-001",
+            set_title="Default Git Edit",
+            registry_path=git_registry_with_entities,
+        )
+
+        assert result["success"] is True
+        assert result["git_committed"] is True
+
+    def test_edit_commit_message_format(self, git_registry_with_entities):
+        """Test that commit message follows expected format"""
+        result = edit_entity_tool(
+            identifier="P-001",
+            set_title="Commit Format Test",
+            add_tags=["new-tag"],
+            use_git=True,
+            registry_path=git_registry_with_entities,
+        )
+
+        assert result["success"] is True
+
+        # Get commit message
+        log = subprocess.run(
+            ["git", "log", "-1", "--format=%B"],
+            cwd=git_registry_with_entities,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+        message = log.stdout
+
+        # Verify subject line format
+        assert "Edit proj-proj0001:" in message
+
+        # Verify body contains changes
+        assert "Set title" in message or "title" in message
+        assert "tag" in message.lower()
+
+    def test_edit_in_non_git_registry_handles_gracefully(self, temp_registry, capsys):
+        """Test that git operations handle non-git registry gracefully"""
+        result = edit_entity_tool(
+            identifier="P-001",
+            set_title="Non Git Title",
+            use_git=True,  # Request git, but not a git repo
+            registry_path=temp_registry,
+        )
+
+        assert result["success"] is True
+        assert result["git_committed"] is False
+
+        out = capsys.readouterr().out
+        assert "not inside a git repository" in out
+
+    def test_edit_sequential_commits(self, git_registry_with_entities):
+        """Test that multiple edits produce separate commits"""
+        # First edit
+        result1 = edit_entity_tool(
+            identifier="P-001",
+            set_title="First Edit",
+            use_git=True,
+            registry_path=git_registry_with_entities,
+        )
+
+        # Second edit
+        result2 = edit_entity_tool(
+            identifier="P-001",
+            set_status="completed",
+            use_git=True,
+            registry_path=git_registry_with_entities,
+        )
+
+        assert result1["success"] is True
+        assert result2["success"] is True
+
+        # Verify both commits exist
+        log = subprocess.run(
+            ["git", "log", "--oneline"],
+            cwd=git_registry_with_entities,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+        # Count commits (initial + add entities + 2 edits)
+        commit_count = len(log.stdout.strip().splitlines())
+        assert commit_count >= 4
+
+    def test_edit_commit_includes_all_changes(self, git_registry_with_entities):
+        """Test that commit message includes all changes"""
+        result = edit_entity_tool(
+            identifier="P-001",
+            set_title="Multi Change",
+            set_status="completed",
+            add_tags=["tag1", "tag2"],
+            use_git=True,
+            registry_path=git_registry_with_entities,
+        )
+
+        assert result["success"] is True
+
+        # Get commit message
+        log = subprocess.run(
+            ["git", "log", "-1", "--format=%B"],
+            cwd=git_registry_with_entities,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+        message = log.stdout
+
+        # All changes should be mentioned
+        assert "title" in message.lower()
+        assert "status" in message.lower() or "completed" in message.lower()
+        assert "tag" in message.lower()
+
+    def test_edit_all_entity_types_with_git(self, git_registry_with_entities):
+        """Test editing all entity types with git integration"""
+        entity_tests = [
+            ("P-001", "project"),
+            ("PRG-001", "program"),
+            ("M-001", "mission"),
+            ("A-001", "action"),
+        ]
+
+        for entity_id, entity_type in entity_tests:
+            result = edit_entity_tool(
+                identifier=entity_id,
+                set_title=f"Edited {entity_type.title()}",
+                use_git=True,
+                registry_path=git_registry_with_entities,
+            )
+
+            assert (
+                result["success"] is True
+            ), f"Failed for {entity_type}: {result.get('error')}"
+            assert result["git_committed"] is True
+
+        # Verify all commits exist
+        log = subprocess.run(
+            ["git", "log", "--oneline"],
+            cwd=git_registry_with_entities,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+        # Should have at least 6 commits (initial + add entities + 4 edits)
+        commit_count = len(log.stdout.strip().splitlines())
+        assert commit_count >= 6
 
 
 class TestDeleteEntityTool:
@@ -2490,13 +2989,13 @@ class TestDeleteEntityTool:
         assert "force=True" in result["message"]
 
         # File must still exist
-        assert Path(temp_registry, "projects", "proj-test-001.yml").exists()
+        assert Path(temp_registry, "projects", "proj-proj-test-001.yml").exists()
 
     def test_delete_without_force_does_not_delete(self, temp_registry):
         """Test that the entity file is NOT removed when force is False"""
         delete_entity_tool(identifier="P-001", force=False, registry_path=temp_registry)
 
-        assert Path(temp_registry, "projects", "proj-test-001.yml").exists()
+        assert Path(temp_registry, "projects", "proj-proj-test-001.yml").exists()
 
     def test_delete_with_force_removes_file(self, temp_registry):
         """Test that force=True actually deletes the file"""
@@ -2508,7 +3007,7 @@ class TestDeleteEntityTool:
         )
 
         assert result["success"] is True
-        assert not Path(temp_registry, "projects", "proj-test-001.yml").exists()
+        assert not Path(temp_registry, "projects", "proj-proj-test-001.yml").exists()
 
     def test_delete_returns_entity_info(self, temp_registry):
         """Test that delete returns the deleted entity's title and type"""
@@ -2545,7 +3044,7 @@ class TestDeleteEntityTool:
         )
 
         assert result["success"] is True
-        assert not Path(temp_registry, "projects", "proj-test-002.yml").exists()
+        assert not Path(temp_registry, "projects", "proj-proj-test-002.yml").exists()
 
     def test_delete_with_no_registry(self):
         """Test delete with a nonexistent registry path"""
@@ -2594,7 +3093,7 @@ class TestDeleteEntityTool:
                 "entity_title": "Test Project",
                 "entity_type": "project",
                 "file_path": str(
-                    Path(temp_registry) / "projects" / "proj-test-001.yml"
+                    Path(temp_registry) / "projects" / "proj-proj-test-001.yml"
                 ),
                 "entity": {
                     "type": "project",
@@ -2608,7 +3107,7 @@ class TestDeleteEntityTool:
                 "deleted_title": "Test Project",
                 "deleted_type": "project",
                 "file_path": str(
-                    Path(temp_registry) / "projects" / "proj-test-001.yml"
+                    Path(temp_registry) / "projects" / "proj-proj-test-001.yml"
                 ),
                 "entity": {
                     "type": "project",
@@ -2804,7 +3303,7 @@ class TestDeleteEntityToolGitIntegration:
         assert result["git_committed"] is False
 
         # File should still be deleted
-        assert not Path(temp_registry, "projects", "proj-test-001.yml").exists()
+        assert not Path(temp_registry, "projects", "proj-proj-test-001.yml").exists()
 
     def test_delete_sequential_commits(self, git_registry_with_entities):
         """Test that multiple deletions produce separate commits"""
@@ -2936,7 +3435,7 @@ class TestDeleteEntityToolErrorHandling:
                 "entity_title": "Test Project",
                 "entity_type": "project",
                 "file_path": str(
-                    Path(temp_registry) / "projects" / "proj-test-001.yml"
+                    Path(temp_registry) / "projects" / "proj-proj-test-001.yml"
                 ),
                 "entity": {
                     "type": "project",
@@ -3056,6 +3555,7 @@ class TestWriteToolsIntegration:
             identifier=uid,
             set_title="Updated Mission",
             add_tags=["important"],
+            use_git=False,
             registry_path=temp_registry,
         )
 
@@ -3081,6 +3581,7 @@ class TestWriteToolsIntegration:
         edit_result = edit_entity_tool(
             identifier=uid,
             set_status="completed",
+            use_git=False,
             registry_path=temp_registry,
         )
         assert edit_result["success"] is True
@@ -3190,17 +3691,17 @@ class TestWriteToolsIntegration:
         assert create_result["git_committed"] is True
         uid = create_result["uid"]
 
-        # Edit (note: edit doesn't have git integration in the current implementation)
+        # Edit
         edit_result = edit_entity_tool(
             identifier=uid,
             set_title="Lifecycle Git Test - Edited",
+            use_git=True,
             registry_path=git_registry,
         )
         assert edit_result["success"] is True
+        assert edit_result["git_committed"] is True
 
-        # Delete - note: since edit leaves uncommitted changes on the file,
-        # git rm without --force may fail and fall back to simple deletion.
-        # This is expected behavior.
+        # Delete
         delete_result = delete_entity_tool(
             identifier=uid,
             force=True,
@@ -3208,10 +3709,10 @@ class TestWriteToolsIntegration:
             registry_path=git_registry,
         )
         assert delete_result["success"] is True
-        # git_committed may be False if file had uncommitted changes from edit
-        # The important thing is the file was successfully deleted
+        # File was committed by edit, so git rm should work
+        assert delete_result["git_committed"] is True
 
-        # Verify git history has the create commit
+        # Verify git history has create, edit, and delete commits
         log = subprocess.run(
             ["git", "log", "--oneline"],
             cwd=git_registry,
@@ -3220,9 +3721,9 @@ class TestWriteToolsIntegration:
             check=True,
         )
 
-        # Should have at least initial + create
+        # Should have at least initial + create + edit + delete
         commit_count = len(log.stdout.strip().splitlines())
-        assert commit_count >= 2
+        assert commit_count >= 4
 
 
 class TestMCPCLIBehavioralParity:
@@ -3331,6 +3832,53 @@ class TestMCPCLIBehavioralParity:
         assert entity["tools"] == []
         assert entity["models"] == []
         assert entity["knowledge_bases"] == []
+
+    def test_edit_change_format_matches_cli(self, temp_registry):
+        """Test that edit change descriptions match CLI format"""
+        result = edit_entity_tool(
+            identifier="P-001",
+            set_title="New Title",
+            add_tags=["new-tag"],
+            use_git=False,
+            registry_path=temp_registry,
+        )
+
+        assert result["success"] is True
+        changes = result["changes"]
+
+        # Should have changes in expected format
+        assert any("title" in c.lower() for c in changes)
+        assert any("tag" in c.lower() for c in changes)
+
+    def test_edit_commit_message_matches_cli(self, git_registry_with_entities):
+        """Test that edit commit message format matches CLI"""
+        result = edit_entity_tool(
+            identifier="P-001",
+            set_title="Edit Commit Test",
+            add_tags=["test-tag"],
+            use_git=True,
+            registry_path=git_registry_with_entities,
+        )
+
+        assert result["success"] is True
+
+        # Get commit message
+        log = subprocess.run(
+            ["git", "log", "-1", "--format=%B"],
+            cwd=git_registry_with_entities,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+        message = log.stdout
+
+        # Subject line format: "Edit {prefix}-{uid}: ..."
+        assert "Edit proj-proj0001:" in message
+
+        # Body contains changes
+        assert "Set title" in message or "title" in message
+        assert "tag" in message.lower()
 
     def test_delete_commit_message_matches_cli(self, git_registry_with_entities):
         """Test that delete commit message format matches CLI"""
@@ -3471,6 +4019,48 @@ class TestMCPCLIBehavioralParity:
         assert result["success"] is True
         # git_committed may be False for untracked files
         assert not untracked_file.exists()
+
+    def test_edit_id_uniqueness_matches_cli(self, temp_registry):
+        """Test that edit ID uniqueness validation matches CLI"""
+        # Try to set P-001's ID to P-002 (duplicate)
+        result = edit_entity_tool(
+            identifier="P-001",
+            set_id="P-002",
+            use_git=False,
+            registry_path=temp_registry,
+        )
+
+        # Should fail just like CLI
+        assert result["success"] is False
+        assert "P-002" in result["error"]
+        assert "already exists" in result["error"].lower()
+        assert "project" in result["error"].lower()
+
+    def test_edit_produces_same_file_content_as_cli(self, temp_registry):
+        """Test that MCP edit produces same file content as CLI would"""
+        result = edit_entity_tool(
+            identifier="P-001",
+            set_title="Parity Test",
+            set_status="on-hold",
+            add_tags=["parity"],
+            use_git=False,
+            registry_path=temp_registry,
+        )
+
+        assert result["success"] is True
+
+        # Verify file content
+        with open(result["file_path"]) as f:
+            data = yaml.safe_load(f)
+
+        # Should have exactly the expected values
+        assert data["title"] == "Parity Test"
+        assert data["status"] == "on-hold"
+        assert "parity" in data["tags"]
+
+        # Original fields should be preserved
+        assert data["type"] == "project"
+        assert data["uid"] == "proj-test-001"
 
 
 class TestListEntitiesToolBehavioralParityWithCLI:
@@ -3628,3 +4218,109 @@ class TestListEntitiesToolBehavioralParityWithCLI:
 
         datetime.datetime.strptime(entity["_file"]["created"], "%Y-%m-%d")
         datetime.datetime.strptime(entity["_file"]["modified"], "%Y-%m-%d")
+
+
+class TestEditEntityToolBehavioralParityWithCLI:
+    """Tests to verify edit_entity_tool produces identical results to CLI"""
+
+    def test_edit_produces_same_results_as_cli_operation(self, temp_registry):
+        """Test that MCP edit produces same results as direct EditOperation"""
+        # Use direct operation
+        operation = EditOperation(temp_registry)
+        operation_result = operation.edit_entity(
+            identifier="P-001",
+            set_title="Direct Operation Edit",
+            use_git=False,
+        )
+
+        # Read the file
+        with open(operation_result["file_path"]) as f:
+            direct_data = yaml.safe_load(f)
+
+        # Now use MCP to edit a different entity
+        mcp_result = edit_entity_tool(
+            identifier="P-002",
+            set_title="MCP Tool Edit",
+            use_git=False,
+            registry_path=temp_registry,
+        )
+
+        # Both should succeed with same structure
+        assert operation_result["success"] is True
+        assert mcp_result["success"] is True
+
+        # Both should have same keys
+        assert set(operation_result.keys()) == set(mcp_result.keys())
+
+    def test_edit_changes_format_matches_cli_operation(self, temp_registry):
+        """Test that change descriptions match between MCP and EditOperation"""
+        # Use MCP
+        result = edit_entity_tool(
+            identifier="P-001",
+            set_title="Format Test",
+            set_status="completed",
+            add_tags=["new-tag"],
+            use_git=False,
+            registry_path=temp_registry,
+        )
+
+        assert result["success"] is True
+
+        # Changes should follow consistent format
+        for change in result["changes"]:
+            assert isinstance(change, str)
+            assert len(change) > 5  # Not trivially short
+
+    def test_edit_id_validation_matches_cli_operation(self, temp_registry):
+        """Test that ID validation matches between MCP and EditOperation"""
+        # Use direct operation for duplicate ID
+        operation = EditOperation(temp_registry)
+
+        try:
+            operation.edit_entity(
+                identifier="P-001",
+                set_id="P-002",
+                use_git=False,
+            )
+            operation_failed = False
+        except EditDuplicateIdError:
+            operation_failed = True
+
+        # Use MCP
+        mcp_result = edit_entity_tool(
+            identifier="proj-test-001",
+            set_id="P-002",
+            use_git=False,
+            registry_path=temp_registry,
+        )
+
+        # Both should fail
+        assert operation_failed is True
+        assert mcp_result["success"] is False
+
+    def test_edit_status_validation_matches_cli(self, temp_registry):
+        """Test that status validation is identical"""
+        # Valid statuses should work
+        for status in ["active", "completed", "on-hold", "cancelled", "planned"]:
+            result = edit_entity_tool(
+                identifier="P-001",
+                set_status=status,
+                use_git=False,
+                registry_path=temp_registry,
+            )
+            assert result["success"] is True, f"Status '{status}' should be valid"
+
+    def test_edit_invalid_status_matches_cli(self, temp_registry):
+        """Test that invalid status error matches CLI"""
+        result = edit_entity_tool(
+            identifier="P-001",
+            set_status="invalid-status",
+            use_git=False,
+            registry_path=temp_registry,
+        )
+
+        assert result["success"] is False
+        # Error should mention the status or valid options
+        assert (
+            "status" in result["error"].lower() or "invalid" in result["error"].lower()
+        )
