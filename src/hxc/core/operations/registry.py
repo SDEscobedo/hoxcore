@@ -132,7 +132,9 @@ class RegistryOperation:
             "missing": missing,
         }
 
-    def get_registry_path(self, include_discovery: bool = True) -> Dict[str, Any]:
+    def get_registry_path(
+        self, include_discovery: bool = True
+    ) -> Dict[str, Any]:
         """
         Get the current registry path from configuration.
 
@@ -201,7 +203,9 @@ class RegistryOperation:
             "discovered_path": None,
         }
 
-    def set_registry_path(self, path: str, validate: bool = True) -> Dict[str, Any]:
+    def set_registry_path(
+        self, path: str, validate: bool = True
+    ) -> Dict[str, Any]:
         """
         Set the registry path in configuration.
 
@@ -268,15 +272,13 @@ class RegistryOperation:
         if configured_path:
             validation = self.validate_registry_path(configured_path)
 
-            registries.append(
-                {
-                    "path": configured_path,
-                    "is_current": True,
-                    "is_valid": validation["valid"],
-                    "name": "default",
-                    "source": "config",
-                }
-            )
+            registries.append({
+                "path": configured_path,
+                "is_current": True,
+                "is_valid": validation["valid"],
+                "name": "default",
+                "source": "config",
+            })
 
         # Also check for discovered registry if different from configured
         discovered_path = get_project_root()
@@ -284,15 +286,13 @@ class RegistryOperation:
         if discovered_path and discovered_path != configured_path:
             validation = self.validate_registry_path(discovered_path)
 
-            registries.append(
-                {
-                    "path": discovered_path,
-                    "is_current": configured_path is None,
-                    "is_valid": validation["valid"],
-                    "name": "discovered",
-                    "source": "discovered",
-                }
-            )
+            registries.append({
+                "path": discovered_path,
+                "is_current": configured_path is None,
+                "is_valid": validation["valid"],
+                "name": "discovered",
+                "source": "discovered",
+            })
 
         return {
             "success": True,
