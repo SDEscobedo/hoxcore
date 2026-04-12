@@ -151,7 +151,9 @@ class TestRegistryPathGet:
         assert result == 1
         assert mock_print.call_args_list[0][0][0] == "No registry path is set."
 
-    def test_registry_path_get_with_discovery(self, mock_registry_operation, temp_registry):
+    def test_registry_path_get_with_discovery(
+        self, mock_registry_operation, temp_registry
+    ):
         """Test getting registry path with auto-discovery suggestion"""
         mock_instance, MockOperation = mock_registry_operation
 
@@ -171,7 +173,9 @@ class TestRegistryPathGet:
         printed_lines = [call[0][0] for call in mock_print.call_args_list]
         assert any("Found registry at" in line for line in printed_lines)
 
-    def test_registry_path_get_invalid_configured(self, mock_registry_operation, tmp_path):
+    def test_registry_path_get_invalid_configured(
+        self, mock_registry_operation, tmp_path
+    ):
         """Test getting registry path when configured path is invalid"""
         mock_instance, MockOperation = mock_registry_operation
         invalid_path = str(tmp_path / "invalid")
@@ -192,9 +196,13 @@ class TestRegistryPathGet:
         assert result == 1
         printed_lines = [call[0][0] for call in mock_print.call_args_list]
         # Check for "Warning" which is part of "Warning: Configured registry path is invalid"
-        assert any("Warning" in line or "invalid" in line.lower() for line in printed_lines)
+        assert any(
+            "Warning" in line or "invalid" in line.lower() for line in printed_lines
+        )
 
-    def test_registry_path_default_subcommand(self, mock_registry_operation, temp_registry):
+    def test_registry_path_default_subcommand(
+        self, mock_registry_operation, temp_registry
+    ):
         """Test that no subcommand defaults to 'path'"""
         mock_instance, MockOperation = mock_registry_operation
 
@@ -252,7 +260,9 @@ class TestRegistryPathSet:
         printed_lines = [call[0][0] for call in mock_print.call_args_list]
         assert any("Invalid registry path" in line for line in printed_lines)
 
-    def test_registry_path_set_resolves_path(self, mock_registry_operation, temp_registry):
+    def test_registry_path_set_resolves_path(
+        self, mock_registry_operation, temp_registry
+    ):
         """Test that set path is resolved to absolute"""
         mock_instance, MockOperation = mock_registry_operation
 
@@ -269,7 +279,9 @@ class TestRegistryPathSet:
 
         assert result == 0
 
-    def test_registry_path_set_error_handling(self, mock_registry_operation, temp_registry):
+    def test_registry_path_set_error_handling(
+        self, mock_registry_operation, temp_registry
+    ):
         """Test error handling when setting registry path"""
         mock_instance, MockOperation = mock_registry_operation
 
@@ -329,7 +341,9 @@ class TestRegistryList:
         assert result == 1
         mock_print.assert_called_once_with("No registries configured.")
 
-    def test_registry_list_multiple(self, mock_registry_operation, temp_registry, tmp_path):
+    def test_registry_list_multiple(
+        self, mock_registry_operation, temp_registry, tmp_path
+    ):
         """Test listing multiple registries"""
         mock_instance, MockOperation = mock_registry_operation
         other_registry = tmp_path / "other_registry"
@@ -362,7 +376,9 @@ class TestRegistryList:
         # Should print info about both registries
         assert mock_print.call_count >= 2
 
-    def test_registry_list_shows_invalid_status(self, mock_registry_operation, tmp_path):
+    def test_registry_list_shows_invalid_status(
+        self, mock_registry_operation, tmp_path
+    ):
         """Test that list shows invalid status for misconfigured registries"""
         mock_instance, MockOperation = mock_registry_operation
         invalid_path = str(tmp_path / "invalid")
@@ -426,9 +442,7 @@ class TestRegistryPathValidation:
 
     def test_validate_uses_registry_operation(self):
         """Test that _validate_registry_path uses RegistryOperation"""
-        with patch.object(
-            RegistryOperation, "validate_registry_path"
-        ) as mock_validate:
+        with patch.object(RegistryOperation, "validate_registry_path") as mock_validate:
             mock_validate.return_value = {"valid": True, "path": "/test", "missing": []}
 
             result = RegistryCommand._validate_registry_path(pathlib.Path("/test"))
@@ -438,9 +452,7 @@ class TestRegistryPathValidation:
 
     def test_validate_returns_false_on_invalid(self):
         """Test that _validate_registry_path returns False for invalid paths"""
-        with patch.object(
-            RegistryOperation, "validate_registry_path"
-        ) as mock_validate:
+        with patch.object(RegistryOperation, "validate_registry_path") as mock_validate:
             mock_validate.return_value = {
                 "valid": False,
                 "path": "/test",
@@ -624,7 +636,13 @@ class TestRegistryCommandBehavioralParityWithMCP:
 
         assert result["valid"] is False
         # Should check same components as MCP
-        expected_missing = {"config.yml", "programs/", "projects/", "missions/", "actions/"}
+        expected_missing = {
+            "config.yml",
+            "programs/",
+            "projects/",
+            "missions/",
+            "actions/",
+        }
         assert set(result["missing"]) == expected_missing
 
     def test_config_key_is_shared(self):
@@ -703,7 +721,7 @@ class TestRegistryCommandEdgeCases:
     def test_relative_path_is_resolved(self, mock_registry_operation, tmp_path):
         """Test that relative paths are resolved to absolute"""
         mock_instance, MockOperation = mock_registry_operation
-        
+
         # The path gets resolved in the command before calling the operation
         resolved_path = (tmp_path / "relative").resolve()
 
@@ -716,6 +734,7 @@ class TestRegistryCommandEdgeCases:
 
         with patch("builtins.print"):
             import os
+
             old_cwd = os.getcwd()
             try:
                 os.chdir(tmp_path)
@@ -733,8 +752,8 @@ class TestRegistryCommandIntegration:
 
     def test_set_then_get_workflow(self, temp_registry):
         """Test setting a path then getting it"""
-        import tempfile
         import shutil
+        import tempfile
 
         temp_config_dir = tempfile.mkdtemp()
         try:
