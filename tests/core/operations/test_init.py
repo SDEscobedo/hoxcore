@@ -836,9 +836,10 @@ class TestInitOperationEdgeCases:
                 result = operation.initialize_registry(use_git=False)
 
             assert result["success"] is True
-            assert Path(result["registry_path"]).resolve() == Path(
-                empty_temp_dir
-            ).resolve()
+            assert (
+                Path(result["registry_path"]).resolve()
+                == Path(empty_temp_dir).resolve()
+            )
         finally:
             os.chdir(original_dir)
 

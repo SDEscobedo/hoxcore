@@ -57,7 +57,7 @@ from hxc.mcp.tools import (
 @pytest.fixture
 def git_env(monkeypatch):
     """Configure git environment variables for tests.
-    
+
     This ensures git commands work in CI environments where git
     user.name and user.email are not configured globally.
     """
@@ -612,7 +612,9 @@ class TestInitRegistryTool:
 
         assert result["success"] is False
         assert "error" in result
-        assert "not empty" in result["error"].lower() or "empty" in result["error"].lower()
+        assert (
+            "not empty" in result["error"].lower() or "empty" in result["error"].lower()
+        )
 
     def test_init_returns_absolute_path(self, empty_temp_dir):
         """Test that returned path is absolute"""

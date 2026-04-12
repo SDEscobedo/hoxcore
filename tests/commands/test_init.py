@@ -391,9 +391,7 @@ class TestInitCommandExceptionHandling:
                 result = main(["init", str(temp_dir)])
 
             assert result == 1
-            mock_print.assert_called_with(
-                "❌ Security error: Path traversal detected"
-            )
+            mock_print.assert_called_with("❌ Security error: Path traversal detected")
 
     def test_init_operation_error_handling(self, temp_dir, mock_config):
         """Test that InitOperationError is handled correctly"""
@@ -627,9 +625,7 @@ class TestInitCommandConfigIntegration:
         """Test that config is not set when initialization fails"""
         with patch("hxc.commands.init.InitOperation") as MockOperation:
             mock_instance = MagicMock()
-            mock_instance.initialize_registry.side_effect = InitOperationError(
-                "Failed"
-            )
+            mock_instance.initialize_registry.side_effect = InitOperationError("Failed")
             MockOperation.return_value = mock_instance
 
             result = main(["init", str(temp_dir)])
@@ -638,7 +634,9 @@ class TestInitCommandConfigIntegration:
         mock_config.set.assert_not_called()
 
     @patch("subprocess.run")
-    def test_config_not_set_on_non_empty_directory(self, mock_run, temp_dir, mock_config):
+    def test_config_not_set_on_non_empty_directory(
+        self, mock_run, temp_dir, mock_config
+    ):
         """Test that config is not set when directory is non-empty"""
         # Create a file to make directory non-empty
         test_file = temp_dir / "existing.txt"
