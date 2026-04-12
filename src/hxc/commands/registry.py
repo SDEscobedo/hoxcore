@@ -1,15 +1,22 @@
 """
 Registry command implementation for managing registry locations.
+
+This module provides CLI commands for registry path management using the shared
+RegistryOperation for behavioral consistency with MCP tools.
 """
 
 import argparse
-import os
 import pathlib
 from typing import Optional
 
 from hxc.commands import register_command
 from hxc.commands.base import BaseCommand
 from hxc.core.config import Config
+from hxc.core.operations.registry import (
+    InvalidRegistryPathError,
+    RegistryOperation,
+    RegistryOperationError,
+)
 from hxc.utils.helpers import get_project_root
 
 
@@ -21,6 +28,7 @@ class RegistryCommand(BaseCommand):
     help = "Manage registry locations"
 
     # Key used in the config to store the registry path
+    # This matches RegistryOperation.CONFIG_KEY for consistency
     CONFIG_KEY = "registry_path"
 
     @classmethod
@@ -60,34 +68,52 @@ class RegistryCommand(BaseCommand):
     @classmethod
     def handle_path(cls, args):
         """Handle the 'path' subcommand"""
-        config = Config()
+        operation = RegistryOperation()
 
         # If --set is specified, update the registry path
         if hasattr(args, "set") and args.set:
             path = pathlib.Path(args.set).resolve()
-            if not cls._validate_registry_path(path):
-                print(f"❌ Invalid registry path: {path}")
+
+            try:
+                result = operation.set_registry_path(str(path), validate=True)
+                print(f"✅ Registry path set to: {result['path']}")
+                return 0
+            except InvalidRegistryPathError as e:
+                print(f"❌ Invalid registry path: {e.path}")
                 print("  Path does not appear to be a valid HXC registry.")
+                if e.missing_components:
+                    print(f"  Missing: {', '.join(e.missing_components)}")
+                return 1
+            except RegistryOperationError as e:
+                print(f"❌ Error setting registry path: {e}")
                 return 1
 
-            config.set(cls.CONFIG_KEY, str(path))
-            print(f"✅ Registry path set to: {path}")
-            return 0
-
         # Otherwise, get and display the registry path
-        registry_path = cls.get_registry_path()
-        if registry_path:
-            print(registry_path)
-            return 0
+        result = operation.get_registry_path(include_discovery=True)
+
+        if result["success"] and result["path"]:
+            if result["is_valid"]:
+                print(result["path"])
+                return 0
+            else:
+                # Path is set but invalid
+                print(f"Warning: Configured registry path is invalid: {result['path']}")
+                if result.get("validation_errors"):
+                    print(f"  Missing: {', '.join(result['validation_errors'])}")
+                if result.get("discovered_path"):
+                    print(f"Found valid registry at: {result['discovered_path']}")
+                    print("To set this as your default registry, run:")
+                    print(f"  hxc registry path --set {result['discovered_path']}")
+                return 1
         else:
             print("No registry path is set.")
 
             # Try to find a registry in the current directory or parent directories
-            current_registry = get_project_root()
-            if current_registry:
-                print(f"Found registry at: {current_registry}")
+            discovered_path = result.get("discovered_path")
+            if discovered_path:
+                print(f"Found registry at: {discovered_path}")
                 print("To set this as your default registry, run:")
-                print(f"  hxc registry path --set {current_registry}")
+                print(f"  hxc registry path --set {discovered_path}")
             else:
                 print("No registry found in current or parent directories.")
                 print("To create a new registry, run 'hxc init'.")
@@ -97,39 +123,54 @@ class RegistryCommand(BaseCommand):
     @classmethod
     def handle_list(cls, args):
         """Handle the 'list' subcommand"""
-        # Currently only supports a single registry
-        registry_path = cls.get_registry_path()
-        if registry_path:
-            print(f"Current registry: {registry_path}")
-            return 0
-        else:
+        operation = RegistryOperation()
+        result = operation.list_registries()
+
+        if result["count"] == 0:
             print("No registries configured.")
             return 1
 
+        for registry in result["registries"]:
+            if registry["is_current"]:
+                status = "✓" if registry["is_valid"] else "✗"
+                print(f"Current registry: {registry['path']} [{status}]")
+            else:
+                status = "valid" if registry["is_valid"] else "invalid"
+                print(f"  Discovered: {registry['path']} ({status})")
+
+        return 0
+
     @classmethod
     def get_registry_path(cls) -> Optional[str]:
-        """Get the current registry path from config"""
-        config = Config()
-        path = config.get(cls.CONFIG_KEY)
+        """
+        Get the current registry path from config.
 
-        if path and cls._validate_registry_path(pathlib.Path(path)):
-            return path
+        This is a convenience method that uses the shared RegistryOperation
+        for behavioral consistency with MCP tools.
+
+        Returns:
+            Registry path string if set and valid, None otherwise
+        """
+        operation = RegistryOperation()
+        result = operation.get_registry_path(include_discovery=False)
+
+        if result["success"] and result["is_valid"]:
+            return result["path"]
         return None
 
     @staticmethod
     def _validate_registry_path(path: pathlib.Path) -> bool:
-        """Validate that the given path is a valid registry"""
-        # Check if path exists and is a directory
-        if not path.exists() or not path.is_dir():
-            return False
+        """
+        Validate that the given path is a valid registry.
 
-        # Check for key registry files/directories
-        markers = [
-            path / "config.yml",
-            path / "programs",
-            path / "projects",
-            path / "missions",
-            path / "actions",
-        ]
+        This method uses the shared RegistryOperation validation logic
+        for consistency with MCP tools.
 
-        return all(marker.exists() for marker in markers)
+        Args:
+            path: Path to validate
+
+        Returns:
+            True if path is a valid registry, False otherwise
+        """
+        result = RegistryOperation.validate_registry_path(path)
+        return result["valid"]

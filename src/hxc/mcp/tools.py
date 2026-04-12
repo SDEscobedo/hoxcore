@@ -44,6 +44,11 @@ from hxc.core.operations.list import (
     ListOperation,
     ListOperationError,
 )
+from hxc.core.operations.registry import (
+    InvalidRegistryPathError,
+    RegistryOperation,
+    RegistryOperationError,
+)
 from hxc.utils.helpers import get_project_root
 from hxc.utils.path_security import (
     PathSecurityError,
@@ -739,6 +744,328 @@ def get_registry_stats_tool(registry_path: Optional[str] = None) -> Dict[str, An
             "success": False,
             "error": f"Error retrieving stats: {e}",
             "stats": None,
+        }
+
+
+# ─── REGISTRY MANAGEMENT TOOLS ──────────────────────────────────────────────
+
+
+def get_registry_path_tool(
+    include_discovery: bool = True,
+    registry_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Get the currently configured registry path.
+
+    This tool returns information about the current registry configuration,
+    including whether the path is valid and where it was discovered from.
+
+    Args:
+        include_discovery: Whether to attempt auto-discovery if not configured
+                          (default: True)
+        registry_path: Ignored for this tool (included for API consistency)
+
+    Returns:
+        Dictionary containing:
+        - success: bool
+        - path: str or None - The registry path
+        - is_valid: bool - Whether the path passes validation
+        - source: str - Where the path came from ('config', 'discovered', 'none')
+        - discovered_path: str or None - Auto-discovered path if different from configured
+        - validation_errors: list - Missing components if path is invalid
+    """
+    try:
+        operation = RegistryOperation()
+        result = operation.get_registry_path(include_discovery=include_discovery)
+
+        return {
+            "success": result["success"],
+            "path": result["path"],
+            "is_valid": result["is_valid"],
+            "source": result["source"],
+            "discovered_path": result.get("discovered_path"),
+            "validation_errors": result.get("validation_errors", []),
+        }
+
+    except RegistryOperationError as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "path": None,
+            "is_valid": False,
+            "source": "none",
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Unexpected error: {e}",
+            "path": None,
+            "is_valid": False,
+            "source": "none",
+        }
+
+
+def set_registry_path_tool(
+    path: str,
+    validate: bool = True,
+    registry_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Set the default registry path in configuration.
+
+    This tool updates the HoxCore configuration to use the specified path
+    as the default registry. By default, the path is validated before setting
+    to ensure it's a valid HoxCore registry.
+
+    Note: This tool is only available in read-write mode.
+
+    Args:
+        path: Path to set as the default registry
+        validate: Whether to validate the path before setting (default: True)
+        registry_path: Ignored for this tool (included for API consistency)
+
+    Returns:
+        Dictionary containing:
+        - success: bool
+        - path: str - The newly set path (resolved to absolute)
+        - previous_path: str or None - The previous registry path
+        - is_valid: bool - Whether the new path is valid (if validated)
+
+    Raises:
+        InvalidRegistryPathError: If validate=True and path is invalid
+    """
+    try:
+        if not path:
+            return {
+                "success": False,
+                "error": "Path is required",
+                "path": None,
+                "previous_path": None,
+                "is_valid": False,
+            }
+
+        operation = RegistryOperation()
+
+        try:
+            result = operation.set_registry_path(path=path, validate=validate)
+        except InvalidRegistryPathError as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "path": e.path,
+                "previous_path": None,
+                "is_valid": False,
+                "missing_components": e.missing_components,
+            }
+
+        return {
+            "success": True,
+            "path": result["path"],
+            "previous_path": result["previous_path"],
+            "is_valid": result["is_valid"],
+        }
+
+    except RegistryOperationError as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "path": path,
+            "previous_path": None,
+            "is_valid": False,
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Unexpected error: {e}",
+            "path": path,
+            "previous_path": None,
+            "is_valid": False,
+        }
+
+
+def validate_registry_path_tool(
+    path: str,
+    registry_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Validate if a path is a valid HoxCore registry.
+
+    A valid registry must:
+    - Exist and be a directory
+    - Contain config.yml
+    - Contain all entity folders: programs, projects, missions, actions
+
+    Args:
+        path: Path to validate
+        registry_path: Ignored for this tool (included for API consistency)
+
+    Returns:
+        Dictionary containing:
+        - success: bool - Always True (validation completed)
+        - valid: bool - Whether the path is a valid registry
+        - path: str - The validated path (resolved to absolute)
+        - missing: list - Missing required components (empty if valid)
+    """
+    try:
+        if not path:
+            return {
+                "success": True,
+                "valid": False,
+                "path": "",
+                "missing": ["path is required"],
+            }
+
+        result = RegistryOperation.validate_registry_path(path)
+
+        return {
+            "success": True,
+            "valid": result["valid"],
+            "path": result["path"],
+            "missing": result["missing"],
+        }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Unexpected error: {e}",
+            "valid": False,
+            "path": path,
+            "missing": [],
+        }
+
+
+def list_registries_tool(
+    registry_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    List all known registries.
+
+    Currently supports a single configured registry plus auto-discovered
+    registries. Future versions may support multiple named registries.
+
+    Args:
+        registry_path: Ignored for this tool (included for API consistency)
+
+    Returns:
+        Dictionary containing:
+        - success: bool
+        - registries: list of registry objects with:
+            - path: str - Registry path
+            - is_current: bool - Whether this is the active registry
+            - is_valid: bool - Whether the path passes validation
+            - name: str - Registry name ('default' or 'discovered')
+            - source: str - Where it came from ('config' or 'discovered')
+        - count: int - Number of registries found
+    """
+    try:
+        operation = RegistryOperation()
+        result = operation.list_registries()
+
+        return {
+            "success": True,
+            "registries": result["registries"],
+            "count": result["count"],
+        }
+
+    except RegistryOperationError as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "registries": [],
+            "count": 0,
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Unexpected error: {e}",
+            "registries": [],
+            "count": 0,
+        }
+
+
+def discover_registry_tool(
+    registry_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Attempt to discover a registry in the current directory tree.
+
+    Walks up from the current working directory looking for a valid
+    HoxCore registry structure.
+
+    Args:
+        registry_path: Ignored for this tool (included for API consistency)
+
+    Returns:
+        Dictionary containing:
+        - success: bool - Whether a registry was discovered
+        - path: str or None - Discovered registry path
+        - is_valid: bool - Whether the discovered path is valid
+    """
+    try:
+        operation = RegistryOperation()
+        result = operation.discover_registry()
+
+        return {
+            "success": result["success"],
+            "path": result["path"],
+            "is_valid": result["is_valid"],
+        }
+
+    except RegistryOperationError as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "path": None,
+            "is_valid": False,
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Unexpected error: {e}",
+            "path": None,
+            "is_valid": False,
+        }
+
+
+def clear_registry_path_tool(
+    registry_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Clear the configured registry path.
+
+    Removes the registry path from configuration. After clearing,
+    HoxCore will rely on auto-discovery or explicit path specification.
+
+    Note: This tool is only available in read-write mode.
+
+    Args:
+        registry_path: Ignored for this tool (included for API consistency)
+
+    Returns:
+        Dictionary containing:
+        - success: bool
+        - previous_path: str or None - The cleared path
+    """
+    try:
+        operation = RegistryOperation()
+        result = operation.clear_registry_path()
+
+        return {
+            "success": True,
+            "previous_path": result["previous_path"],
+        }
+
+    except RegistryOperationError as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "previous_path": None,
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Unexpected error: {e}",
+            "previous_path": None,
         }
 
 
