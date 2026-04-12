@@ -28,6 +28,7 @@ from hxc.mcp.tools import (
     edit_entity_tool,
     get_entity_property_tool,
     get_entity_tool,
+    init_registry_tool,
     list_entities_tool,
     search_entities_tool,
 )
@@ -92,6 +93,7 @@ class MCPServer:
         if not self.read_only:
             self._tools.update(
                 {
+                    "init_registry": init_registry_tool,
                     "create_entity": create_entity_tool,
                     "edit_entity": edit_entity_tool,
                     "delete_entity": delete_entity_tool,
@@ -362,6 +364,32 @@ class MCPServer:
     def _get_tool_schema(self, tool_name: str) -> Dict[str, Any]:
         """Get JSON schema for a tool's input parameters"""
         schemas = {
+            "init_registry": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Path where to initialize the registry. Must be an empty directory or a path that doesn't exist yet.",
+                    },
+                    "use_git": {
+                        "type": "boolean",
+                        "description": "Whether to initialize a git repository (default: true)",
+                    },
+                    "commit": {
+                        "type": "boolean",
+                        "description": "Whether to create initial commit (default: true, requires use_git)",
+                    },
+                    "remote_url": {
+                        "type": "string",
+                        "description": "Optional git remote URL to configure as 'origin'",
+                    },
+                    "set_default": {
+                        "type": "boolean",
+                        "description": "Whether to set this registry as the default in config (default: true)",
+                    },
+                },
+                "required": ["path"],
+            },
             "list_entities": {
                 "type": "object",
                 "properties": {
@@ -730,7 +758,7 @@ def main() -> int:
     parser.add_argument(
         "--read-only",
         action="store_true",
-        help="Start in read-only mode: omit write tools (create_entity, edit_entity, delete_entity)",
+        help="Start in read-only mode: omit write tools (init_registry, create_entity, edit_entity, delete_entity)",
     )
 
     args = parser.parse_args()
