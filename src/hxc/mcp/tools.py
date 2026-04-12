@@ -23,17 +23,15 @@ from hxc.core.operations.delete import (
     DeleteOperationError,
     EntityNotFoundError,
 )
+from hxc.core.operations.edit import DuplicateIdError as EditDuplicateIdError
 from hxc.core.operations.edit import (
     EditOperation,
     EditOperationError,
+)
+from hxc.core.operations.edit import EntityNotFoundError as EditEntityNotFoundError
+from hxc.core.operations.edit import (
     InvalidValueError,
     NoChangesError,
-)
-from hxc.core.operations.edit import (
-    DuplicateIdError as EditDuplicateIdError,
-)
-from hxc.core.operations.edit import (
-    EntityNotFoundError as EditEntityNotFoundError,
 )
 from hxc.core.operations.list import (
     ListOperation,
