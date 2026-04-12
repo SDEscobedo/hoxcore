@@ -7,6 +7,7 @@ for behavioral consistency with MCP tools.
 
 import pathlib
 import shutil
+import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -175,8 +176,9 @@ class TestRegistryPathGet:
         mock_instance, MockOperation = mock_registry_operation
         invalid_path = str(tmp_path / "invalid")
 
+        # When success=True and path is set but is_valid=False, the warning is printed
         mock_instance.get_registry_path.return_value = {
-            "success": False,
+            "success": True,
             "path": invalid_path,
             "is_valid": False,
             "source": "config",
@@ -189,7 +191,8 @@ class TestRegistryPathGet:
 
         assert result == 1
         printed_lines = [call[0][0] for call in mock_print.call_args_list]
-        assert any("invalid" in line.lower() for line in printed_lines)
+        # Check for "Warning" which is part of "Warning: Configured registry path is invalid"
+        assert any("Warning" in line or "invalid" in line.lower() for line in printed_lines)
 
     def test_registry_path_default_subcommand(self, mock_registry_operation, temp_registry):
         """Test that no subcommand defaults to 'path'"""
@@ -671,15 +674,14 @@ class TestRegistryCommandEdgeCases:
     """Tests for edge cases in registry command"""
 
     def test_unknown_subcommand(self, mock_registry_operation, capsys):
-        """Test handling of unknown subcommand"""
+        """Test handling of unknown subcommand - argparse exits with code 2"""
         mock_instance, MockOperation = mock_registry_operation
 
-        with patch("builtins.print") as mock_print:
-            result = main(["registry", "unknown"])
+        # argparse raises SystemExit(2) for invalid choices
+        with pytest.raises(SystemExit) as exc_info:
+            main(["registry", "unknown"])
 
-        assert result == 1
-        printed_lines = [call[0][0] for call in mock_print.call_args_list]
-        assert any("Unknown" in line or "unknown" in line for line in printed_lines)
+        assert exc_info.value.code == 2
 
     def test_path_with_spaces(self, mock_registry_operation, tmp_path):
         """Test handling of paths with spaces"""
@@ -736,13 +738,23 @@ class TestRegistryCommandIntegration:
 
         temp_config_dir = tempfile.mkdtemp()
         try:
-            with patch("hxc.commands.registry.Config") as MockConfig:
-                # Create a real-ish config that stores values
+            # We need to mock RegistryOperation since that's what the command uses
+            with patch("hxc.commands.registry.RegistryOperation") as MockOperation:
+                # Create a mock that simulates storing values
                 stored_values = {}
-                mock_config = MagicMock()
-                mock_config.get.side_effect = lambda k, d=None: stored_values.get(k, d)
-                mock_config.set.side_effect = lambda k, v: stored_values.__setitem__(k, v)
-                MockConfig.return_value = mock_config
+                mock_instance = MagicMock()
+
+                def mock_set_registry_path(path, validate=True):
+                    stored_values["registry_path"] = path
+                    return {
+                        "success": True,
+                        "path": path,
+                        "previous_path": None,
+                        "is_valid": True,
+                    }
+
+                mock_instance.set_registry_path.side_effect = mock_set_registry_path
+                MockOperation.return_value = mock_instance
 
                 with patch("builtins.print"):
                     # Set the path

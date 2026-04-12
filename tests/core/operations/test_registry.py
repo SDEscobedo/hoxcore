@@ -245,24 +245,28 @@ class TestRegistryOperationGetPath:
         assert result["source"] == "discovered"
         assert result["discovered_path"] == valid_registry
 
-    def test_get_path_invalid_config_with_discovery(
-        self, temp_dir, valid_registry
-    ):
+    def test_get_path_invalid_config_with_discovery(self, valid_registry):
         """Test that discovery is suggested when configured path is invalid"""
-        mock_config = MagicMock(spec=Config)
-        mock_config.get.return_value = temp_dir  # Invalid
+        # Create a separate invalid directory (not the same as valid_registry)
+        invalid_temp_dir = tempfile.mkdtemp()
+        try:
+            mock_config = MagicMock(spec=Config)
+            mock_config.get.return_value = invalid_temp_dir  # Invalid (empty dir)
 
-        with patch(
-            "hxc.core.operations.registry.get_project_root",
-            return_value=valid_registry,
-        ):
-            operation = RegistryOperation(config=mock_config)
-            result = operation.get_registry_path(include_discovery=True)
+            with patch(
+                "hxc.core.operations.registry.get_project_root",
+                return_value=valid_registry,
+            ):
+                operation = RegistryOperation(config=mock_config)
+                result = operation.get_registry_path(include_discovery=True)
 
-        assert result["success"] is False
-        assert result["path"] == temp_dir
-        assert result["is_valid"] is False
-        assert result["discovered_path"] == valid_registry
+            assert result["success"] is False
+            assert result["path"] == invalid_temp_dir
+            assert result["is_valid"] is False
+            assert result["discovered_path"] == valid_registry
+        finally:
+            if Path(invalid_temp_dir).exists():
+                shutil.rmtree(invalid_temp_dir)
 
     def test_get_path_without_discovery(self):
         """Test that include_discovery=False skips discovery"""
@@ -409,40 +413,44 @@ class TestRegistryOperationListRegistries:
         assert registry["is_current"] is True  # Current because nothing else configured
         assert registry["source"] == "discovered"
 
-    def test_list_both_configured_and_discovered(self, valid_registry, temp_dir):
+    def test_list_both_configured_and_discovered(self, valid_registry):
         """Test listing when configured and discovered differ"""
-        # Create another valid registry
-        other_registry = Path(temp_dir) / "other_registry"
-        other_registry.mkdir()
-        (other_registry / "programs").mkdir()
-        (other_registry / "projects").mkdir()
-        (other_registry / "missions").mkdir()
-        (other_registry / "actions").mkdir()
-        (other_registry / "config.yml").write_text("# Config\n")
+        # Create another valid registry in a separate temp directory
+        other_temp_dir = tempfile.mkdtemp()
+        try:
+            other_registry = Path(other_temp_dir)
+            (other_registry / "programs").mkdir()
+            (other_registry / "projects").mkdir()
+            (other_registry / "missions").mkdir()
+            (other_registry / "actions").mkdir()
+            (other_registry / "config.yml").write_text("# Config\n")
 
-        mock_config = MagicMock(spec=Config)
-        mock_config.get.return_value = valid_registry
+            mock_config = MagicMock(spec=Config)
+            mock_config.get.return_value = valid_registry
 
-        with patch(
-            "hxc.core.operations.registry.get_project_root",
-            return_value=str(other_registry),
-        ):
-            operation = RegistryOperation(config=mock_config)
-            result = operation.list_registries()
+            with patch(
+                "hxc.core.operations.registry.get_project_root",
+                return_value=str(other_registry),
+            ):
+                operation = RegistryOperation(config=mock_config)
+                result = operation.list_registries()
 
-        assert result["success"] is True
-        assert result["count"] == 2
+            assert result["success"] is True
+            assert result["count"] == 2
 
-        # Find configured and discovered
-        configured = next(r for r in result["registries"] if r["source"] == "config")
-        discovered = next(
-            r for r in result["registries"] if r["source"] == "discovered"
-        )
+            # Find configured and discovered
+            configured = next(r for r in result["registries"] if r["source"] == "config")
+            discovered = next(
+                r for r in result["registries"] if r["source"] == "discovered"
+            )
 
-        assert configured["path"] == valid_registry
-        assert configured["is_current"] is True
-        assert discovered["path"] == str(other_registry)
-        assert discovered["is_current"] is False
+            assert configured["path"] == valid_registry
+            assert configured["is_current"] is True
+            assert discovered["path"] == str(other_registry)
+            assert discovered["is_current"] is False
+        finally:
+            if Path(other_temp_dir).exists():
+                shutil.rmtree(other_temp_dir)
 
     def test_list_does_not_duplicate_same_path(self, valid_registry):
         """Test that same path is not listed twice"""
@@ -701,22 +709,27 @@ class TestRegistryOperationIntegration:
 class TestRegistryOperationEdgeCases:
     """Tests for edge cases"""
 
-    def test_validate_path_with_symlink(self, valid_registry, temp_dir):
+    def test_validate_path_with_symlink(self, valid_registry):
         """Test validation with symlinked path"""
         import os
 
-        symlink_path = Path(temp_dir) / "registry_link"
-
-        # Skip if symlinks not supported
+        symlink_temp_dir = tempfile.mkdtemp()
         try:
-            symlink_path.symlink_to(valid_registry)
-        except OSError:
-            pytest.skip("Symlinks not supported on this platform")
+            symlink_path = Path(symlink_temp_dir) / "registry_link"
 
-        result = RegistryOperation.validate_registry_path(str(symlink_path))
+            # Skip if symlinks not supported
+            try:
+                symlink_path.symlink_to(valid_registry)
+            except OSError:
+                pytest.skip("Symlinks not supported on this platform")
 
-        # Should resolve symlink and validate
-        assert result["valid"] is True
+            result = RegistryOperation.validate_registry_path(str(symlink_path))
+
+            # Should resolve symlink and validate
+            assert result["valid"] is True
+        finally:
+            if Path(symlink_temp_dir).exists():
+                shutil.rmtree(symlink_temp_dir)
 
     def test_validate_path_with_trailing_slash(self, valid_registry):
         """Test validation with trailing slash"""
