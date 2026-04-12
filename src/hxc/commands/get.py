@@ -1,5 +1,5 @@
 """
-Get command implementation for retrieving entity property values.
+Get command implementation for retrieving entity property values
 """
 
 import argparse
