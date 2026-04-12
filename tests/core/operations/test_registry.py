@@ -22,13 +22,21 @@ from hxc.core.operations.registry import (
 )
 
 
+def _resolve_path(path: str) -> str:
+    """Resolve a path to its real absolute path (follows symlinks, resolves short names)"""
+    return str(Path(path).resolve())
+
+
 @pytest.fixture
 def temp_dir():
     """Create a temporary directory for testing"""
     temp_dir = tempfile.mkdtemp()
-    yield temp_dir
-    if Path(temp_dir).exists():
-        shutil.rmtree(temp_dir)
+    # Resolve to handle macOS /var -> /private/var symlinks
+    # and Windows 8.3 short names
+    resolved_path = _resolve_path(temp_dir)
+    yield resolved_path
+    if Path(resolved_path).exists():
+        shutil.rmtree(resolved_path)
 
 
 @pytest.fixture
@@ -244,7 +252,7 @@ class TestRegistryOperationGetPath:
     def test_get_path_invalid_config_with_discovery(self, valid_registry):
         """Test that discovery is suggested when configured path is invalid"""
         # Create a separate invalid directory (not the same as valid_registry)
-        invalid_temp_dir = tempfile.mkdtemp()
+        invalid_temp_dir = _resolve_path(tempfile.mkdtemp())
         try:
             mock_config = MagicMock(spec=Config)
             mock_config.get.return_value = invalid_temp_dir  # Invalid (empty dir)
@@ -318,7 +326,8 @@ class TestRegistryOperationSetPath:
         with pytest.raises(InvalidRegistryPathError) as exc_info:
             operation.set_registry_path(temp_dir, validate=True)
 
-        assert temp_dir in str(exc_info.value.path)
+        # Compare resolved paths to handle platform differences
+        assert _resolve_path(temp_dir) == _resolve_path(exc_info.value.path)
         assert len(exc_info.value.missing_components) > 0
 
     def test_set_path_without_validation(self, temp_dir):
@@ -408,7 +417,7 @@ class TestRegistryOperationListRegistries:
     def test_list_both_configured_and_discovered(self, valid_registry):
         """Test listing when configured and discovered differ"""
         # Create another valid registry in a separate temp directory
-        other_temp_dir = tempfile.mkdtemp()
+        other_temp_dir = _resolve_path(tempfile.mkdtemp())
         try:
             other_registry = Path(other_temp_dir)
             (other_registry / "programs").mkdir()
@@ -628,7 +637,7 @@ class TestRegistryOperationIntegration:
     def test_set_then_get_path(self, valid_registry):
         """Test setting a path then getting it"""
         # Use real Config with temp directory
-        temp_config_dir = tempfile.mkdtemp()
+        temp_config_dir = _resolve_path(tempfile.mkdtemp())
         try:
             config = Config(config_dir=temp_config_dir)
             operation = RegistryOperation(config=config)
@@ -648,7 +657,7 @@ class TestRegistryOperationIntegration:
 
     def test_set_then_clear_then_get(self, valid_registry):
         """Test setting, clearing, then getting path"""
-        temp_config_dir = tempfile.mkdtemp()
+        temp_config_dir = _resolve_path(tempfile.mkdtemp())
         try:
             config = Config(config_dir=temp_config_dir)
             operation = RegistryOperation(config=config)
@@ -674,7 +683,7 @@ class TestRegistryOperationIntegration:
 
     def test_set_then_list(self, valid_registry):
         """Test setting a path then listing registries"""
-        temp_config_dir = tempfile.mkdtemp()
+        temp_config_dir = _resolve_path(tempfile.mkdtemp())
         try:
             config = Config(config_dir=temp_config_dir)
             operation = RegistryOperation(config=config)
@@ -703,7 +712,7 @@ class TestRegistryOperationEdgeCases:
         """Test validation with symlinked path"""
         import os
 
-        symlink_temp_dir = tempfile.mkdtemp()
+        symlink_temp_dir = _resolve_path(tempfile.mkdtemp())
         try:
             symlink_path = Path(symlink_temp_dir) / "registry_link"
 
@@ -764,7 +773,7 @@ class TestRegistryOperationEdgeCases:
 
     def test_list_registries_with_both_invalid(self, temp_dir):
         """Test listing when both configured and discovered are invalid"""
-        other_invalid = tempfile.mkdtemp()
+        other_invalid = _resolve_path(tempfile.mkdtemp())
         try:
             mock_config = MagicMock(spec=Config)
             mock_config.get.return_value = temp_dir  # Invalid
