@@ -55,6 +55,19 @@ from hxc.mcp.tools import (
 
 
 @pytest.fixture
+def git_env(monkeypatch):
+    """Configure git environment variables for tests.
+
+    This ensures git commands work in CI environments where git
+    user.name and user.email are not configured globally.
+    """
+    monkeypatch.setenv("GIT_AUTHOR_NAME", "Test User")
+    monkeypatch.setenv("GIT_AUTHOR_EMAIL", "test@test.com")
+    monkeypatch.setenv("GIT_COMMITTER_NAME", "Test User")
+    monkeypatch.setenv("GIT_COMMITTER_EMAIL", "test@test.com")
+
+
+@pytest.fixture
 def temp_registry():
     """Create a temporary test registry"""
     temp_dir = tempfile.mkdtemp()
@@ -238,7 +251,7 @@ registry:
 
 
 @pytest.fixture
-def git_registry():
+def git_registry(git_env):
     """Create a temporary registry that is also a git repository."""
     temp_dir = tempfile.mkdtemp()
     registry_path = Path(temp_dir)
@@ -388,6 +401,15 @@ def empty_temp_dir():
 
 
 @pytest.fixture
+def empty_temp_dir_with_git(git_env):
+    """Create an empty temporary directory with git environment configured"""
+    temp_dir = tempfile.mkdtemp()
+    yield temp_dir
+    if Path(temp_dir).exists():
+        shutil.rmtree(temp_dir)
+
+
+@pytest.fixture
 def non_empty_temp_dir():
     """Create a non-empty temporary directory"""
     temp_dir = tempfile.mkdtemp()
@@ -512,10 +534,10 @@ class TestInitRegistryTool:
         assert marker_path.exists()
         assert marker_path.is_dir()
 
-    def test_init_with_git_initialization(self, empty_temp_dir):
+    def test_init_with_git_initialization(self, empty_temp_dir_with_git):
         """Test initialization with git repository"""
         result = init_registry_tool(
-            path=empty_temp_dir,
+            path=empty_temp_dir_with_git,
             use_git=True,
             commit=True,
             set_default=False,
@@ -526,7 +548,7 @@ class TestInitRegistryTool:
         assert result["committed"] is True
 
         # Verify .git directory exists
-        git_dir = Path(empty_temp_dir) / ".git"
+        git_dir = Path(empty_temp_dir_with_git) / ".git"
         assert git_dir.exists()
 
     def test_init_without_git(self, empty_temp_dir):
@@ -545,10 +567,10 @@ class TestInitRegistryTool:
         git_dir = Path(empty_temp_dir) / ".git"
         assert not git_dir.exists()
 
-    def test_init_with_git_no_commit(self, empty_temp_dir):
+    def test_init_with_git_no_commit(self, empty_temp_dir_with_git):
         """Test initialization with git but without commit"""
         result = init_registry_tool(
-            path=empty_temp_dir,
+            path=empty_temp_dir_with_git,
             use_git=True,
             commit=False,
             set_default=False,
@@ -805,10 +827,10 @@ class TestInitRegistryToolUsesSharedOperation:
 class TestInitRegistryToolGitIntegration:
     """Tests for git integration in init_registry_tool"""
 
-    def test_init_with_git_creates_repository(self, empty_temp_dir):
+    def test_init_with_git_creates_repository(self, empty_temp_dir_with_git):
         """Test that git repository is created when use_git=True"""
         result = init_registry_tool(
-            path=empty_temp_dir,
+            path=empty_temp_dir_with_git,
             use_git=True,
             commit=True,
             set_default=False,
@@ -818,13 +840,13 @@ class TestInitRegistryToolGitIntegration:
         assert result["git_initialized"] is True
 
         # Verify .git directory exists
-        git_dir = Path(empty_temp_dir) / ".git"
+        git_dir = Path(empty_temp_dir_with_git) / ".git"
         assert git_dir.exists()
 
-    def test_init_with_git_creates_initial_commit(self, empty_temp_dir):
+    def test_init_with_git_creates_initial_commit(self, empty_temp_dir_with_git):
         """Test that initial commit is created"""
         result = init_registry_tool(
-            path=empty_temp_dir,
+            path=empty_temp_dir_with_git,
             use_git=True,
             commit=True,
             set_default=False,
@@ -836,17 +858,17 @@ class TestInitRegistryToolGitIntegration:
         # Verify commit exists
         log = subprocess.run(
             ["git", "log", "--oneline"],
-            cwd=empty_temp_dir,
+            cwd=empty_temp_dir_with_git,
             capture_output=True,
             text=True,
             check=True,
         )
         assert "Initialize HoxCore registry" in log.stdout
 
-    def test_init_commit_message_format(self, empty_temp_dir):
+    def test_init_commit_message_format(self, empty_temp_dir_with_git):
         """Test that commit message follows expected format"""
         result = init_registry_tool(
-            path=empty_temp_dir,
+            path=empty_temp_dir_with_git,
             use_git=True,
             commit=True,
             set_default=False,
@@ -857,7 +879,7 @@ class TestInitRegistryToolGitIntegration:
         # Get commit message
         log = subprocess.run(
             ["git", "log", "-1", "--format=%B"],
-            cwd=empty_temp_dir,
+            cwd=empty_temp_dir_with_git,
             capture_output=True,
             text=True,
             check=True,
@@ -890,10 +912,10 @@ class TestInitRegistryToolGitIntegration:
         ]
         assert len(remote_add_calls) >= 1
 
-    def test_init_all_files_committed(self, empty_temp_dir):
+    def test_init_all_files_committed(self, empty_temp_dir_with_git):
         """Test that all registry files are committed"""
         result = init_registry_tool(
-            path=empty_temp_dir,
+            path=empty_temp_dir_with_git,
             use_git=True,
             commit=True,
             set_default=False,
@@ -904,7 +926,7 @@ class TestInitRegistryToolGitIntegration:
         # Check git status - should be clean
         status = subprocess.run(
             ["git", "status", "--porcelain"],
-            cwd=empty_temp_dir,
+            cwd=empty_temp_dir_with_git,
             capture_output=True,
             text=True,
             check=True,
@@ -1049,10 +1071,10 @@ class TestInitRegistryToolBehavioralParityWithCLI:
         finally:
             conn.close()
 
-    def test_init_and_cli_produce_same_git_history(self, empty_temp_dir):
+    def test_init_and_cli_produce_same_git_history(self, empty_temp_dir_with_git):
         """Test that MCP init produces same git commit as CLI would"""
         result = init_registry_tool(
-            path=empty_temp_dir,
+            path=empty_temp_dir_with_git,
             use_git=True,
             commit=True,
             set_default=False,
@@ -1063,7 +1085,7 @@ class TestInitRegistryToolBehavioralParityWithCLI:
         # Get commit message
         log = subprocess.run(
             ["git", "log", "-1", "--format=%B"],
-            cwd=empty_temp_dir,
+            cwd=empty_temp_dir_with_git,
             capture_output=True,
             text=True,
             check=True,
@@ -1161,11 +1183,11 @@ class TestInitRegistryToolIntegration:
         assert stats_result["stats"]["by_type"]["mission"] == 0
         assert stats_result["stats"]["by_type"]["action"] == 0
 
-    def test_init_with_git_then_create_with_commit(self, empty_temp_dir):
+    def test_init_with_git_then_create_with_commit(self, empty_temp_dir_with_git):
         """Test full workflow: init with git, then create entity with commit"""
         # Initialize registry with git
         init_result = init_registry_tool(
-            path=empty_temp_dir,
+            path=empty_temp_dir_with_git,
             use_git=True,
             commit=True,
             set_default=False,
@@ -1178,7 +1200,7 @@ class TestInitRegistryToolIntegration:
             type="project",
             title="Git Tracked Project",
             use_git=True,
-            registry_path=empty_temp_dir,
+            registry_path=empty_temp_dir_with_git,
         )
 
         assert create_result["success"] is True
@@ -1187,7 +1209,7 @@ class TestInitRegistryToolIntegration:
         # Verify both commits exist
         log = subprocess.run(
             ["git", "log", "--oneline"],
-            cwd=empty_temp_dir,
+            cwd=empty_temp_dir_with_git,
             capture_output=True,
             text=True,
             check=True,
@@ -1197,11 +1219,11 @@ class TestInitRegistryToolIntegration:
         commit_count = len(log.stdout.strip().splitlines())
         assert commit_count >= 2
 
-    def test_init_full_lifecycle(self, empty_temp_dir):
+    def test_init_full_lifecycle(self, empty_temp_dir_with_git):
         """Test complete lifecycle: init -> create -> edit -> delete"""
         # Initialize
         init_result = init_registry_tool(
-            path=empty_temp_dir,
+            path=empty_temp_dir_with_git,
             use_git=True,
             commit=True,
             set_default=False,
@@ -1213,7 +1235,7 @@ class TestInitRegistryToolIntegration:
             type="project",
             title="Lifecycle Test Project",
             use_git=True,
-            registry_path=empty_temp_dir,
+            registry_path=empty_temp_dir_with_git,
         )
         assert create_result["success"] is True
         uid = create_result["uid"]
@@ -1223,7 +1245,7 @@ class TestInitRegistryToolIntegration:
             identifier=uid,
             set_title="Edited Lifecycle Project",
             use_git=True,
-            registry_path=empty_temp_dir,
+            registry_path=empty_temp_dir_with_git,
         )
         assert edit_result["success"] is True
 
@@ -1232,14 +1254,14 @@ class TestInitRegistryToolIntegration:
             identifier=uid,
             force=True,
             use_git=True,
-            registry_path=empty_temp_dir,
+            registry_path=empty_temp_dir_with_git,
         )
         assert delete_result["success"] is True
 
         # Verify git history has all commits
         log = subprocess.run(
             ["git", "log", "--oneline"],
-            cwd=empty_temp_dir,
+            cwd=empty_temp_dir_with_git,
             capture_output=True,
             text=True,
             check=True,
