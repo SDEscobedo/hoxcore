@@ -110,19 +110,23 @@ def test_init_basic(mock_run, temp_dir, mock_config):
         finally:
             conn.close()
 
-        # Check git commands were called
-        assert mock_run.call_count == 3
+        # Check git commands were called (git --version, git init, git add, git commit)
+        assert mock_run.call_count == 4
+
+        # Check git --version was called first
+        args, kwargs = mock_run.call_args_list[0]
+        assert args[0] == ["git", "--version"]
 
         # Check git init was called
-        args, kwargs = mock_run.call_args_list[0]
+        args, kwargs = mock_run.call_args_list[1]
         assert args[0] == ["git", "init"]
 
         # Check git add was called
-        args, kwargs = mock_run.call_args_list[1]
+        args, kwargs = mock_run.call_args_list[2]
         assert args[0] == ["git", "add", "."]
 
         # Check git commit was called
-        args, kwargs = mock_run.call_args_list[2]
+        args, kwargs = mock_run.call_args_list[3]
         assert args[0][0:2] == ["git", "commit"]
 
         # Verify config was updated with registry path
@@ -163,11 +167,15 @@ def test_init_no_commit(mock_run, temp_dir, mock_config):
     # Check the result is successful
     assert result == 0
 
-    # Check git init was called but not commit
-    assert mock_run.call_count == 1
+    # Check git --version and git init were called but not commit
+    assert mock_run.call_count == 2
+
+    # Check git --version was called
+    args, kwargs = mock_run.call_args_list[0]
+    assert args[0] == ["git", "--version"]
 
     # Check the git init command
-    args, kwargs = mock_run.call_args_list[0]
+    args, kwargs = mock_run.call_args_list[1]
     assert args[0] == ["git", "init"]
 
     # Verify config was updated with registry path
@@ -185,27 +193,31 @@ def test_init_with_remote(mock_run, temp_dir, mock_config):
     # Check the result is successful
     assert result == 0
 
-    # Check git commands were called (init, remote add, add, commit, push)
-    assert mock_run.call_count == 5
+    # Check git commands were called (git --version, init, remote add, add, commit, push)
+    assert mock_run.call_count == 6
+
+    # Check git --version was called
+    args, kwargs = mock_run.call_args_list[0]
+    assert args[0] == ["git", "--version"]
 
     # Check git init was called
-    args, kwargs = mock_run.call_args_list[0]
+    args, kwargs = mock_run.call_args_list[1]
     assert args[0] == ["git", "init"]
 
     # Check git remote add was called
-    args, kwargs = mock_run.call_args_list[1]
+    args, kwargs = mock_run.call_args_list[2]
     assert args[0] == ["git", "remote", "add", "origin", remote_url]
 
     # Check git add was called
-    args, kwargs = mock_run.call_args_list[2]
+    args, kwargs = mock_run.call_args_list[3]
     assert args[0] == ["git", "add", "."]
 
     # Check git commit was called
-    args, kwargs = mock_run.call_args_list[3]
+    args, kwargs = mock_run.call_args_list[4]
     assert args[0][0:2] == ["git", "commit"]
 
     # Check git push was called
-    args, kwargs = mock_run.call_args_list[4]
+    args, kwargs = mock_run.call_args_list[5]
     assert args[0][0:2] == ["git", "push"]
 
     # Verify config was updated with registry path
@@ -519,13 +531,15 @@ class TestInitCommandBehavioralParity:
         result = main(["init", str(temp_dir)])
 
         assert result == 0
-        assert mock_run.call_count == 3
+        # git --version, git init, git add, git commit
+        assert mock_run.call_count == 4
 
-        # Verify order: init, add, commit
+        # Verify order: version check, init, add, commit
         calls = [call[0][0] for call in mock_run.call_args_list]
-        assert calls[0] == ["git", "init"]
-        assert calls[1] == ["git", "add", "."]
-        assert calls[2][0:2] == ["git", "commit"]
+        assert calls[0] == ["git", "--version"]
+        assert calls[1] == ["git", "init"]
+        assert calls[2] == ["git", "add", "."]
+        assert calls[3][0:2] == ["git", "commit"]
 
 
 class TestInitCommandGitIntegration:
