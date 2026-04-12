@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional
 import yaml
 
 from hxc.commands.registry import RegistryCommand
+from hxc.core.config import Config
 from hxc.core.enums import EntityStatus, EntityType, SortField
 from hxc.core.operations.create import (
     CreateOperation,
@@ -33,6 +34,12 @@ from hxc.core.operations.edit import (
     InvalidValueError,
     NoChangesError,
 )
+from hxc.core.operations.init import (
+    DirectoryNotEmptyError,
+    GitOperationError,
+    InitOperation,
+    InitOperationError,
+)
 from hxc.core.operations.list import (
     ListOperation,
     ListOperationError,
@@ -43,6 +50,127 @@ from hxc.utils.path_security import (
     get_safe_entity_path,
     resolve_safe_path,
 )
+
+
+def init_registry_tool(
+    path: str,
+    use_git: bool = True,
+    commit: bool = True,
+    remote_url: Optional[str] = None,
+    set_default: bool = True,
+    registry_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Initialize a new HoxCore registry at the specified path.
+
+    This tool creates a complete registry structure including:
+    - Entity folders (programs, projects, missions, actions)
+    - Configuration file (config.yml)
+    - Registry marker directory (.hxc)
+    - Index database (index.db)
+    - Gitignore file (.gitignore)
+    - Optional git repository initialization
+
+    The tool performs git-aware initialization by default, creating an initial
+    commit with all registry files. Path security is enforced to prevent
+    directory traversal attacks.
+
+    Args:
+        path: Path where to initialize the registry. Must be an empty directory
+              or a path that doesn't exist yet.
+        use_git: Whether to initialize a git repository (default: True)
+        commit: Whether to create initial commit (default: True, requires use_git)
+        remote_url: Optional git remote URL to configure as 'origin'
+        set_default: Whether to set this registry as the default in config (default: True)
+        registry_path: Ignored for init_registry_tool (included for API consistency)
+
+    Returns:
+        Dictionary containing:
+        - success: bool
+        - registry_path: str (absolute path on success)
+        - git_initialized: bool
+        - committed: bool
+        - pushed: bool (if remote_url was provided)
+        - remote_added: bool (if remote_url was provided)
+        - set_as_default: bool
+
+    Raises:
+        DirectoryNotEmptyError: If the directory is not empty
+        PathSecurityError: If path validation fails
+        InitOperationError: If initialization fails
+    """
+    try:
+        # Validate path
+        if not path:
+            return {
+                "success": False,
+                "error": "Path is required",
+                "path": path,
+            }
+
+        # Create and execute the init operation
+        operation = InitOperation(path)
+
+        result = operation.initialize_registry(
+            use_git=use_git,
+            commit=commit,
+            remote_url=remote_url,
+            force_empty_check=True,
+        )
+
+        registry_path_str = result["registry_path"]
+
+        # Set as default registry if requested
+        set_as_default = False
+        if set_default and registry_path_str:
+            try:
+                config = Config()
+                config.set("registry_path", registry_path_str)
+                set_as_default = True
+            except Exception:
+                # Config setting failure is not critical
+                pass
+
+        return {
+            "success": True,
+            "registry_path": registry_path_str,
+            "git_initialized": result.get("git_initialized", False),
+            "committed": result.get("committed", False),
+            "pushed": result.get("pushed", False),
+            "remote_added": result.get("remote_added", False),
+            "set_as_default": set_as_default,
+        }
+
+    except DirectoryNotEmptyError as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "path": path,
+        }
+    except GitOperationError as e:
+        return {
+            "success": False,
+            "error": f"Git operation failed: {e}",
+            "path": path,
+        }
+    except PathSecurityError as e:
+        return {
+            "success": False,
+            "error": f"Security error: {e}",
+            "path": path,
+        }
+    except InitOperationError as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "path": path,
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Unexpected error: {e}",
+            "path": path,
+        }
 
 
 def list_entities_tool(

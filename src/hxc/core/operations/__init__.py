@@ -5,6 +5,7 @@ This module provides shared operation implementations that ensure behavioral
 consistency between the CLI commands and MCP tools. Operations handle the
 core business logic including:
 
+- Registry initialization with git integration
 - Entity creation with git integration
 - Entity editing with git integration
 - Entity deletion with git integration
@@ -34,12 +35,23 @@ from hxc.core.operations.edit import (
     InvalidValueError,
     NoChangesError,
 )
+from hxc.core.operations.init import (
+    DirectoryNotEmptyError,
+    GitOperationError,
+    InitOperation,
+    InitOperationError,
+)
 from hxc.core.operations.list import (
     ListOperation,
     ListOperationError,
 )
 
 __all__ = [
+    # Init operation
+    "InitOperation",
+    "InitOperationError",
+    "DirectoryNotEmptyError",
+    "GitOperationError",
     # Create operation
     "CreateOperation",
     "CreateOperationError",
