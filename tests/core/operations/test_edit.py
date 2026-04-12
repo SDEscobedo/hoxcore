@@ -1634,8 +1634,13 @@ class TestEditOperationPathSecurity:
         )
 
         assert result["success"] is True
+
+        # Resolve both paths to handle symlinks (macOS) and short paths (Windows)
+        resolved_registry = str(Path(temp_registry).resolve())
+        resolved_file_path = str(Path(result["file_path"]).resolve())
+
         # File path should be within registry
-        assert temp_registry in result["file_path"]
+        assert resolved_file_path.startswith(resolved_registry)
 
     def test_edit_uses_safe_path_resolution(self, temp_registry):
         """Test that edit uses secure path resolution"""
@@ -1659,5 +1664,10 @@ class TestEditOperationPathSecurity:
         assert result is not None
 
         file_path, _ = result
+
+        # Resolve both paths to handle symlinks (macOS) and short paths (Windows)
+        resolved_registry = str(Path(temp_registry).resolve())
+        resolved_file_path = str(file_path.resolve())
+
         # Path should be within registry
-        assert str(file_path).startswith(temp_registry)
+        assert resolved_file_path.startswith(resolved_registry)
