@@ -132,7 +132,8 @@ class TestMCPServerInitialization:
             "list_entities",
             "get_entity",
             "search_entities",
-            "get_entity_property"
+            "get_entity_property",
+            "init_registry",
         ]
         
         for tool in required_tools:
@@ -362,6 +363,42 @@ class TestMCPServerToolsRequests:
         assert data["success"] is True
         assert data["value"] == "Test Project"
     
+    def test_tools_call_init_registry(self, temp_registry):
+        """Test tools/call for init_registry."""
+        base = Path(temp_registry) / "nested" / "new_registry"
+        server = create_server(registry_path=temp_registry)
+        request = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "tools/call",
+            "params": {
+                "name": "init_registry",
+                "arguments": {
+                    "path": str(base),
+                    "use_git": False,
+                    "commit": False,
+                    "set_default": False,
+                }
+            }
+        }
+
+        response = server.handle_request(request)
+
+        assert response["jsonrpc"] == "2.0"
+        assert "result" in response
+
+        data = json.loads(response["result"]["content"][0]["text"])
+        assert data["success"] is True
+        assert data["registry_path"] == str(base.resolve())
+        assert (base / ".hxc").exists()
+        assert (base / "config.yml").exists()
+
+    def test_read_only_server_omits_init_registry(self, temp_registry):
+        """Test init_registry is omitted in read-only mode."""
+        server = create_server(registry_path=temp_registry, read_only=True)
+        capabilities = server.get_capabilities()
+        assert "init_registry" not in capabilities["tools"]
+
     def test_tools_call_unknown_tool(self, mcp_server):
         """Test tools/call with unknown tool"""
         request = {

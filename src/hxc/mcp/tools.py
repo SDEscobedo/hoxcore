@@ -9,9 +9,62 @@ from pathlib import Path
 import yaml
 
 from hxc.commands.registry import RegistryCommand
+from hxc.core.config import Config
+from hxc.core.enums import EntityType, EntityStatus, SortField
+from hxc.core.operations.init import initialize_registry
 from hxc.utils.helpers import get_project_root
 from hxc.utils.path_security import get_safe_entity_path, resolve_safe_path, PathSecurityError
-from hxc.core.enums import EntityType, EntityStatus, SortField
+
+
+def init_registry_tool(
+    path: str,
+    use_git: bool = True,
+    commit: bool = True,
+    remote_url: Optional[str] = None,
+    set_default: bool = True,
+    registry_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Initialize a new HoxCore registry.
+
+    Args:
+        path: Path where the registry should be created
+        use_git: Initialize a Git repository
+        commit: Create the initial commit when Git is enabled
+        remote_url: Optional Git remote to configure
+        set_default: Persist the new registry as the default registry
+        registry_path: Unused compatibility parameter injected by the MCP server
+
+    Returns:
+        Dictionary describing the initialization result
+    """
+    del registry_path
+
+    try:
+        result = initialize_registry(
+            path=path,
+            git=use_git,
+            commit=commit,
+            remote_url=remote_url,
+            set_default=set_default,
+        )
+
+        if result.get("success") and set_default and result.get("registry_path"):
+            Config().set(RegistryCommand.CONFIG_KEY, result["registry_path"])
+
+        return result
+    except PathSecurityError as e:
+        return {
+            "success": False,
+            "error": f"Security error: {e}",
+            "path": str(Path(path).resolve()),
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Unexpected error: {e}",
+            "path": str(Path(path).resolve()),
+        }
 
 
 def list_entities_tool(

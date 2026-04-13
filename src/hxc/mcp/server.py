@@ -17,6 +17,7 @@ from hxc.mcp.tools import (
     get_entity_tool,
     search_entities_tool,
     get_entity_property_tool,
+    init_registry_tool,
     create_entity_tool,
     edit_entity_tool,
     delete_entity_tool,
@@ -89,6 +90,7 @@ class MCPServer:
         }
         if not self.read_only:
             self._tools.update({
+                "init_registry": init_registry_tool,
                 "create_entity": create_entity_tool,
                 "edit_entity": edit_entity_tool,
                 "delete_entity": delete_entity_tool,
@@ -410,6 +412,17 @@ class MCPServer:
                     "key": {"type": "string"},
                 },
                 "required": ["identifier", "property"]
+            },
+            "init_registry": {
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "Path where the registry should be initialized"},
+                    "use_git": {"type": "boolean", "description": "Initialize a Git repository", "default": True},
+                    "commit": {"type": "boolean", "description": "Create the initial commit", "default": True},
+                    "remote_url": {"type": "string", "description": "Optional Git remote URL"},
+                    "set_default": {"type": "boolean", "description": "Persist this registry as the default", "default": True}
+                },
+                "required": ["path"]
             },
             "create_entity": {
                 "type": "object",
