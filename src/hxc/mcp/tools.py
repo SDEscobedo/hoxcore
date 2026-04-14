@@ -49,6 +49,11 @@ from hxc.core.operations.registry import (
     RegistryOperation,
     RegistryOperationError,
 )
+from hxc.core.operations.show import (
+    InvalidEntityError,
+    ShowOperation,
+    ShowOperationError,
+)
 from hxc.utils.helpers import get_project_root
 from hxc.utils.path_security import (
     PathSecurityError,
@@ -326,18 +331,33 @@ def list_entities_tool(
 def get_entity_tool(
     identifier: str,
     entity_type: Optional[str] = None,
+    include_raw: bool = False,
     registry_path: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Get detailed information about a specific entity.
 
+    This tool uses a two-phase search strategy for entity lookup:
+    1. Fast path: Try to match identifier in filename pattern ({prefix}-{identifier}.yml)
+    2. Slow path: Search file contents for ID or UID match
+
+    The fast path optimizes for UID lookups since entity files are named
+    using the UID (e.g., proj-12345678.yml).
+
     Args:
         identifier: ID or UID of the entity
         entity_type: Optional entity type to filter (program, project, mission, action)
+        include_raw: Whether to include raw YAML file content in response (default: False)
         registry_path: Optional registry path (uses default if not provided)
 
     Returns:
-        Dictionary containing entity data and metadata
+        Dictionary containing:
+        - success: bool
+        - entity: dict (entity data) or None
+        - file_path: str (path to entity file) or None
+        - identifier: str (the search identifier)
+        - raw_content: str (only if include_raw=True and entity found)
+        - error: str (only if success=False)
 
     Raises:
         ValueError: If entity not found or invalid parameters
@@ -346,41 +366,78 @@ def get_entity_tool(
     try:
         reg_path = _get_registry_path(registry_path)
         if not reg_path:
-            raise ValueError("No registry found")
+            return {
+                "success": False,
+                "error": "No registry found",
+                "entity": None,
+                "file_path": None,
+                "identifier": identifier,
+            }
 
         entity_type_enum = None
         if entity_type:
-            entity_type_enum = EntityType.from_string(entity_type)
+            try:
+                entity_type_enum = EntityType.from_string(entity_type)
+            except ValueError as e:
+                return {
+                    "success": False,
+                    "error": str(e),
+                    "entity": None,
+                    "file_path": None,
+                    "identifier": identifier,
+                }
 
-        # Use ListOperation to get entity with file metadata
-        operation = ListOperation(reg_path)
-        entity_data = operation.get_entity_by_identifier(
+        # Use shared ShowOperation for entity retrieval
+        operation = ShowOperation(reg_path)
+        result = operation.get_entity(
             identifier=identifier,
             entity_type=entity_type_enum,
-            include_file_metadata=True,
+            include_raw=include_raw,
         )
 
-        if not entity_data:
-            raise ValueError(f"Entity not found: {identifier}")
+        if not result["success"]:
+            return {
+                "success": False,
+                "error": result.get("error", f"Entity not found: {identifier}"),
+                "entity": None,
+                "file_path": None,
+                "identifier": identifier,
+            }
 
-        # Extract file path from metadata
-        file_path = entity_data.get("_file", {}).get("path", "")
-
-        # Clean entity for output
-        clean_entity = {k: v for k, v in entity_data.items() if not k.startswith("_")}
-
-        return {
+        response: Dict[str, Any] = {
             "success": True,
-            "entity": clean_entity,
-            "file_path": file_path,
+            "entity": result["entity"],
+            "file_path": result["file_path"],
             "identifier": identifier,
         }
+
+        if include_raw and "raw_content" in result:
+            response["raw_content"] = result["raw_content"]
+
+        return response
 
     except ValueError as e:
         return {
             "success": False,
             "error": str(e),
             "entity": None,
+            "file_path": None,
+            "identifier": identifier,
+        }
+    except InvalidEntityError as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "entity": None,
+            "file_path": None,
+            "identifier": identifier,
+        }
+    except ShowOperationError as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "entity": None,
+            "file_path": None,
             "identifier": identifier,
         }
     except PathSecurityError as e:
@@ -388,6 +445,7 @@ def get_entity_tool(
             "success": False,
             "error": f"Security error: {e}",
             "entity": None,
+            "file_path": None,
             "identifier": identifier,
         }
     except Exception as e:
@@ -395,6 +453,7 @@ def get_entity_tool(
             "success": False,
             "error": f"Unexpected error: {e}",
             "entity": None,
+            "file_path": None,
             "identifier": identifier,
         }
 
@@ -495,38 +554,53 @@ def get_entity_property_tool(
     try:
         reg_path = _get_registry_path(registry_path)
         if not reg_path:
-            raise ValueError("No registry found")
-
-        entity_type_enum = None
-        if entity_type:
-            entity_type_enum = EntityType.from_string(entity_type)
-
-        # Use ListOperation to get entity with file metadata
-        operation = ListOperation(reg_path)
-        entity_data = operation.get_entity_by_identifier(
-            identifier=identifier,
-            entity_type=entity_type_enum,
-            include_file_metadata=True,
-        )
-
-        if not entity_data:
             return {
                 "success": False,
-                "error": f"Entity not found: {identifier}",
+                "error": "No registry found",
                 "property": property_name,
                 "value": None,
                 "identifier": identifier,
             }
 
-        if property_name == "all":
-            # Return all properties except internal metadata
-            clean_entity = {
-                k: v for k, v in entity_data.items() if not k.startswith("_")
+        entity_type_enum = None
+        if entity_type:
+            try:
+                entity_type_enum = EntityType.from_string(entity_type)
+            except ValueError as e:
+                return {
+                    "success": False,
+                    "error": str(e),
+                    "property": property_name,
+                    "value": None,
+                    "identifier": identifier,
+                }
+
+        # Use ShowOperation to get entity
+        operation = ShowOperation(reg_path)
+        result = operation.get_entity(
+            identifier=identifier,
+            entity_type=entity_type_enum,
+            include_raw=False,
+        )
+
+        if not result["success"]:
+            return {
+                "success": False,
+                "error": result.get("error", f"Entity not found: {identifier}"),
+                "property": property_name,
+                "value": None,
+                "identifier": identifier,
             }
+
+        entity_data = result["entity"]
+        file_path = result["file_path"]
+
+        if property_name == "all":
+            # Return all properties
             return {
                 "success": True,
                 "property": property_name,
-                "value": clean_entity,
+                "value": entity_data,
                 "identifier": identifier,
             }
 
@@ -534,7 +608,7 @@ def get_entity_property_tool(
             return {
                 "success": True,
                 "property": property_name,
-                "value": entity_data.get("_file", {}).get("path", ""),
+                "value": file_path,
                 "identifier": identifier,
             }
 
@@ -645,7 +719,9 @@ def get_entity_hierarchy_tool(
         Dictionary containing hierarchy data
     """
     try:
-        root_result = get_entity_tool(identifier, entity_type, registry_path)
+        root_result = get_entity_tool(
+            identifier, entity_type, registry_path=registry_path
+        )
 
         if not root_result.get("success"):
             return root_result

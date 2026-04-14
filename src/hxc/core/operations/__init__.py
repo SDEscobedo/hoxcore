@@ -10,6 +10,7 @@ core business logic including:
 - Entity editing with git integration
 - Entity deletion with git integration
 - Entity listing with filtering and sorting
+- Entity retrieval with unified lookup logic
 - ID uniqueness validation
 - Path security enforcement
 - Structured commit message generation
@@ -45,6 +46,12 @@ from hxc.core.operations.list import (
     ListOperation,
     ListOperationError,
 )
+from hxc.core.operations.show import EntityNotFoundError as ShowEntityNotFoundError
+from hxc.core.operations.show import (
+    InvalidEntityError,
+    ShowOperation,
+    ShowOperationError,
+)
 
 __all__ = [
     # Init operation
@@ -69,4 +76,9 @@ __all__ = [
     # List operation
     "ListOperation",
     "ListOperationError",
+    # Show operation
+    "ShowOperation",
+    "ShowOperationError",
+    "ShowEntityNotFoundError",
+    "InvalidEntityError",
 ]
