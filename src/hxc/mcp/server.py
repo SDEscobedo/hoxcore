@@ -468,11 +468,15 @@ class MCPServer:
                 "properties": {
                     "identifier": {
                         "type": "string",
-                        "description": "ID or UID of the entity",
+                        "description": "ID or UID of the entity to retrieve",
                     },
                     "entity_type": {
                         "type": "string",
-                        "description": "Optional type filter",
+                        "description": "Optional entity type filter (program, project, mission, action). If not specified, searches all types.",
+                    },
+                    "include_raw": {
+                        "type": "boolean",
+                        "description": "Whether to include raw YAML file content in response (default: false). Useful for debugging or external processing.",
                     },
                 },
                 "required": ["identifier"],

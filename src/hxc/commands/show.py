@@ -3,10 +3,10 @@ Show command implementation for displaying content of registry YAML files.
 """
 
 import argparse
-import os
+import json
 import textwrap
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 import yaml
 
@@ -14,8 +14,9 @@ from hxc.commands import register_command
 from hxc.commands.base import BaseCommand
 from hxc.commands.registry import RegistryCommand
 from hxc.core.enums import EntityType, OutputFormat
+from hxc.core.operations.show import ShowOperation
 from hxc.utils.helpers import get_project_root
-from hxc.utils.path_security import PathSecurityError, resolve_safe_path
+from hxc.utils.path_security import PathSecurityError
 
 
 @register_command
@@ -80,16 +81,31 @@ class ShowCommand(BaseCommand):
                 )
                 return 1
 
-            # Find the file
-            file_path = cls.find_file(registry_path, identifier, entity_type)
-            if not file_path:
-                print(f"❌ No entity found with identifier '{identifier}'")
+            # Use ShowOperation for entity retrieval
+            operation = ShowOperation(registry_path)
+            result = operation.get_entity(
+                identifier=identifier,
+                entity_type=entity_type,
+                include_raw=raw,
+            )
+
+            if not result["success"]:
+                print(f"❌ {result['error']}")
                 if entity_type:
                     print(f"   (search limited to type: {entity_type.value})")
                 return 1
 
-            # Display the file content
-            return cls.display_file(file_path, output_format, raw)
+            # Display the content
+            file_path = Path(result["file_path"])
+
+            if raw:
+                # Display raw file content
+                print(result["raw_content"])
+                return 0
+
+            # Display formatted content
+            return cls.display_file(file_path, result["entity"], output_format)
+
         except PathSecurityError as e:
             print(f"❌ Security error: {e}")
             return 1
@@ -119,7 +135,10 @@ class ShowCommand(BaseCommand):
         entity_type: Optional[EntityType] = None,
     ) -> Optional[Path]:
         """
-        Find a file by ID or UID
+        Find a file by ID or UID.
+
+        This method delegates to ShowOperation for consistent behavior
+        between CLI and MCP interfaces.
 
         Args:
             registry_path: Root directory of the registry
@@ -132,80 +151,33 @@ class ShowCommand(BaseCommand):
         Raises:
             PathSecurityError: If any path operation attempts to escape the registry
         """
-        types_to_search = [entity_type] if entity_type else list(EntityType)
-
-        for entity_type_enum in types_to_search:
-            folder_name = entity_type_enum.get_folder_name()
-
-            # Securely resolve the folder path
-            try:
-                type_dir = resolve_safe_path(registry_path, folder_name)
-            except PathSecurityError:
-                # Skip this folder if it's not accessible
-                continue
-
-            if not type_dir.exists():
-                continue
-
-            # Search the directory
-            for file_path in type_dir.rglob("*.yml"):
-                try:
-                    # Verify that the file is within the registry
-                    secure_file_path = resolve_safe_path(registry_path, file_path)
-
-                    with open(secure_file_path, "r") as f:
-                        content = yaml.safe_load(f)
-                        if content and isinstance(content, dict):
-                            # Check if the file has an ID or UID that matches
-                            if (
-                                content.get("id") == identifier
-                                or content.get("uid") == identifier
-                            ):
-                                return secure_file_path
-                except PathSecurityError:
-                    # Skip files that are outside the registry
-                    continue
-                except Exception:
-                    # Skip files that can't be parsed
-                    continue
-
-        return None
+        operation = ShowOperation(registry_path)
+        return operation.find_entity_file(identifier, entity_type)
 
     @classmethod
     def display_file(
-        cls, file_path: Path, output_format: OutputFormat, raw: bool
+        cls, file_path: Path, content: Dict[str, Any], output_format: OutputFormat
     ) -> int:
         """
-        Display the file content in the specified format
+        Display the entity content in the specified format.
 
         Args:
-            file_path: Path to the file to display
+            file_path: Path to the file (for display purposes)
+            content: Parsed entity data dictionary
             output_format: OutputFormat enum for output
-            raw: Whether to display raw file content
 
         Returns:
             Exit code (0 for success, 1 for failure)
         """
         try:
-            with open(file_path, "r") as f:
-                if raw:
-                    # Display raw file content
-                    print(f.read())
-                    return 0
+            if output_format == OutputFormat.JSON:
+                print(json.dumps(content, indent=2))
+            elif output_format == OutputFormat.YAML:
+                print(yaml.dump(content, default_flow_style=False, sort_keys=False))
+            else:  # pretty format
+                cls.display_pretty(content, file_path)
 
-                # Parse and display formatted content
-                content = yaml.safe_load(f)
-
-                if output_format == OutputFormat.JSON:
-                    import json
-
-                    print(json.dumps(content, indent=2))
-                elif output_format == OutputFormat.YAML:
-                    print(yaml.dump(content, default_flow_style=False, sort_keys=False))
-                else:  # pretty format
-                    cls.display_pretty(content, file_path)
-
-                return 0
+            return 0
         except Exception as e:
             print(f"❌ Error reading file: {e}")
             return 1
