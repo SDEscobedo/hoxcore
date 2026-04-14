@@ -498,10 +498,11 @@ class TestShowCommandExecute:
             ShowCommand, "_get_registry_path", return_value=mock_registry_path
         ):
             with patch("builtins.print"):
-                result = main(["show", "P-001", "--type", "invalid_type"])
+                # argparse raises SystemExit with code 2 for invalid choices
+                with pytest.raises(SystemExit) as exc_info:
+                    main(["show", "P-001", "--type", "invalid_type"])
 
-                # argparse should reject invalid type
-                assert result != 0
+                assert exc_info.value.code == 2
 
     def test_show_command_invalid_format(self, mock_registry_path):
         """Test show command with invalid format option"""
@@ -509,10 +510,11 @@ class TestShowCommandExecute:
             ShowCommand, "_get_registry_path", return_value=mock_registry_path
         ):
             with patch("builtins.print"):
-                result = main(["show", "P-001", "--format", "invalid_format"])
+                # argparse raises SystemExit with code 2 for invalid choices
+                with pytest.raises(SystemExit) as exc_info:
+                    main(["show", "P-001", "--format", "invalid_format"])
 
-                # argparse should reject invalid format
-                assert result != 0
+                assert exc_info.value.code == 2
 
 
 class TestShowCommandUsesShowOperation:

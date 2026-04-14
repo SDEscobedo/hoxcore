@@ -116,14 +116,14 @@ class ShowOperation:
 
         Returns:
             Path to the entity file if found, None otherwise
+
+        Raises:
+            PathSecurityError: If path validation fails
         """
         folder_name = entity_type.get_folder_name()
         file_prefix = entity_type.get_file_prefix()
 
-        try:
-            type_dir = resolve_safe_path(self.registry_path, folder_name)
-        except PathSecurityError:
-            return None
+        type_dir = resolve_safe_path(self.registry_path, folder_name)
 
         if not type_dir.exists():
             return None
@@ -137,7 +137,7 @@ class ShowOperation:
                 secure_path = resolve_safe_path(self.registry_path, candidate_file)
                 if self._verify_entity_identifier(secure_path, identifier):
                     return secure_path
-            except (PathSecurityError, yaml.YAMLError, IOError):
+            except (yaml.YAMLError, IOError):
                 pass
 
         # Phase 2: Slow path - search all files for ID/UID match in content
@@ -150,7 +150,7 @@ class ShowOperation:
                 secure_path = resolve_safe_path(self.registry_path, file_path)
                 if self._verify_entity_identifier(secure_path, identifier):
                     return secure_path
-            except (PathSecurityError, yaml.YAMLError, IOError):
+            except (yaml.YAMLError, IOError):
                 continue
 
         return None
@@ -164,10 +164,14 @@ class ShowOperation:
             identifier: ID or UID to match
 
         Returns:
-            True if the file contains an entity matching the identifier
+            True if the file contains an entity matching the identifier,
+            False otherwise (including for invalid YAML or empty files)
         """
-        with open(file_path, "r") as f:
-            content = yaml.safe_load(f)
+        try:
+            with open(file_path, "r") as f:
+                content = yaml.safe_load(f)
+        except (yaml.YAMLError, IOError):
+            return False
 
         if not content or not isinstance(content, dict):
             return False
