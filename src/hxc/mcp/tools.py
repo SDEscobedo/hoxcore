@@ -719,7 +719,9 @@ def get_entity_hierarchy_tool(
         Dictionary containing hierarchy data
     """
     try:
-        root_result = get_entity_tool(identifier, entity_type, registry_path=registry_path)
+        root_result = get_entity_tool(
+            identifier, entity_type, registry_path=registry_path
+        )
 
         if not root_result.get("success"):
             return root_result

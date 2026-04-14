@@ -143,7 +143,10 @@ class ShowOperation:
         # Phase 2: Slow path - search all files for ID/UID match in content
         for file_path in type_dir.glob(f"{file_prefix}-*.yml"):
             # Skip the candidate we already checked
-            if candidate_file.exists() and file_path.resolve() == candidate_file.resolve():
+            if (
+                candidate_file.exists()
+                and file_path.resolve() == candidate_file.resolve()
+            ):
                 continue
 
             try:

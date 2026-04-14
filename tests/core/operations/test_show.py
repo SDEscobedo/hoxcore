@@ -69,9 +69,7 @@ storage:
     provider: google-drive
     url: https://drive.google.com/test
 """
-    (registry_path / "projects" / "proj-proj-test-001.yml").write_text(
-        project1_content
-    )
+    (registry_path / "projects" / "proj-proj-test-001.yml").write_text(project1_content)
 
     # Create another test project
     project2_content = """
@@ -90,9 +88,7 @@ completion_date: "2024-06-30"
 children: []
 related: []
 """
-    (registry_path / "projects" / "proj-proj-test-002.yml").write_text(
-        project2_content
-    )
+    (registry_path / "projects" / "proj-proj-test-002.yml").write_text(project2_content)
 
     # Create test program
     program_content = """
@@ -494,7 +490,9 @@ class TestShowOperationVerifyEntityIdentifier:
         """Test verification returns False for invalid YAML"""
         operation = ShowOperation(temp_registry_with_invalid_files)
         file_path = (
-            Path(temp_registry_with_invalid_files) / "projects" / "proj-invalid-yaml.yml"
+            Path(temp_registry_with_invalid_files)
+            / "projects"
+            / "proj-invalid-yaml.yml"
         )
 
         # The method should return False for invalid YAML (either by catching
@@ -587,7 +585,9 @@ class TestShowOperationLoadEntity:
         """Test loading invalid YAML raises InvalidEntityError"""
         operation = ShowOperation(temp_registry_with_invalid_files)
         file_path = (
-            Path(temp_registry_with_invalid_files) / "projects" / "proj-invalid-yaml.yml"
+            Path(temp_registry_with_invalid_files)
+            / "projects"
+            / "proj-invalid-yaml.yml"
         )
 
         with pytest.raises(InvalidEntityError) as excinfo:
@@ -850,7 +850,9 @@ type: project
 uid: proj-invalid
 """
         (
-            Path(temp_registry_with_invalid_files) / "projects" / "proj-proj-invalid.yml"
+            Path(temp_registry_with_invalid_files)
+            / "projects"
+            / "proj-proj-invalid.yml"
         ).write_text(invalid_file)
 
         operation = ShowOperation(temp_registry_with_invalid_files)
@@ -869,7 +871,8 @@ uid: proj-invalid
         # Patch find_entity_file to raise PathSecurityError directly
         # This ensures the error propagates through get_entity's try/except
         with patch.object(
-            operation, "find_entity_file",
+            operation,
+            "find_entity_file",
             side_effect=PathSecurityError("Path traversal detected"),
         ):
             result = operation.get_entity("P-001")
@@ -939,7 +942,8 @@ class TestShowOperationEntityExists:
         operation = ShowOperation(temp_registry)
 
         with patch.object(
-            operation, "find_entity_file",
+            operation,
+            "find_entity_file",
             side_effect=PathSecurityError("Path traversal"),
         ):
             result = operation.entity_exists("P-001")
@@ -990,7 +994,8 @@ class TestShowOperationGetEntityFilePath:
         operation = ShowOperation(temp_registry)
 
         with patch.object(
-            operation, "find_entity_file",
+            operation,
+            "find_entity_file",
             side_effect=PathSecurityError("Path traversal"),
         ):
             result = operation.get_entity_file_path("P-001")

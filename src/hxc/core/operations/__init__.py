@@ -46,12 +46,12 @@ from hxc.core.operations.list import (
     ListOperation,
     ListOperationError,
 )
+from hxc.core.operations.show import EntityNotFoundError as ShowEntityNotFoundError
 from hxc.core.operations.show import (
     InvalidEntityError,
     ShowOperation,
     ShowOperationError,
 )
-from hxc.core.operations.show import EntityNotFoundError as ShowEntityNotFoundError
 
 __all__ = [
     # Init operation

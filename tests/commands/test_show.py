@@ -115,7 +115,9 @@ def test_show_command_parser():
 class TestShowCommandFindFile:
     """Tests for ShowCommand.find_file() method"""
 
-    def test_find_file_by_id(self, mock_registry_path, sample_project_content, tmp_path):
+    def test_find_file_by_id(
+        self, mock_registry_path, sample_project_content, tmp_path
+    ):
         """Test finding a file by ID delegates to ShowOperation"""
         file_path = tmp_path / "projects" / "proj-proj-123.yml"
 
@@ -129,7 +131,9 @@ class TestShowCommandFindFile:
             mock_find.assert_called_once_with("P-001", EntityType.PROJECT)
             assert result == file_path
 
-    def test_find_file_by_uid(self, mock_registry_path, sample_project_content, tmp_path):
+    def test_find_file_by_uid(
+        self, mock_registry_path, sample_project_content, tmp_path
+    ):
         """Test finding a file by UID delegates to ShowOperation"""
         file_path = tmp_path / "projects" / "proj-proj-123.yml"
 
@@ -143,7 +147,9 @@ class TestShowCommandFindFile:
             mock_find.assert_called_once_with("proj-123", EntityType.PROJECT)
             assert result == file_path
 
-    def test_find_file_multiple_types(self, mock_registry_path, sample_project_content, tmp_path):
+    def test_find_file_multiple_types(
+        self, mock_registry_path, sample_project_content, tmp_path
+    ):
         """Test finding a file by searching all types (no type filter)"""
         file_path = tmp_path / "projects" / "proj-proj-123.yml"
 
@@ -224,7 +230,9 @@ class TestShowCommandDisplayFile:
 
             assert result == 0
             # Check that the pretty display method was called
-            mock_display_pretty.assert_called_once_with(sample_project_content, file_path)
+            mock_display_pretty.assert_called_once_with(
+                sample_project_content, file_path
+            )
 
     def test_display_file_error_handling(self, sample_project_content, tmp_path):
         """Test error handling in display_file"""
@@ -281,13 +289,25 @@ class TestShowCommandDisplayPretty:
             "parent": "P-000",
             "children": ["P-002", "P-003"],
             "related": ["P-004"],
-            "repositories": [{"name": "main", "url": "https://github.com/example/repo"}],
-            "storage": [
-                {"name": "docs", "provider": "gdrive", "url": "https://drive.google.com"}
+            "repositories": [
+                {"name": "main", "url": "https://github.com/example/repo"}
             ],
-            "databases": [{"name": "main_db", "type": "sqlite", "path": str(tmp_path / "db")}],
+            "storage": [
+                {
+                    "name": "docs",
+                    "provider": "gdrive",
+                    "url": "https://drive.google.com",
+                }
+            ],
+            "databases": [
+                {"name": "main_db", "type": "sqlite", "path": str(tmp_path / "db")}
+            ],
             "tools": [
-                {"name": "jira", "provider": "atlassian", "url": "https://jira.example.com"}
+                {
+                    "name": "jira",
+                    "provider": "atlassian",
+                    "url": "https://jira.example.com",
+                }
             ],
             "models": [
                 {"id": "gpt-4", "provider": "openai", "url": "https://api.openai.com"}
@@ -320,7 +340,9 @@ class TestShowCommandDisplayPretty:
 class TestShowCommandExecute:
     """Tests for ShowCommand.execute() via CLI entry point"""
 
-    def test_show_command_main(self, mock_registry_path, sample_project_content, tmp_path):
+    def test_show_command_main(
+        self, mock_registry_path, sample_project_content, tmp_path
+    ):
         """Test the show command via main CLI entry point"""
         mock_file_path = str(tmp_path / "project.yml")
 
@@ -337,7 +359,9 @@ class TestShowCommandExecute:
                 }
                 MockShowOperation.return_value = mock_instance
 
-                with patch.object(ShowCommand, "display_file", return_value=0) as mock_display:
+                with patch.object(
+                    ShowCommand, "display_file", return_value=0
+                ) as mock_display:
                     result = main(["show", "P-001"])
 
                     assert result == 0
@@ -368,11 +392,12 @@ class TestShowCommandExecute:
                     assert result == 1
                     # Check that an error message was printed
                     assert any(
-                        "❌" in str(call[0][0])
-                        for call in mock_print.call_args_list
+                        "❌" in str(call[0][0]) for call in mock_print.call_args_list
                     )
 
-    def test_show_command_with_type_filter(self, mock_registry_path, sample_project_content, tmp_path):
+    def test_show_command_with_type_filter(
+        self, mock_registry_path, sample_project_content, tmp_path
+    ):
         """Test show command with entity type filter"""
         mock_file_path = str(tmp_path / "project.yml")
 
@@ -398,7 +423,9 @@ class TestShowCommandExecute:
                     call_kwargs = mock_instance.get_entity.call_args[1]
                     assert call_kwargs["entity_type"] == EntityType.PROJECT
 
-    def test_show_command_with_format_options(self, mock_registry_path, sample_project_content, tmp_path):
+    def test_show_command_with_format_options(
+        self, mock_registry_path, sample_project_content, tmp_path
+    ):
         """Test show command with different format options"""
         mock_file_path = str(tmp_path / "project.yml")
 
@@ -432,7 +459,9 @@ class TestShowCommandExecute:
                         call_args = mock_display.call_args[0]
                         assert call_args[2] == fmt_enum
 
-    def test_show_command_with_raw_flag(self, mock_registry_path, sample_project_content, tmp_path):
+    def test_show_command_with_raw_flag(
+        self, mock_registry_path, sample_project_content, tmp_path
+    ):
         """Test show command with raw flag"""
         raw_content = yaml.dump(sample_project_content)
         mock_file_path = str(tmp_path / "project.yml")
@@ -480,7 +509,9 @@ class TestShowCommandExecute:
             ShowCommand, "_get_registry_path", return_value=mock_registry_path
         ):
             with patch("hxc.commands.show.ShowOperation") as MockShowOperation:
-                MockShowOperation.side_effect = PathSecurityError("Path traversal detected")
+                MockShowOperation.side_effect = PathSecurityError(
+                    "Path traversal detected"
+                )
 
                 with patch("builtins.print") as mock_print:
                     # Use a path that looks suspicious but won't actually traverse
@@ -520,7 +551,9 @@ class TestShowCommandExecute:
 class TestShowCommandUsesShowOperation:
     """Tests to verify ShowCommand uses the shared ShowOperation"""
 
-    def test_execute_creates_show_operation(self, mock_registry_path, sample_project_content, tmp_path):
+    def test_execute_creates_show_operation(
+        self, mock_registry_path, sample_project_content, tmp_path
+    ):
         """Test that execute() creates ShowOperation with correct registry path"""
         mock_file_path = str(tmp_path / "project.yml")
 
@@ -625,9 +658,7 @@ class TestShowCommandGetRegistryPath:
             "hxc.commands.registry.RegistryCommand.get_registry_path",
             return_value=None,
         ):
-            with patch(
-                "hxc.commands.show.get_project_root", return_value=project_root
-            ):
+            with patch("hxc.commands.show.get_project_root", return_value=project_root):
                 result = ShowCommand._get_registry_path(None)
                 assert result == project_root
 

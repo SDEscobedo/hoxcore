@@ -2380,7 +2380,9 @@ class TestGetEntityToolBehavioralParityWithCLI:
                 identifier=identifier, registry_path=temp_registry
             )
 
-            assert operation_result["success"] is True, f"Operation failed for {identifier}"
+            assert (
+                operation_result["success"] is True
+            ), f"Operation failed for {identifier}"
             assert mcp_result["success"] is True, f"MCP failed for {identifier}"
             assert operation_result["entity"]["type"] == mcp_result["entity"]["type"]
             assert operation_result["entity"]["title"] == mcp_result["entity"]["title"]
