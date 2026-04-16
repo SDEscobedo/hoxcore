@@ -28,8 +28,8 @@ from .test_tools_common import (
     ENTITY_TYPE_PREFIXES,
     verify_confirmation_required,
     verify_delete_result,
-    verify_error_result,
     verify_entity_not_exists,
+    verify_error_result,
     verify_git_commit_exists,
     verify_git_status_clean,
     verify_success_result,
@@ -277,7 +277,9 @@ class TestDeleteEntityTool:
                 registry_path=temp_registry,
             )
 
-            assert result["success"] is True, f"Failed for {entity_type}: {result.get('error')}"
+            assert (
+                result["success"] is True
+            ), f"Failed for {entity_type}: {result.get('error')}"
             assert result["deleted_type"] == entity_type
             assert not file_path.exists(), f"File should be deleted: {file_path}"
 
@@ -581,9 +583,7 @@ class TestDeleteEntityToolErrorHandling:
         """Test that unexpected errors are handled gracefully"""
         with patch("hxc.mcp.tools.DeleteOperation") as MockOperation:
             mock_instance = MagicMock()
-            mock_instance.get_entity_info.side_effect = RuntimeError(
-                "Unexpected error"
-            )
+            mock_instance.get_entity_info.side_effect = RuntimeError("Unexpected error")
             MockOperation.return_value = mock_instance
 
             result = delete_entity_tool(

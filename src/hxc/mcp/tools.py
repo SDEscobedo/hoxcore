@@ -54,6 +54,10 @@ from hxc.core.operations.show import (
     ShowOperation,
     ShowOperationError,
 )
+from hxc.core.operations.validate import (
+    ValidateOperation,
+    ValidateOperationError,
+)
 from hxc.utils.helpers import get_project_root
 from hxc.utils.path_security import (
     PathSecurityError,
@@ -1143,6 +1147,331 @@ def clear_registry_path_tool(
             "error": f"Unexpected error: {e}",
             "previous_path": None,
         }
+
+
+# ─── VALIDATION TOOLS ───────────────────────────────────────────────────────
+
+
+def validate_registry_tool(
+    registry_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Validate the integrity and consistency of a HoxCore registry.
+
+    This tool performs comprehensive validation checks including:
+    - Required fields validation (type, uid, title)
+    - UID uniqueness across all entities
+    - ID uniqueness within each entity type
+    - Parent link validation (errors for broken links)
+    - Child link validation (errors for broken links)
+    - Related link validation (warnings for broken links)
+    - Status value validation against EntityStatus enum
+    - Entity type validation (type matches directory location)
+    - Empty file detection
+    - Invalid YAML detection
+
+    This tool is available in both read-only and read-write modes since
+    validation is a non-destructive operation.
+
+    Args:
+        registry_path: Optional registry path (uses default if not provided)
+
+    Returns:
+        Dictionary containing:
+        - success: bool - Whether validation completed successfully
+        - valid: bool - Whether the registry passed validation (no errors)
+        - errors: list - List of error messages
+        - warnings: list - List of warning messages
+        - error_count: int - Number of errors found
+        - warning_count: int - Number of warnings found
+        - entities_checked: int - Total number of entities validated
+        - entities_by_type: dict - Count of entities per type
+
+    Examples:
+        >>> validate_registry_tool()
+        {
+            "success": True,
+            "valid": True,
+            "errors": [],
+            "warnings": [],
+            "error_count": 0,
+            "warning_count": 0,
+            "entities_checked": 15,
+            "entities_by_type": {"project": 10, "program": 3, "mission": 1, "action": 1}
+        }
+    """
+    try:
+        reg_path = _get_registry_path(registry_path)
+        if not reg_path:
+            return {
+                "success": False,
+                "error": "No registry found",
+                "valid": False,
+                "errors": [],
+                "warnings": [],
+                "error_count": 0,
+                "warning_count": 0,
+                "entities_checked": 0,
+                "entities_by_type": {},
+            }
+
+        operation = ValidateOperation(reg_path)
+        result = operation.validate_registry()
+
+        return {
+            "success": True,
+            "valid": result.valid,
+            "errors": result.errors,
+            "warnings": result.warnings,
+            "error_count": result.error_count,
+            "warning_count": result.warning_count,
+            "entities_checked": result.entities_checked,
+            "entities_by_type": result.entities_by_type,
+        }
+
+    except ValidateOperationError as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "valid": False,
+            "errors": [],
+            "warnings": [],
+            "error_count": 0,
+            "warning_count": 0,
+            "entities_checked": 0,
+            "entities_by_type": {},
+        }
+    except PathSecurityError as e:
+        return {
+            "success": False,
+            "error": f"Security error: {e}",
+            "valid": False,
+            "errors": [],
+            "warnings": [],
+            "error_count": 0,
+            "warning_count": 0,
+            "entities_checked": 0,
+            "entities_by_type": {},
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Unexpected error: {e}",
+            "valid": False,
+            "errors": [],
+            "warnings": [],
+            "error_count": 0,
+            "warning_count": 0,
+            "entities_checked": 0,
+            "entities_by_type": {},
+        }
+
+
+def validate_entity_tool(
+    entity_data: Dict[str, Any],
+    check_relationships: bool = True,
+    registry_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Validate a single entity's data structure (pre-flight validation).
+
+    This tool performs validation on entity data before create or edit
+    operations to catch issues early. It validates:
+    - Required fields (type, uid, title)
+    - Entity type against EntityType enum
+    - Status value against EntityStatus enum
+    - Children field format (must be a list)
+    - Related field format (must be a list)
+    - Parent/children/related references exist (if check_relationships=True)
+
+    This is useful for:
+    - Pre-flight validation before create/edit operations
+    - Validating entity data from external sources
+    - Testing entity templates
+
+    This tool is available in both read-only and read-write modes since
+    validation is a non-destructive operation.
+
+    Args:
+        entity_data: Entity data dictionary to validate. Should contain at minimum:
+                    type, uid, and title fields.
+        check_relationships: Whether to verify that parent/children/related
+                            references exist in the registry (default: True).
+                            Set to False for validating entities in isolation.
+        registry_path: Optional registry path for relationship checking
+                      (uses default if not provided)
+
+    Returns:
+        Dictionary containing:
+        - success: bool - Whether validation completed successfully
+        - valid: bool - Whether the entity data passed validation
+        - errors: list - List of error messages
+        - warnings: list - List of warning messages
+        - error_count: int - Number of errors found
+        - warning_count: int - Number of warnings found
+
+    Examples:
+        >>> validate_entity_tool({
+        ...     "type": "project",
+        ...     "uid": "proj-001",
+        ...     "title": "My Project",
+        ...     "status": "active"
+        ... })
+        {
+            "success": True,
+            "valid": True,
+            "errors": [],
+            "warnings": [],
+            "error_count": 0,
+            "warning_count": 0
+        }
+
+        >>> validate_entity_tool({
+        ...     "type": "invalid_type",
+        ...     "title": "Missing UID"
+        ... })
+        {
+            "success": True,
+            "valid": False,
+            "errors": [
+                "Missing required field 'uid'",
+                "Invalid entity type 'invalid_type'. Valid types: program, project, mission, action"
+            ],
+            "warnings": [],
+            "error_count": 2,
+            "warning_count": 0
+        }
+    """
+    try:
+        if not entity_data:
+            return {
+                "success": True,
+                "valid": False,
+                "errors": ["Entity data is required"],
+                "warnings": [],
+                "error_count": 1,
+                "warning_count": 0,
+            }
+
+        if not isinstance(entity_data, dict):
+            return {
+                "success": True,
+                "valid": False,
+                "errors": ["Entity data must be a dictionary"],
+                "warnings": [],
+                "error_count": 1,
+                "warning_count": 0,
+            }
+
+        # Get registry path for relationship checking
+        reg_path = _get_registry_path(registry_path)
+
+        # If relationship checking is requested but no registry, skip relationships
+        if check_relationships and not reg_path:
+            check_relationships = False
+
+        if reg_path:
+            operation = ValidateOperation(reg_path)
+            result = operation.validate_entity(
+                entity_data=entity_data,
+                check_relationships=check_relationships,
+            )
+        else:
+            # Perform basic validation without registry
+            result = _validate_entity_without_registry(entity_data)
+
+        return {
+            "success": True,
+            "valid": result.valid,
+            "errors": result.errors,
+            "warnings": result.warnings,
+            "error_count": len(result.errors),
+            "warning_count": len(result.warnings),
+        }
+
+    except ValidateOperationError as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "valid": False,
+            "errors": [],
+            "warnings": [],
+            "error_count": 0,
+            "warning_count": 0,
+        }
+    except PathSecurityError as e:
+        return {
+            "success": False,
+            "error": f"Security error: {e}",
+            "valid": False,
+            "errors": [],
+            "warnings": [],
+            "error_count": 0,
+            "warning_count": 0,
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Unexpected error: {e}",
+            "valid": False,
+            "errors": [],
+            "warnings": [],
+            "error_count": 0,
+            "warning_count": 0,
+        }
+
+
+def _validate_entity_without_registry(
+    entity_data: Dict[str, Any],
+) -> "EntityValidationResult":
+    """
+    Validate entity data without a registry (basic structural validation).
+
+    This is used when no registry is available for relationship checking.
+    """
+    from hxc.core.operations.validate import EntityValidationResult
+
+    result = EntityValidationResult(entity_data=entity_data)
+
+    # Required fields
+    required_fields = ["type", "uid", "title"]
+    for field_name in required_fields:
+        if field_name not in entity_data or not entity_data[field_name]:
+            result.add_error(f"Missing required field '{field_name}'")
+
+    # Validate entity type
+    entity_type = entity_data.get("type")
+    if entity_type:
+        try:
+            EntityType.from_string(entity_type)
+        except ValueError:
+            valid_types = ", ".join(EntityType.values())
+            result.add_error(
+                f"Invalid entity type '{entity_type}'. Valid types: {valid_types}"
+            )
+
+    # Validate status
+    status = entity_data.get("status")
+    if status:
+        try:
+            EntityStatus.from_string(status)
+        except ValueError:
+            valid_statuses = ", ".join(EntityStatus.values())
+            result.add_error(
+                f"Invalid status '{status}'. Valid statuses: {valid_statuses}"
+            )
+
+    # Validate children format
+    children = entity_data.get("children")
+    if children is not None and not isinstance(children, list):
+        result.add_error("Invalid children format: must be a list")
+
+    # Validate related format
+    related = entity_data.get("related")
+    if related is not None and not isinstance(related, list):
+        result.add_warning("Invalid related format: must be a list")
+
+    return result
 
 
 # ─── WRITE TOOLS ────────────────────────────────────────────────────────────
