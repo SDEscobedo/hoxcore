@@ -36,7 +36,9 @@ from hxc.mcp.tools import (
     list_registries_tool,
     search_entities_tool,
     set_registry_path_tool,
+    validate_entity_tool,
     validate_registry_path_tool,
+    validate_registry_tool,
 )
 from hxc.utils.helpers import get_project_root
 from hxc.utils.path_security import PathSecurityError
@@ -91,6 +93,7 @@ class MCPServer:
     def _register_tools(self) -> None:
         """Register all available tools. Write tools are omitted in read-only mode."""
         # Read-only tools (always available)
+        # Validation tools are included here since validation is non-destructive
         self._tools = {
             "list_entities": list_entities_tool,
             "get_entity": get_entity_tool,
@@ -101,6 +104,9 @@ class MCPServer:
             "validate_registry_path": validate_registry_path_tool,
             "list_registries": list_registries_tool,
             "discover_registry": discover_registry_tool,
+            # Validation tools (non-destructive, available in both modes)
+            "validate_registry": validate_registry_tool,
+            "validate_entity": validate_entity_tool,
         }
         if not self.read_only:
             self._tools.update(
@@ -698,6 +704,27 @@ class MCPServer:
             "clear_registry_path": {
                 "type": "object",
                 "properties": {},
+            },
+            # Validation tools
+            "validate_registry": {
+                "type": "object",
+                "properties": {},
+                "description": "Validate the integrity and consistency of a HoxCore registry. Performs comprehensive checks including required fields, UID/ID uniqueness, relationship validation, status/type validation, and file integrity.",
+            },
+            "validate_entity": {
+                "type": "object",
+                "properties": {
+                    "entity_data": {
+                        "type": "object",
+                        "description": "Entity data dictionary to validate. Should contain at minimum: type, uid, and title fields.",
+                    },
+                    "check_relationships": {
+                        "type": "boolean",
+                        "description": "Whether to verify that parent/children/related references exist in the registry (default: true). Set to false for validating entities in isolation.",
+                    },
+                },
+                "required": ["entity_data"],
+                "description": "Validate a single entity's data structure (pre-flight validation). Useful for validating entity data before create/edit operations.",
             },
         }
         return schemas.get(tool_name, {"type": "object", "properties": {}})

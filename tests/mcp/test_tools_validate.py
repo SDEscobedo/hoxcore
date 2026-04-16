@@ -7,6 +7,8 @@ This module tests validation-related functionality including:
 - Registry path validation
 - Entity structure validation
 - Validation error handling and messages
+- validate_registry_tool for full registry validation
+- validate_entity_tool for single entity pre-flight validation
 """
 
 import shutil
@@ -23,6 +25,11 @@ from hxc.core.operations.registry import (
     InvalidRegistryPathError,
     RegistryOperation,
 )
+from hxc.core.operations.validate import (
+    ValidateOperation,
+    ValidateOperationError,
+    ValidationResult,
+)
 from hxc.mcp.tools import (
     create_entity_tool,
     delete_entity_tool,
@@ -31,8 +38,982 @@ from hxc.mcp.tools import (
     get_entity_tool,
     list_entities_tool,
     search_entities_tool,
+    validate_entity_tool,
     validate_registry_path_tool,
+    validate_registry_tool,
 )
+
+
+class TestValidateRegistryTool:
+    """Tests for validate_registry_tool"""
+
+    def test_validate_valid_registry(self, temp_registry):
+        """Test validating a valid registry"""
+        result = validate_registry_tool(registry_path=temp_registry)
+
+        assert result["success"] is True
+        assert result["valid"] is True
+        assert result["errors"] == []
+        assert result["error_count"] == 0
+        assert result["entities_checked"] >= 0
+
+    def test_validate_returns_expected_structure(self, temp_registry):
+        """Test that result has expected structure"""
+        result = validate_registry_tool(registry_path=temp_registry)
+
+        expected_keys = {
+            "success",
+            "valid",
+            "errors",
+            "warnings",
+            "error_count",
+            "warning_count",
+            "entities_checked",
+            "entities_by_type",
+        }
+        assert set(result.keys()) == expected_keys
+
+    def test_validate_counts_entities_by_type(self, temp_registry):
+        """Test that entities are counted by type"""
+        result = validate_registry_tool(registry_path=temp_registry)
+
+        assert result["success"] is True
+        assert isinstance(result["entities_by_type"], dict)
+        # Temp registry has projects, programs, missions, actions
+        assert "project" in result["entities_by_type"]
+
+    def test_validate_detects_missing_required_fields(self, temp_registry):
+        """Test detection of missing required fields"""
+        # Create entity missing required fields
+        invalid_entity = {"status": "active"}  # Missing type, uid, title
+
+        projects_dir = Path(temp_registry) / "projects"
+        with open(projects_dir / "proj-invalid.yml", "w") as f:
+            yaml.dump(invalid_entity, f)
+
+        result = validate_registry_tool(registry_path=temp_registry)
+
+        assert result["success"] is True
+        assert result["valid"] is False
+        assert result["error_count"] > 0
+        assert any("uid" in error.lower() for error in result["errors"])
+        assert any("title" in error.lower() for error in result["errors"])
+
+    def test_validate_detects_duplicate_uids(self, temp_registry):
+        """Test detection of duplicate UIDs"""
+        # Create two entities with the same UID
+        entity1 = {
+            "type": "project",
+            "uid": "duplicate-uid",
+            "title": "First",
+            "status": "active",
+        }
+        entity2 = {
+            "type": "project",
+            "uid": "duplicate-uid",
+            "title": "Second",
+            "status": "active",
+        }
+
+        projects_dir = Path(temp_registry) / "projects"
+        with open(projects_dir / "proj-dup1.yml", "w") as f:
+            yaml.dump(entity1, f)
+        with open(projects_dir / "proj-dup2.yml", "w") as f:
+            yaml.dump(entity2, f)
+
+        result = validate_registry_tool(registry_path=temp_registry)
+
+        assert result["success"] is True
+        assert result["valid"] is False
+        assert any("Duplicate UID" in error for error in result["errors"])
+
+    def test_validate_detects_duplicate_ids_within_type(self, temp_registry):
+        """Test detection of duplicate IDs within same entity type"""
+        entity1 = {
+            "type": "project",
+            "uid": "proj-a",
+            "id": "SAME-ID",
+            "title": "First",
+            "status": "active",
+        }
+        entity2 = {
+            "type": "project",
+            "uid": "proj-b",
+            "id": "SAME-ID",
+            "title": "Second",
+            "status": "active",
+        }
+
+        projects_dir = Path(temp_registry) / "projects"
+        with open(projects_dir / "proj-a.yml", "w") as f:
+            yaml.dump(entity1, f)
+        with open(projects_dir / "proj-b.yml", "w") as f:
+            yaml.dump(entity2, f)
+
+        result = validate_registry_tool(registry_path=temp_registry)
+
+        assert result["success"] is True
+        assert result["valid"] is False
+        assert any("Duplicate ID" in error for error in result["errors"])
+
+    def test_validate_allows_same_id_across_types(self, temp_registry):
+        """Test that same ID is allowed across different entity types"""
+        project = {
+            "type": "project",
+            "uid": "proj-x",
+            "id": "SHARED-ID",
+            "title": "Project",
+            "status": "active",
+        }
+        program = {
+            "type": "program",
+            "uid": "prog-x",
+            "id": "SHARED-ID",
+            "title": "Program",
+            "status": "active",
+        }
+
+        with open(Path(temp_registry) / "projects" / "proj-x.yml", "w") as f:
+            yaml.dump(project, f)
+        with open(Path(temp_registry) / "programs" / "prog-x.yml", "w") as f:
+            yaml.dump(program, f)
+
+        result = validate_registry_tool(registry_path=temp_registry)
+
+        # Should be valid - same ID allowed across types
+        assert result["success"] is True
+        # Check no duplicate ID errors
+        assert not any(
+            "Duplicate ID" in error and "SHARED-ID" in error
+            for error in result["errors"]
+        )
+
+    def test_validate_detects_broken_parent_link(self, temp_registry):
+        """Test detection of broken parent links"""
+        entity = {
+            "type": "project",
+            "uid": "proj-orphan",
+            "title": "Orphan",
+            "status": "active",
+            "parent": "nonexistent-parent",
+        }
+
+        with open(Path(temp_registry) / "projects" / "proj-orphan.yml", "w") as f:
+            yaml.dump(entity, f)
+
+        result = validate_registry_tool(registry_path=temp_registry)
+
+        assert result["success"] is True
+        assert result["valid"] is False
+        assert any("Broken parent link" in error for error in result["errors"])
+
+    def test_validate_detects_broken_child_link(self, temp_registry):
+        """Test detection of broken child links"""
+        entity = {
+            "type": "program",
+            "uid": "prog-parent",
+            "title": "Parent",
+            "status": "active",
+            "children": ["nonexistent-child"],
+        }
+
+        with open(Path(temp_registry) / "programs" / "prog-parent.yml", "w") as f:
+            yaml.dump(entity, f)
+
+        result = validate_registry_tool(registry_path=temp_registry)
+
+        assert result["success"] is True
+        assert result["valid"] is False
+        assert any("Broken child link" in error for error in result["errors"])
+
+    def test_validate_broken_related_is_warning(self, temp_registry):
+        """Test that broken related links are warnings not errors"""
+        entity = {
+            "type": "project",
+            "uid": "proj-with-related",
+            "title": "Has Related",
+            "status": "active",
+            "related": ["nonexistent-related"],
+        }
+
+        with open(Path(temp_registry) / "projects" / "proj-related.yml", "w") as f:
+            yaml.dump(entity, f)
+
+        result = validate_registry_tool(registry_path=temp_registry)
+
+        assert result["success"] is True
+        assert result["valid"] is True  # Still valid - related is warning only
+        assert any("Broken related link" in warning for warning in result["warnings"])
+
+    def test_validate_detects_invalid_status(self, temp_registry):
+        """Test detection of invalid status values"""
+        entity = {
+            "type": "project",
+            "uid": "proj-badstatus",
+            "title": "Bad Status",
+            "status": "not-a-real-status",
+        }
+
+        with open(Path(temp_registry) / "projects" / "proj-badstatus.yml", "w") as f:
+            yaml.dump(entity, f)
+
+        result = validate_registry_tool(registry_path=temp_registry)
+
+        assert result["success"] is True
+        assert result["valid"] is False
+        assert any("Invalid status" in error for error in result["errors"])
+
+    def test_validate_detects_type_mismatch(self, temp_registry):
+        """Test detection of type mismatches"""
+        # Entity in projects folder but declares type as program
+        entity = {
+            "type": "program",
+            "uid": "proj-wrongtype",
+            "title": "Wrong Type",
+            "status": "active",
+        }
+
+        with open(Path(temp_registry) / "projects" / "proj-wrongtype.yml", "w") as f:
+            yaml.dump(entity, f)
+
+        result = validate_registry_tool(registry_path=temp_registry)
+
+        assert result["success"] is True
+        assert result["valid"] is False
+        assert any("Type mismatch" in error for error in result["errors"])
+
+    def test_validate_detects_empty_file(self, temp_registry):
+        """Test handling of empty YAML files"""
+        empty_file = Path(temp_registry) / "projects" / "proj-empty.yml"
+        empty_file.write_text("")
+
+        result = validate_registry_tool(registry_path=temp_registry)
+
+        assert result["success"] is True
+        assert result["valid"] is False
+        assert any("Empty file" in error for error in result["errors"])
+
+    def test_validate_detects_invalid_yaml(self, temp_registry):
+        """Test handling of invalid YAML files"""
+        invalid_file = Path(temp_registry) / "projects" / "proj-invalid.yml"
+        invalid_file.write_text("invalid: yaml: content: [")
+
+        result = validate_registry_tool(registry_path=temp_registry)
+
+        assert result["success"] is True
+        assert result["valid"] is False
+        assert any(
+            "YAML parse error" in error or "Error loading" in error
+            for error in result["errors"]
+        )
+
+    def test_validate_no_registry_found(self):
+        """Test validation when no registry found"""
+        result = validate_registry_tool(registry_path="/nonexistent/path")
+
+        assert result["success"] is False
+        assert "error" in result
+        assert "No registry found" in result["error"]
+
+    def test_validate_invalid_children_format(self, temp_registry):
+        """Test detection of invalid children format"""
+        entity = {
+            "type": "project",
+            "uid": "proj-badchildren",
+            "title": "Bad Children",
+            "status": "active",
+            "children": "not-a-list",
+        }
+
+        with open(Path(temp_registry) / "projects" / "proj-badchildren.yml", "w") as f:
+            yaml.dump(entity, f)
+
+        result = validate_registry_tool(registry_path=temp_registry)
+
+        assert result["success"] is True
+        assert result["valid"] is False
+        assert any("Invalid children format" in error for error in result["errors"])
+
+    def test_validate_invalid_related_format_is_warning(self, temp_registry):
+        """Test that invalid related format is a warning"""
+        entity = {
+            "type": "project",
+            "uid": "proj-badrelated",
+            "title": "Bad Related",
+            "status": "active",
+            "related": "not-a-list",
+        }
+
+        with open(Path(temp_registry) / "projects" / "proj-badrelated.yml", "w") as f:
+            yaml.dump(entity, f)
+
+        result = validate_registry_tool(registry_path=temp_registry)
+
+        assert result["success"] is True
+        assert result["valid"] is True  # Still valid - related format is warning
+        assert any("Invalid related format" in warning for warning in result["warnings"])
+
+    def test_validate_uses_shared_operation(self, temp_registry):
+        """Test that validate_registry_tool uses ValidateOperation internally"""
+        with patch("hxc.mcp.tools.ValidateOperation") as MockOperation:
+            mock_result = ValidationResult()
+            mock_result.entities_checked = 5
+            mock_result.entities_by_type = {"project": 5}
+
+            mock_instance = MagicMock()
+            mock_instance.validate_registry.return_value = mock_result
+            MockOperation.return_value = mock_instance
+
+            result = validate_registry_tool(registry_path=temp_registry)
+
+        MockOperation.assert_called_once_with(temp_registry)
+        mock_instance.validate_registry.assert_called_once()
+
+    def test_validate_handles_path_security_error(self, temp_registry):
+        """Test that PathSecurityError is handled correctly"""
+        from hxc.utils.path_security import PathSecurityError
+
+        with patch("hxc.mcp.tools.ValidateOperation") as MockOperation:
+            mock_instance = MagicMock()
+            mock_instance.validate_registry.side_effect = PathSecurityError(
+                "Path traversal detected"
+            )
+            MockOperation.return_value = mock_instance
+
+            result = validate_registry_tool(registry_path=temp_registry)
+
+        assert result["success"] is False
+        assert "Security error" in result["error"]
+
+
+class TestValidateRegistryToolBehavioralParity:
+    """Tests to verify validate_registry_tool produces same results as CLI"""
+
+    def test_validate_produces_same_errors_as_operation(self, temp_registry):
+        """Test that MCP tool produces same errors as ValidateOperation"""
+        # Create entity with issue
+        entity = {
+            "type": "project",
+            "uid": "proj-test",
+            "title": "Test",
+            "status": "invalid-status",
+        }
+
+        with open(Path(temp_registry) / "projects" / "proj-test.yml", "w") as f:
+            yaml.dump(entity, f)
+
+        # Use direct operation
+        operation = ValidateOperation(temp_registry)
+        operation_result = operation.validate_registry()
+
+        # Use MCP tool
+        mcp_result = validate_registry_tool(registry_path=temp_registry)
+
+        assert mcp_result["success"] is True
+        assert mcp_result["valid"] == operation_result.valid
+        assert mcp_result["error_count"] == operation_result.error_count
+        assert mcp_result["warning_count"] == operation_result.warning_count
+        assert set(mcp_result["errors"]) == set(operation_result.errors)
+
+    def test_validate_entities_by_type_matches_operation(self, temp_registry):
+        """Test that entities_by_type matches ValidateOperation"""
+        operation = ValidateOperation(temp_registry)
+        operation_result = operation.validate_registry()
+
+        mcp_result = validate_registry_tool(registry_path=temp_registry)
+
+        assert mcp_result["success"] is True
+        assert mcp_result["entities_by_type"] == operation_result.entities_by_type
+
+    def test_validate_all_status_values_match_cli(self, temp_registry):
+        """Test that all valid status values are accepted like CLI"""
+        valid_statuses = ["active", "completed", "on-hold", "cancelled", "planned"]
+
+        for status in valid_statuses:
+            entity = {
+                "type": "project",
+                "uid": f"proj-{status}",
+                "title": f"Status {status}",
+                "status": status,
+            }
+
+            with open(
+                Path(temp_registry) / "projects" / f"proj-{status}.yml", "w"
+            ) as f:
+                yaml.dump(entity, f)
+
+        result = validate_registry_tool(registry_path=temp_registry)
+
+        assert result["success"] is True
+        # No status errors should exist
+        assert not any("Invalid status" in error for error in result["errors"])
+
+
+class TestValidateEntityTool:
+    """Tests for validate_entity_tool"""
+
+    def test_validate_valid_entity(self, temp_registry):
+        """Test validating a valid entity"""
+        entity_data = {
+            "type": "project",
+            "uid": "proj-valid",
+            "title": "Valid Project",
+            "status": "active",
+        }
+
+        result = validate_entity_tool(
+            entity_data=entity_data,
+            check_relationships=False,
+            registry_path=temp_registry,
+        )
+
+        assert result["success"] is True
+        assert result["valid"] is True
+        assert result["errors"] == []
+
+    def test_validate_returns_expected_structure(self, temp_registry):
+        """Test that result has expected structure"""
+        entity_data = {
+            "type": "project",
+            "uid": "proj-test",
+            "title": "Test",
+        }
+
+        result = validate_entity_tool(
+            entity_data=entity_data,
+            registry_path=temp_registry,
+        )
+
+        expected_keys = {
+            "success",
+            "valid",
+            "errors",
+            "warnings",
+            "error_count",
+            "warning_count",
+        }
+        assert set(result.keys()) == expected_keys
+
+    def test_validate_detects_missing_required_fields(self, temp_registry):
+        """Test detection of missing required fields"""
+        # Missing type, uid, title
+        entity_data = {"status": "active"}
+
+        result = validate_entity_tool(
+            entity_data=entity_data,
+            check_relationships=False,
+            registry_path=temp_registry,
+        )
+
+        assert result["success"] is True
+        assert result["valid"] is False
+        assert result["error_count"] >= 3
+        assert any("type" in error.lower() for error in result["errors"])
+        assert any("uid" in error.lower() for error in result["errors"])
+        assert any("title" in error.lower() for error in result["errors"])
+
+    def test_validate_detects_invalid_entity_type(self, temp_registry):
+        """Test detection of invalid entity type"""
+        entity_data = {
+            "type": "invalid_type",
+            "uid": "test-001",
+            "title": "Test",
+        }
+
+        result = validate_entity_tool(
+            entity_data=entity_data,
+            check_relationships=False,
+            registry_path=temp_registry,
+        )
+
+        assert result["success"] is True
+        assert result["valid"] is False
+        assert any("Invalid entity type" in error for error in result["errors"])
+
+    def test_validate_detects_invalid_status(self, temp_registry):
+        """Test detection of invalid status"""
+        entity_data = {
+            "type": "project",
+            "uid": "test-001",
+            "title": "Test",
+            "status": "not-a-status",
+        }
+
+        result = validate_entity_tool(
+            entity_data=entity_data,
+            check_relationships=False,
+            registry_path=temp_registry,
+        )
+
+        assert result["success"] is True
+        assert result["valid"] is False
+        assert any("Invalid status" in error for error in result["errors"])
+
+    def test_validate_detects_invalid_children_format(self, temp_registry):
+        """Test detection of invalid children format"""
+        entity_data = {
+            "type": "project",
+            "uid": "test-001",
+            "title": "Test",
+            "children": "not-a-list",
+        }
+
+        result = validate_entity_tool(
+            entity_data=entity_data,
+            check_relationships=False,
+            registry_path=temp_registry,
+        )
+
+        assert result["success"] is True
+        assert result["valid"] is False
+        assert any("Invalid children format" in error for error in result["errors"])
+
+    def test_validate_invalid_related_format_is_warning(self, temp_registry):
+        """Test that invalid related format is a warning"""
+        entity_data = {
+            "type": "project",
+            "uid": "test-001",
+            "title": "Test",
+            "related": "not-a-list",
+        }
+
+        result = validate_entity_tool(
+            entity_data=entity_data,
+            check_relationships=False,
+            registry_path=temp_registry,
+        )
+
+        assert result["success"] is True
+        assert result["valid"] is True  # Still valid
+        assert any("Invalid related format" in warning for warning in result["warnings"])
+
+    def test_validate_with_relationship_checking_parent_exists(self, temp_registry):
+        """Test validation with relationship checking - parent exists"""
+        entity_data = {
+            "type": "project",
+            "uid": "test-child",
+            "title": "Child Project",
+            "parent": "prog-test-001",  # Exists in fixture
+        }
+
+        result = validate_entity_tool(
+            entity_data=entity_data,
+            check_relationships=True,
+            registry_path=temp_registry,
+        )
+
+        assert result["success"] is True
+        assert result["valid"] is True
+
+    def test_validate_with_relationship_checking_parent_not_found(self, temp_registry):
+        """Test validation with relationship checking - parent not found"""
+        entity_data = {
+            "type": "project",
+            "uid": "test-orphan",
+            "title": "Orphan Project",
+            "parent": "nonexistent-parent",
+        }
+
+        result = validate_entity_tool(
+            entity_data=entity_data,
+            check_relationships=True,
+            registry_path=temp_registry,
+        )
+
+        assert result["success"] is True
+        assert result["valid"] is False
+        assert any("Parent" in error and "not found" in error for error in result["errors"])
+
+    def test_validate_with_relationship_checking_child_not_found(self, temp_registry):
+        """Test validation with relationship checking - child not found"""
+        entity_data = {
+            "type": "program",
+            "uid": "test-parent",
+            "title": "Parent Program",
+            "children": ["nonexistent-child"],
+        }
+
+        result = validate_entity_tool(
+            entity_data=entity_data,
+            check_relationships=True,
+            registry_path=temp_registry,
+        )
+
+        assert result["success"] is True
+        assert result["valid"] is False
+        assert any("Child" in error and "not found" in error for error in result["errors"])
+
+    def test_validate_with_relationship_checking_related_not_found_is_warning(
+        self, temp_registry
+    ):
+        """Test validation with relationship checking - related not found is warning"""
+        entity_data = {
+            "type": "project",
+            "uid": "test-related",
+            "title": "Has Related",
+            "related": ["nonexistent-related"],
+        }
+
+        result = validate_entity_tool(
+            entity_data=entity_data,
+            check_relationships=True,
+            registry_path=temp_registry,
+        )
+
+        assert result["success"] is True
+        assert result["valid"] is True  # Still valid
+        assert any(
+            "Related" in warning and "not found" in warning
+            for warning in result["warnings"]
+        )
+
+    def test_validate_check_relationships_default_true(self, temp_registry):
+        """Test that check_relationships defaults to True"""
+        entity_data = {
+            "type": "project",
+            "uid": "test-default",
+            "title": "Default Check",
+            "parent": "nonexistent-parent",
+        }
+
+        result = validate_entity_tool(
+            entity_data=entity_data,
+            registry_path=temp_registry,
+        )
+
+        # Should have error because check_relationships defaults to True
+        assert result["success"] is True
+        assert result["valid"] is False
+        assert any("Parent" in error and "not found" in error for error in result["errors"])
+
+    def test_validate_without_registry_path(self):
+        """Test validation without registry path (basic validation only)"""
+        entity_data = {
+            "type": "project",
+            "uid": "test-001",
+            "title": "No Registry",
+            "status": "active",
+        }
+
+        result = validate_entity_tool(
+            entity_data=entity_data,
+            check_relationships=False,
+        )
+
+        assert result["success"] is True
+        assert result["valid"] is True
+
+    def test_validate_empty_entity_data(self, temp_registry):
+        """Test validation with empty entity data"""
+        result = validate_entity_tool(
+            entity_data={},
+            registry_path=temp_registry,
+        )
+
+        assert result["success"] is True
+        assert result["valid"] is False
+        assert result["error_count"] >= 1
+
+    def test_validate_none_entity_data(self, temp_registry):
+        """Test validation with None entity data"""
+        result = validate_entity_tool(
+            entity_data=None,
+            registry_path=temp_registry,
+        )
+
+        assert result["success"] is True
+        assert result["valid"] is False
+        assert "Entity data is required" in result["errors"]
+
+    def test_validate_non_dict_entity_data(self, temp_registry):
+        """Test validation with non-dict entity data"""
+        result = validate_entity_tool(
+            entity_data="not a dict",
+            registry_path=temp_registry,
+        )
+
+        assert result["success"] is True
+        assert result["valid"] is False
+        assert "Entity data must be a dictionary" in result["errors"]
+
+    def test_validate_all_valid_entity_types(self, temp_registry):
+        """Test validation accepts all valid entity types"""
+        valid_types = ["program", "project", "mission", "action"]
+
+        for entity_type in valid_types:
+            entity_data = {
+                "type": entity_type,
+                "uid": f"{entity_type}-test",
+                "title": f"Test {entity_type}",
+            }
+
+            result = validate_entity_tool(
+                entity_data=entity_data,
+                check_relationships=False,
+                registry_path=temp_registry,
+            )
+
+            assert result["success"] is True, f"Failed for type: {entity_type}"
+            assert result["valid"] is True, f"Not valid for type: {entity_type}"
+
+    def test_validate_all_valid_statuses(self, temp_registry):
+        """Test validation accepts all valid status values"""
+        valid_statuses = ["active", "completed", "on-hold", "cancelled", "planned"]
+
+        for status in valid_statuses:
+            entity_data = {
+                "type": "project",
+                "uid": f"proj-{status}",
+                "title": f"Status {status}",
+                "status": status,
+            }
+
+            result = validate_entity_tool(
+                entity_data=entity_data,
+                check_relationships=False,
+                registry_path=temp_registry,
+            )
+
+            assert result["success"] is True, f"Failed for status: {status}"
+            assert result["valid"] is True, f"Not valid for status: {status}"
+
+
+class TestValidateEntityToolBehavioralParity:
+    """Tests to verify validate_entity_tool behaves identically to ValidateOperation"""
+
+    def test_validate_produces_same_errors_as_operation(self, temp_registry):
+        """Test that MCP tool produces same errors as ValidateOperation"""
+        entity_data = {
+            "type": "invalid_type",
+            "uid": "test-001",
+            # Missing title
+            "status": "invalid_status",
+        }
+
+        # Use direct operation
+        operation = ValidateOperation(temp_registry)
+        operation_result = operation.validate_entity(
+            entity_data, check_relationships=False
+        )
+
+        # Use MCP tool
+        mcp_result = validate_entity_tool(
+            entity_data=entity_data,
+            check_relationships=False,
+            registry_path=temp_registry,
+        )
+
+        assert mcp_result["success"] is True
+        assert mcp_result["valid"] == operation_result.valid
+        assert set(mcp_result["errors"]) == set(operation_result.errors)
+
+    def test_validate_relationship_errors_match_operation(self, temp_registry):
+        """Test that relationship validation matches ValidateOperation"""
+        entity_data = {
+            "type": "project",
+            "uid": "test-001",
+            "title": "Test",
+            "parent": "nonexistent",
+            "children": ["also-nonexistent"],
+            "related": ["and-this-one"],
+        }
+
+        # Use direct operation
+        operation = ValidateOperation(temp_registry)
+        operation_result = operation.validate_entity(
+            entity_data, check_relationships=True
+        )
+
+        # Use MCP tool
+        mcp_result = validate_entity_tool(
+            entity_data=entity_data,
+            check_relationships=True,
+            registry_path=temp_registry,
+        )
+
+        assert mcp_result["success"] is True
+        assert mcp_result["valid"] == operation_result.valid
+        assert len(mcp_result["errors"]) == len(operation_result.errors)
+        assert len(mcp_result["warnings"]) == len(operation_result.warnings)
+
+
+class TestValidateToolsReadOnlyMode:
+    """Tests for validate tools availability in read-only mode"""
+
+    def test_validate_registry_available_in_read_only_mode(self, temp_registry):
+        """Test that validate_registry tool is available in read-only server"""
+        from hxc.mcp.server import create_server
+
+        server = create_server(registry_path=temp_registry, read_only=True)
+        capabilities = server.get_capabilities()
+        tools = capabilities["tools"]
+
+        assert "validate_registry" in tools
+
+    def test_validate_entity_available_in_read_only_mode(self, temp_registry):
+        """Test that validate_entity tool is available in read-only server"""
+        from hxc.mcp.server import create_server
+
+        server = create_server(registry_path=temp_registry, read_only=True)
+        capabilities = server.get_capabilities()
+        tools = capabilities["tools"]
+
+        assert "validate_entity" in tools
+
+    def test_validate_registry_works_in_read_only_server(self, temp_registry):
+        """Test that validate_registry can be called on read-only server"""
+        import json
+
+        from hxc.mcp.server import create_server
+
+        server = create_server(registry_path=temp_registry, read_only=True)
+
+        request = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "tools/call",
+            "params": {
+                "name": "validate_registry",
+                "arguments": {},
+            },
+        }
+
+        response = server.handle_request(request)
+
+        assert "result" in response
+        content = response["result"]["content"][0]
+        data = json.loads(content["text"])
+
+        assert data["success"] is True
+        assert "valid" in data
+        assert "errors" in data
+
+    def test_validate_entity_works_in_read_only_server(self, temp_registry):
+        """Test that validate_entity can be called on read-only server"""
+        import json
+
+        from hxc.mcp.server import create_server
+
+        server = create_server(registry_path=temp_registry, read_only=True)
+
+        request = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "tools/call",
+            "params": {
+                "name": "validate_entity",
+                "arguments": {
+                    "entity_data": {
+                        "type": "project",
+                        "uid": "test-001",
+                        "title": "Test",
+                    },
+                    "check_relationships": False,
+                },
+            },
+        }
+
+        response = server.handle_request(request)
+
+        assert "result" in response
+        content = response["result"]["content"][0]
+        data = json.loads(content["text"])
+
+        assert data["success"] is True
+        assert data["valid"] is True
+
+
+class TestValidateToolsIntegration:
+    """Integration tests for validate tools"""
+
+    def test_validate_after_create(self, temp_registry):
+        """Test validating registry after creating entity"""
+        # Create entity
+        create_result = create_entity_tool(
+            type="project",
+            title="Created Project",
+            use_git=False,
+            registry_path=temp_registry,
+        )
+        assert create_result["success"] is True
+
+        # Validate registry
+        validate_result = validate_registry_tool(registry_path=temp_registry)
+
+        assert validate_result["success"] is True
+        assert validate_result["valid"] is True
+
+    def test_validate_entity_before_create(self, temp_registry):
+        """Test pre-flight validation before create"""
+        entity_data = {
+            "type": "project",
+            "uid": "will-be-created",
+            "title": "Pre-flight Test",
+            "status": "active",
+        }
+
+        # Validate first
+        validate_result = validate_entity_tool(
+            entity_data=entity_data,
+            check_relationships=False,
+            registry_path=temp_registry,
+        )
+
+        assert validate_result["success"] is True
+        assert validate_result["valid"] is True
+
+    def test_validate_entity_with_invalid_data_before_create(self, temp_registry):
+        """Test that pre-flight validation catches issues"""
+        entity_data = {
+            "type": "invalid_type",
+            "uid": "test-001",
+            # Missing title
+            "status": "not-a-status",
+        }
+
+        validate_result = validate_entity_tool(
+            entity_data=entity_data,
+            check_relationships=False,
+            registry_path=temp_registry,
+        )
+
+        assert validate_result["success"] is True
+        assert validate_result["valid"] is False
+        assert validate_result["error_count"] >= 2
+
+    def test_validate_multiple_issues_reported(self, temp_registry):
+        """Test that multiple issues are all reported"""
+        # Create entity with multiple issues
+        entity = {
+            "type": "program",  # Type mismatch
+            # Missing uid and title
+            "status": "invalid-status",
+            "parent": "nonexistent",
+            "children": ["also-nonexistent"],
+        }
+
+        with open(Path(temp_registry) / "projects" / "proj-problems.yml", "w") as f:
+            yaml.dump(entity, f)
+
+        result = validate_registry_tool(registry_path=temp_registry)
+
+        assert result["success"] is True
+        assert result["valid"] is False
+        assert result["error_count"] >= 4  # At least 4 errors
+
+    def test_validate_and_get_entity(self, temp_registry):
+        """Test validating then getting entity"""
+        # First validate registry is healthy
+        validate_result = validate_registry_tool(registry_path=temp_registry)
+        assert validate_result["success"] is True
+
+        # Then get entity
+        get_result = get_entity_tool(
+            identifier="P-001",
+            registry_path=temp_registry,
+        )
+
+        assert get_result["success"] is True
 
 
 class TestValidateRegistryPathTool:
