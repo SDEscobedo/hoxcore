@@ -291,7 +291,13 @@ class TestShowPropertyRetrieval:
         )
 
         assert result["success"] is True
-        assert result["value"] in ["active", "completed", "on-hold", "cancelled", "planned"]
+        assert result["value"] in [
+            "active",
+            "completed",
+            "on-hold",
+            "cancelled",
+            "planned",
+        ]
 
     def test_show_property_tags(self, temp_registry):
         """Test retrieving tags property."""

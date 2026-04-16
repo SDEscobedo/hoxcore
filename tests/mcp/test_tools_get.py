@@ -130,9 +130,7 @@ class TestGetEntityTool:
 
     def test_get_entity_with_no_registry(self):
         """Test getting entity with no registry"""
-        result = get_entity_tool(
-            identifier="P-001", registry_path="/nonexistent/path"
-        )
+        result = get_entity_tool(identifier="P-001", registry_path="/nonexistent/path")
 
         assert result["success"] is False
         assert "error" in result

@@ -351,7 +351,9 @@ class TestValidateRegistryTool:
 
         assert result["success"] is True
         assert result["valid"] is True  # Still valid - related format is warning
-        assert any("Invalid related format" in warning for warning in result["warnings"])
+        assert any(
+            "Invalid related format" in warning for warning in result["warnings"]
+        )
 
     def test_validate_uses_shared_operation(self, temp_registry):
         """Test that validate_registry_tool uses ValidateOperation internally"""
@@ -585,7 +587,9 @@ class TestValidateEntityTool:
 
         assert result["success"] is True
         assert result["valid"] is True  # Still valid
-        assert any("Invalid related format" in warning for warning in result["warnings"])
+        assert any(
+            "Invalid related format" in warning for warning in result["warnings"]
+        )
 
     def test_validate_with_relationship_checking_parent_exists(self, temp_registry):
         """Test validation with relationship checking - parent exists"""
@@ -622,7 +626,9 @@ class TestValidateEntityTool:
 
         assert result["success"] is True
         assert result["valid"] is False
-        assert any("Parent" in error and "not found" in error for error in result["errors"])
+        assert any(
+            "Parent" in error and "not found" in error for error in result["errors"]
+        )
 
     def test_validate_with_relationship_checking_child_not_found(self, temp_registry):
         """Test validation with relationship checking - child not found"""
@@ -641,7 +647,9 @@ class TestValidateEntityTool:
 
         assert result["success"] is True
         assert result["valid"] is False
-        assert any("Child" in error and "not found" in error for error in result["errors"])
+        assert any(
+            "Child" in error and "not found" in error for error in result["errors"]
+        )
 
     def test_validate_with_relationship_checking_related_not_found_is_warning(
         self, temp_registry
@@ -684,7 +692,9 @@ class TestValidateEntityTool:
         # Should have error because check_relationships defaults to True
         assert result["success"] is True
         assert result["valid"] is False
-        assert any("Parent" in error and "not found" in error for error in result["errors"])
+        assert any(
+            "Parent" in error and "not found" in error for error in result["errors"]
+        )
 
     def test_validate_without_registry_path(self):
         """Test validation without registry path (basic validation only)"""

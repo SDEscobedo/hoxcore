@@ -12,7 +12,6 @@ from typing import Any, Dict, List, Optional
 
 import yaml
 
-
 # ─── COMMON CONSTANTS ───────────────────────────────────────────────────────
 
 
@@ -60,7 +59,9 @@ def verify_entity_structure(entity: Dict[str, Any], entity_type: str) -> None:
     for field in required_fields:
         assert field in entity, f"Entity missing required field: {field}"
 
-    assert entity["type"] == entity_type, f"Expected type '{entity_type}', got '{entity['type']}'"
+    assert (
+        entity["type"] == entity_type
+    ), f"Expected type '{entity_type}', got '{entity['type']}'"
 
 
 def verify_entity_file_exists(
@@ -112,7 +113,9 @@ def verify_entity_file_content(
 
     for field, expected in expected_values.items():
         actual = data.get(field)
-        assert actual == expected, f"Field '{field}': expected '{expected}', got '{actual}'"
+        assert (
+            actual == expected
+        ), f"Field '{field}': expected '{expected}', got '{actual}'"
 
     return data
 
@@ -218,7 +221,9 @@ def verify_git_commit_exists(
     message = get_last_commit_message(registry_path)
 
     for expected in expected_in_message:
-        assert expected in message, f"Expected '{expected}' in commit message:\n{message}"
+        assert (
+            expected in message
+        ), f"Expected '{expected}' in commit message:\n{message}"
 
 
 def verify_git_status_clean(registry_path: str, allow_untracked: bool = True) -> None:
@@ -290,7 +295,9 @@ def verify_file_not_in_git_index(registry_path: str, file_path: str) -> None:
         check=True,
     )
 
-    assert file_path not in result.stdout, f"File should not be in git index: {file_path}"
+    assert (
+        file_path not in result.stdout
+    ), f"File should not be in git index: {file_path}"
 
 
 # ─── REGISTRY VERIFICATION HELPERS ──────────────────────────────────────────
@@ -360,7 +367,9 @@ def verify_success_result(result: Dict[str, Any]) -> None:
     Raises:
         AssertionError: If result is not successful
     """
-    assert result.get("success") is True, f"Expected success, got error: {result.get('error')}"
+    assert (
+        result.get("success") is True
+    ), f"Expected success, got error: {result.get('error')}"
 
 
 def verify_error_result(
@@ -377,13 +386,15 @@ def verify_error_result(
     Raises:
         AssertionError: If result is not an error
     """
-    assert result.get("success") is False, f"Expected failure, but got success: {result}"
+    assert (
+        result.get("success") is False
+    ), f"Expected failure, but got success: {result}"
     assert "error" in result, "Error result should contain 'error' key"
 
     if expected_in_error:
-        assert expected_in_error.lower() in result["error"].lower(), (
-            f"Expected '{expected_in_error}' in error: {result['error']}"
-        )
+        assert (
+            expected_in_error.lower() in result["error"].lower()
+        ), f"Expected '{expected_in_error}' in error: {result['error']}"
 
 
 def verify_list_result(
@@ -417,10 +428,14 @@ def verify_list_result(
     assert len(entities) == count, f"Count mismatch: {len(entities)} != {count}"
 
     if expected_count is not None:
-        assert count == expected_count, f"Expected {expected_count} entities, got {count}"
+        assert (
+            count == expected_count
+        ), f"Expected {expected_count} entities, got {count}"
 
     if min_count is not None:
-        assert count >= min_count, f"Expected at least {min_count} entities, got {count}"
+        assert (
+            count >= min_count
+        ), f"Expected at least {min_count} entities, got {count}"
 
     if max_count is not None:
         assert count <= max_count, f"Expected at most {max_count} entities, got {count}"
@@ -542,7 +557,9 @@ def verify_confirmation_required(result: Dict[str, Any]) -> None:
     Raises:
         AssertionError: If confirmation is not required
     """
-    assert result.get("success") is False, "Confirmation result should have success=False"
+    assert (
+        result.get("success") is False
+    ), "Confirmation result should have success=False"
     assert result.get("confirmation_required") is True, "Should require confirmation"
     assert "message" in result, "Should contain confirmation message"
     assert "force=True" in result["message"], "Message should mention force=True"
