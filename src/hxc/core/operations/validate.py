@@ -155,6 +155,20 @@ class ValidateOperation:
         """
         self.registry_path = registry_path
 
+    def _normalize_path(self, path: Optional[str]) -> Optional[Path]:
+        """
+        Normalize a path string to a resolved Path object for cross-platform comparison.
+
+        Args:
+            path: Path string to normalize, or None
+
+        Returns:
+            Resolved Path object, or None if input was None
+        """
+        if path is None:
+            return None
+        return Path(path).resolve()
+
     def validate_registry(self, verbose: bool = False) -> ValidationResult:
         """
         Validate the entire registry for integrity and consistency.
@@ -295,6 +309,9 @@ class ValidateOperation:
         Returns:
             True if UID is unique, False otherwise
         """
+        # Normalize exclude_file path for cross-platform comparison
+        normalized_exclude = self._normalize_path(exclude_file)
+
         for entity_type in EntityType:
             folder_name = entity_type.get_folder_name()
 
@@ -307,7 +324,10 @@ class ValidateOperation:
                 continue
 
             for file_path in type_dir.glob("*.yml"):
-                if exclude_file and str(file_path) == exclude_file:
+                # Normalize current file path for comparison
+                normalized_file_path = file_path.resolve()
+
+                if normalized_exclude and normalized_file_path == normalized_exclude:
                     continue
 
                 try:
@@ -342,6 +362,9 @@ class ValidateOperation:
         """
         folder_name = entity_type.get_folder_name()
 
+        # Normalize exclude_file path for cross-platform comparison
+        normalized_exclude = self._normalize_path(exclude_file)
+
         try:
             type_dir = resolve_safe_path(self.registry_path, folder_name)
         except PathSecurityError:
@@ -351,7 +374,10 @@ class ValidateOperation:
             return True
 
         for file_path in type_dir.glob("*.yml"):
-            if exclude_file and str(file_path) == exclude_file:
+            # Normalize current file path for comparison
+            normalized_file_path = file_path.resolve()
+
+            if normalized_exclude and normalized_file_path == normalized_exclude:
                 continue
 
             try:

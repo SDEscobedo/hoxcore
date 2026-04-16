@@ -140,7 +140,9 @@ class ValidateCommand(BaseCommand):
                 print(f"  ✓ All {uid_count} UIDs are unique")
                 print()
 
-                print(f"  ✓ All {uid_count} IDs are unique within their entity types")
+                print(
+                    f"  ✓ All {uid_count} IDs are unique within their entity types"
+                )
                 print()
 
                 print("  ✓ All relationships are valid")

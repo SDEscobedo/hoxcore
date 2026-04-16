@@ -495,9 +495,7 @@ class TestValidateRegistryMethod(TestValidateOperationFixtures):
             for error in result.errors
         )
 
-    def test_validate_valid_parent_child_relationship(
-        self, temp_registry, valid_entity
-    ):
+    def test_validate_valid_parent_child_relationship(self, temp_registry, valid_entity):
         """Test validation with valid parent-child relationships"""
         parent = valid_entity.copy()
         parent["uid"] = "prog-001"
@@ -641,9 +639,7 @@ class TestValidateEntityMethod(TestValidateOperationFixtures):
         result = operation.validate_entity(entity, check_relationships=True)
 
         assert result.valid is False
-        assert any(
-            "Parent" in error and "not found" in error for error in result.errors
-        )
+        assert any("Parent" in error and "not found" in error for error in result.errors)
 
     def test_validate_with_nonexistent_children(self, temp_registry, valid_entity):
         """Test validation detects nonexistent children"""
@@ -714,9 +710,7 @@ class TestCheckUidUnique(TestValidateOperationFixtures):
         operation = ValidateOperation(temp_registry)
 
         # Same UID but excluded file
-        assert (
-            operation.check_uid_unique("proj-001", exclude_file=str(file_path)) is True
-        )
+        assert operation.check_uid_unique("proj-001", exclude_file=str(file_path)) is True
 
     def test_uid_unique_across_entity_types(self, temp_registry, valid_entity):
         """Test UID uniqueness across entity types"""
@@ -791,9 +785,7 @@ class TestCheckIdUnique(TestValidateOperationFixtures):
 
         # Same ID but excluded file
         assert (
-            operation.check_id_unique(
-                "P-001", EntityType.PROJECT, exclude_file=str(file_path)
-            )
+            operation.check_id_unique("P-001", EntityType.PROJECT, exclude_file=str(file_path))
             is True
         )
 
