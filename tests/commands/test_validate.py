@@ -771,7 +771,8 @@ class TestValidateCommandErrorHandling:
 
             assert result == 1
             captured = capsys.readouterr()
-            assert "Traceback" in captured.out or "RuntimeError" in captured.out
+            # Traceback is printed to stderr, not stdout
+            assert "Traceback" in captured.err or "RuntimeError" in captured.err
 
 
 class TestValidateCommandBehavioralParity:
