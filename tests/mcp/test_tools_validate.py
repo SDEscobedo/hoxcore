@@ -1838,7 +1838,7 @@ class TestPropertyValidation:
         )
 
         assert result["success"] is False
-        assert "not found" in result["error"].lower()
+        assert "unknown property" in result["error"].lower()
 
     def test_get_list_property_with_valid_index(self, temp_registry):
         """Test getting list property with valid index"""

@@ -951,7 +951,7 @@ class TestUsesGetPropertyOperation:
 
     def test_command_uses_operation_for_validation(self, temp_registry):
         """Test that GetCommand uses GetPropertyOperation for property validation"""
-        with patch("hxc.core.operations.get.GetPropertyOperation") as MockOperation:
+        with patch("hxc.commands.get.GetPropertyOperation") as MockOperation:
             mock_instance = MagicMock()
             mock_instance.validate_property_name.return_value = (True, "title")
             mock_instance.get_property.return_value = {
@@ -962,6 +962,8 @@ class TestUsesGetPropertyOperation:
                 "identifier": "P-001",
             }
             MockOperation.return_value = mock_instance
+            # Ensure class attributes are available
+            MockOperation.ALL_PROPERTIES = GetPropertyOperation.ALL_PROPERTIES
 
             with patch("hxc.commands.registry.RegistryCommand.get_registry_path", return_value=str(temp_registry)):
                 with patch("builtins.print"):
@@ -976,11 +978,12 @@ class TestUsesGetPropertyOperation:
 
     def test_command_validates_property_before_retrieval(self, temp_registry):
         """Test that property name is validated before retrieval attempt"""
-        with patch("hxc.core.operations.get.GetPropertyOperation") as MockOperation:
+        with patch("hxc.commands.get.GetPropertyOperation") as MockOperation:
             mock_instance = MagicMock()
             mock_instance.validate_property_name.return_value = (False, None)
             mock_instance.ALL_PROPERTIES = GetPropertyOperation.ALL_PROPERTIES
             MockOperation.return_value = mock_instance
+            MockOperation.ALL_PROPERTIES = GetPropertyOperation.ALL_PROPERTIES
 
             with patch("hxc.commands.registry.RegistryCommand.get_registry_path", return_value=str(temp_registry)):
                 with patch("builtins.print") as mock_print:
@@ -992,7 +995,7 @@ class TestUsesGetPropertyOperation:
 
     def test_command_passes_all_parameters_to_operation(self, temp_registry):
         """Test that GetCommand passes all parameters to GetPropertyOperation"""
-        with patch("hxc.core.operations.get.GetPropertyOperation") as MockOperation:
+        with patch("hxc.commands.get.GetPropertyOperation") as MockOperation:
             mock_instance = MagicMock()
             mock_instance.validate_property_name.return_value = (True, "repositories")
             mock_instance.get_property.return_value = {
@@ -1003,12 +1006,14 @@ class TestUsesGetPropertyOperation:
                 "identifier": "P-002",
             }
             MockOperation.return_value = mock_instance
+            MockOperation.ALL_PROPERTIES = GetPropertyOperation.ALL_PROPERTIES
 
             with patch("hxc.commands.registry.RegistryCommand.get_registry_path", return_value=str(temp_registry)):
                 with patch("builtins.print"):
                     result = main(["get", "P-002", "repositories", "--type", "project", "--index", "0", "--key", "name:github"])
 
             # Verify get_property was called with all parameters
+            mock_instance.get_property.assert_called_once()
             call_kwargs = mock_instance.get_property.call_args[1]
             assert call_kwargs["identifier"] == "P-002"
             assert call_kwargs["property_name"] == "repositories"
