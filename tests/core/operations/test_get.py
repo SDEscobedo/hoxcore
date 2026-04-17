@@ -45,11 +45,21 @@ def temp_registry(tmp_path):
     (registry_path / "actions").mkdir()
 
     # Create sample entities
-    _create_sample_project_basic(registry_path / "projects", "proj-001", "Test Project 1", "P-001")
-    _create_sample_project_full(registry_path / "projects", "proj-002", "Test Project 2", "P-002")
-    _create_sample_program(registry_path / "programs", "prog-001", "Test Program 1", "PG-001")
-    _create_sample_mission(registry_path / "missions", "miss-001", "Test Mission 1", "M-001")
-    _create_sample_action(registry_path / "actions", "act-001", "Test Action 1", "A-001")
+    _create_sample_project_basic(
+        registry_path / "projects", "proj-001", "Test Project 1", "P-001"
+    )
+    _create_sample_project_full(
+        registry_path / "projects", "proj-002", "Test Project 2", "P-002"
+    )
+    _create_sample_program(
+        registry_path / "programs", "prog-001", "Test Program 1", "PG-001"
+    )
+    _create_sample_mission(
+        registry_path / "missions", "miss-001", "Test Mission 1", "M-001"
+    )
+    _create_sample_action(
+        registry_path / "actions", "act-001", "Test Action 1", "A-001"
+    )
 
     yield str(registry_path)
 
@@ -58,7 +68,9 @@ def temp_registry(tmp_path):
         shutil.rmtree(registry_path)
 
 
-def _create_sample_project_basic(directory: Path, filename: str, title: str, item_id: str):
+def _create_sample_project_basic(
+    directory: Path, filename: str, title: str, item_id: str
+):
     """Create a basic sample project file"""
     project_data = {
         "type": "project",
@@ -76,7 +88,9 @@ def _create_sample_project_basic(directory: Path, filename: str, title: str, ite
         yaml.dump(project_data, f)
 
 
-def _create_sample_project_full(directory: Path, filename: str, title: str, item_id: str):
+def _create_sample_project_full(
+    directory: Path, filename: str, title: str, item_id: str
+):
     """Create a full sample project file with all properties"""
     project_data = {
         "type": "project",
@@ -174,9 +188,19 @@ class TestPropertyClassification:
     def test_scalar_properties_defined(self):
         """Test that scalar properties are defined correctly"""
         expected_scalar = {
-            "type", "uid", "id", "title", "description", "status",
-            "start_date", "due_date", "completion_date", "duration_estimate",
-            "category", "parent", "template"
+            "type",
+            "uid",
+            "id",
+            "title",
+            "description",
+            "status",
+            "start_date",
+            "due_date",
+            "completion_date",
+            "duration_estimate",
+            "category",
+            "parent",
+            "template",
         }
         assert GetPropertyOperation.SCALAR_PROPERTIES == expected_scalar
 
@@ -188,8 +212,12 @@ class TestPropertyClassification:
     def test_complex_properties_defined(self):
         """Test that complex properties are defined correctly"""
         expected_complex = {
-            "repositories", "storage", "databases",
-            "tools", "models", "knowledge_bases"
+            "repositories",
+            "storage",
+            "databases",
+            "tools",
+            "models",
+            "knowledge_bases",
         }
         assert GetPropertyOperation.COMPLEX_PROPERTIES == expected_complex
 
@@ -201,10 +229,10 @@ class TestPropertyClassification:
     def test_all_properties_is_union_of_all_sets(self):
         """Test that ALL_PROPERTIES contains all property sets"""
         expected_all = (
-            GetPropertyOperation.SCALAR_PROPERTIES |
-            GetPropertyOperation.LIST_PROPERTIES |
-            GetPropertyOperation.COMPLEX_PROPERTIES |
-            GetPropertyOperation.SPECIAL_PROPERTIES
+            GetPropertyOperation.SCALAR_PROPERTIES
+            | GetPropertyOperation.LIST_PROPERTIES
+            | GetPropertyOperation.COMPLEX_PROPERTIES
+            | GetPropertyOperation.SPECIAL_PROPERTIES
         )
         assert GetPropertyOperation.ALL_PROPERTIES == expected_all
 
@@ -250,7 +278,14 @@ class TestGetPropertyType:
 
     def test_complex_property_types(self):
         """Test detection of complex properties"""
-        complex_props = ["repositories", "storage", "databases", "tools", "models", "knowledge_bases"]
+        complex_props = [
+            "repositories",
+            "storage",
+            "databases",
+            "tools",
+            "models",
+            "knowledge_bases",
+        ]
         for prop in complex_props:
             assert GetPropertyOperation.get_property_type(prop) == PropertyType.COMPLEX
 
@@ -288,7 +323,9 @@ class TestValidatePropertyName:
             ("REPOSITORIES", "repositories"),
         ]
         for input_prop, expected_normalized in test_cases:
-            is_valid, normalized = GetPropertyOperation.validate_property_name(input_prop)
+            is_valid, normalized = GetPropertyOperation.validate_property_name(
+                input_prop
+            )
             assert is_valid is True
             assert normalized == expected_normalized
 
@@ -609,7 +646,9 @@ class TestGetComplexProperty:
     def test_get_complex_with_key_filter(self, temp_registry):
         """Test getting complex property with key filter"""
         operation = GetPropertyOperation(temp_registry)
-        result = operation.get_property("P-002", "repositories", key_filter="name:github")
+        result = operation.get_property(
+            "P-002", "repositories", key_filter="name:github"
+        )
 
         assert result["success"] is True
         assert isinstance(result["value"], dict)
@@ -618,7 +657,9 @@ class TestGetComplexProperty:
     def test_get_complex_key_filter_single_match(self, temp_registry):
         """Test key filter returning single match"""
         operation = GetPropertyOperation(temp_registry)
-        result = operation.get_property("P-002", "repositories", key_filter="name:gitlab")
+        result = operation.get_property(
+            "P-002", "repositories", key_filter="name:gitlab"
+        )
 
         assert result["success"] is True
         assert isinstance(result["value"], dict)
@@ -724,7 +765,9 @@ class TestEntityNotFound:
     def test_entity_not_found_with_type_filter(self, temp_registry):
         """Test getting property with wrong entity type"""
         operation = GetPropertyOperation(temp_registry)
-        result = operation.get_property("P-001", "title", entity_type=EntityType.PROGRAM)
+        result = operation.get_property(
+            "P-001", "title", entity_type=EntityType.PROGRAM
+        )
 
         assert result["success"] is False
         assert "not found" in result["error"].lower()
@@ -836,7 +879,9 @@ class TestKeyFilter:
         """Test applying key filter with colon in value"""
         operation = GetPropertyOperation(temp_registry)
         value = [{"url": "https://example.com:8080"}]
-        result, error = operation._apply_key_filter(value, "url:https://example.com:8080", "test")
+        result, error = operation._apply_key_filter(
+            value, "url:https://example.com:8080", "test"
+        )
 
         assert error is None
         assert result["url"] == "https://example.com:8080"
@@ -930,7 +975,9 @@ class TestWithEntityTypeFilter:
     def test_get_project_property(self, temp_registry):
         """Test getting project property with type filter"""
         operation = GetPropertyOperation(temp_registry)
-        result = operation.get_property("P-001", "title", entity_type=EntityType.PROJECT)
+        result = operation.get_property(
+            "P-001", "title", entity_type=EntityType.PROJECT
+        )
 
         assert result["success"] is True
         assert result["value"] == "Test Project 1"
@@ -938,7 +985,9 @@ class TestWithEntityTypeFilter:
     def test_get_program_property(self, temp_registry):
         """Test getting program property with type filter"""
         operation = GetPropertyOperation(temp_registry)
-        result = operation.get_property("PG-001", "title", entity_type=EntityType.PROGRAM)
+        result = operation.get_property(
+            "PG-001", "title", entity_type=EntityType.PROGRAM
+        )
 
         assert result["success"] is True
         assert result["value"] == "Test Program 1"
@@ -946,7 +995,9 @@ class TestWithEntityTypeFilter:
     def test_get_mission_property(self, temp_registry):
         """Test getting mission property with type filter"""
         operation = GetPropertyOperation(temp_registry)
-        result = operation.get_property("M-001", "title", entity_type=EntityType.MISSION)
+        result = operation.get_property(
+            "M-001", "title", entity_type=EntityType.MISSION
+        )
 
         assert result["success"] is True
         assert result["value"] == "Test Mission 1"
@@ -1050,7 +1101,12 @@ class TestIntegrationWithShowOperation:
             mock_instance = MagicMock()
             mock_instance.get_entity.return_value = {
                 "success": True,
-                "entity": {"type": "project", "uid": "test", "id": "P-001", "title": "Test"},
+                "entity": {
+                    "type": "project",
+                    "uid": "test",
+                    "id": "P-001",
+                    "title": "Test",
+                },
                 "file_path": "/test/path.yml",
                 "identifier": "P-001",
             }
@@ -1139,16 +1195,22 @@ class TestBehavioralParityWithCLI:
         operation = GetPropertyOperation(temp_registry)
 
         # Valid key filter
-        valid_result = operation.get_property("P-002", "repositories", key_filter="name:github")
+        valid_result = operation.get_property(
+            "P-002", "repositories", key_filter="name:github"
+        )
         assert valid_result["success"] is True
 
         # Invalid key filter format
-        invalid_format = operation.get_property("P-002", "repositories", key_filter="invalid")
+        invalid_format = operation.get_property(
+            "P-002", "repositories", key_filter="invalid"
+        )
         assert invalid_format["success"] is False
         assert "invalid key filter" in invalid_format["error"].lower()
 
         # Key filter no match
-        no_match = operation.get_property("P-002", "repositories", key_filter="name:nonexistent")
+        no_match = operation.get_property(
+            "P-002", "repositories", key_filter="name:nonexistent"
+        )
         assert no_match["success"] is False
         assert "no items found" in no_match["error"].lower()
 

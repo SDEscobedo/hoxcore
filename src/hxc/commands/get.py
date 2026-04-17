@@ -142,7 +142,9 @@ class GetCommand(BaseCommand):
 
                 # Check for invalid key filter format
                 if "invalid key filter" in error_msg.lower():
-                    print(f"⚠️  Invalid key filter format. Use key:value (e.g., name:github)")
+                    print(
+                        f"⚠️  Invalid key filter format. Use key:value (e.g., name:github)"
+                    )
                     return 1
 
                 # Check for key filter no match

@@ -677,7 +677,10 @@ class TestGetEntityPropertyTool:
         assert result["success"] is False
         assert "not set" in result["error"].lower()
         # Should NOT include available_properties for unset (valid) property
-        assert "available_properties" not in result or result.get("available_properties") is None
+        assert (
+            "available_properties" not in result
+            or result.get("available_properties") is None
+        )
 
     def test_get_property_from_nonexistent_entity(self, temp_registry):
         """Test getting property from non-existent entity"""
@@ -899,7 +902,9 @@ class TestGetEntityPropertyToolPropertyTypes:
                 identifier="P-001", property_name=prop, registry_path=temp_registry
             )
             if result["success"]:
-                assert result["property_type"] == PropertyType.SCALAR, f"Failed for {prop}"
+                assert (
+                    result["property_type"] == PropertyType.SCALAR
+                ), f"Failed for {prop}"
 
     def test_list_property_type(self, temp_registry):
         """Test that list properties return correct type"""
@@ -913,7 +918,9 @@ class TestGetEntityPropertyToolPropertyTypes:
     def test_complex_property_type(self, temp_registry):
         """Test that complex properties return correct type"""
         result = get_entity_property_tool(
-            identifier="P-001", property_name="repositories", registry_path=temp_registry
+            identifier="P-001",
+            property_name="repositories",
+            registry_path=temp_registry,
         )
 
         assert result["success"] is True
@@ -982,7 +989,9 @@ class TestGetEntityPropertyToolBehavioralParityWithCLI:
 
         # Use MCP tool
         mcp_result = get_entity_property_tool(
-            identifier="P-001", property_name="completion_date", registry_path=temp_registry
+            identifier="P-001",
+            property_name="completion_date",
+            registry_path=temp_registry,
         )
 
         assert op_result["success"] is False
@@ -1030,7 +1039,9 @@ class TestGetEntityPropertyToolBehavioralParityWithCLI:
 
         # Use MCP tool
         mcp_result = get_entity_property_tool(
-            identifier="P-001", property_name="repositories", registry_path=temp_registry
+            identifier="P-001",
+            property_name="repositories",
+            registry_path=temp_registry,
         )
 
         assert op_result["success"] is True
@@ -1046,7 +1057,10 @@ class TestGetEntityPropertyToolBehavioralParityWithCLI:
 
         # Use MCP tool
         mcp_result = get_entity_property_tool(
-            identifier="P-001", property_name="tags", index=0, registry_path=temp_registry
+            identifier="P-001",
+            property_name="tags",
+            index=0,
+            registry_path=temp_registry,
         )
 
         assert op_result["success"] is True
@@ -1057,7 +1071,9 @@ class TestGetEntityPropertyToolBehavioralParityWithCLI:
         """Test that key filter handling matches CLI"""
         # Use GetPropertyOperation directly
         operation = GetPropertyOperation(temp_registry)
-        op_result = operation.get_property("P-001", "repositories", key_filter="name:github")
+        op_result = operation.get_property(
+            "P-001", "repositories", key_filter="name:github"
+        )
 
         # Use MCP tool
         mcp_result = get_entity_property_tool(
@@ -1476,7 +1492,10 @@ class TestGetToolsErrorHandling:
         assert unset_result["success"] is False
         assert "not set" in unset_result["error"].lower()
         # Should not have available_properties for valid but unset property
-        assert "available_properties" not in unset_result or unset_result.get("available_properties") is None
+        assert (
+            "available_properties" not in unset_result
+            or unset_result.get("available_properties") is None
+        )
 
     def test_get_hierarchy_with_invalid_type(self, temp_registry):
         """Test getting hierarchy with invalid entity type"""

@@ -228,9 +228,19 @@ class TestPropertyClassification:
     def test_scalar_properties_complete(self):
         """Test all expected scalar properties are included"""
         expected_scalar = {
-            "type", "uid", "id", "title", "description", "status",
-            "start_date", "due_date", "completion_date", "duration_estimate",
-            "category", "parent", "template"
+            "type",
+            "uid",
+            "id",
+            "title",
+            "description",
+            "status",
+            "start_date",
+            "due_date",
+            "completion_date",
+            "duration_estimate",
+            "category",
+            "parent",
+            "template",
         }
         assert GetCommand.SCALAR_PROPERTIES == expected_scalar
 
@@ -242,8 +252,12 @@ class TestPropertyClassification:
     def test_complex_properties_complete(self):
         """Test all expected complex properties are included"""
         expected_complex = {
-            "repositories", "storage", "databases",
-            "tools", "models", "knowledge_bases"
+            "repositories",
+            "storage",
+            "databases",
+            "tools",
+            "models",
+            "knowledge_bases",
         }
         assert GetCommand.COMPLEX_PROPERTIES == expected_complex
 
@@ -381,7 +395,9 @@ class TestGetListProperties:
             mock_print.assert_called_once_with("cli")
 
     @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
-    def test_get_list_property_with_last_index(self, mock_get_registry_path, temp_registry):
+    def test_get_list_property_with_last_index(
+        self, mock_get_registry_path, temp_registry
+    ):
         """Test getting the last item from a list property"""
         mock_get_registry_path.return_value = str(temp_registry)
 
@@ -392,7 +408,9 @@ class TestGetListProperties:
             mock_print.assert_called_once_with("important")
 
     @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
-    def test_get_list_property_invalid_index(self, mock_get_registry_path, temp_registry):
+    def test_get_list_property_invalid_index(
+        self, mock_get_registry_path, temp_registry
+    ):
         """Test getting a list property with invalid index"""
         mock_get_registry_path.return_value = str(temp_registry)
 
@@ -400,7 +418,9 @@ class TestGetListProperties:
             result = main(["get", "P-002", "tags", "--index", "99"])
 
             assert result == 1
-            assert any("out of range" in call[0][0] for call in mock_print.call_args_list)
+            assert any(
+                "out of range" in call[0][0] for call in mock_print.call_args_list
+            )
 
     @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
     def test_get_children_property(self, mock_get_registry_path, temp_registry):
@@ -444,7 +464,9 @@ class TestGetComplexProperties:
             assert "github" in output or "name=github" in output
 
     @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
-    def test_get_complex_property_with_key_filter(self, mock_get_registry_path, temp_registry):
+    def test_get_complex_property_with_key_filter(
+        self, mock_get_registry_path, temp_registry
+    ):
         """Test getting a complex property with key filter"""
         mock_get_registry_path.return_value = str(temp_registry)
 
@@ -457,7 +479,9 @@ class TestGetComplexProperties:
             assert "github" in output
 
     @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
-    def test_get_complex_property_with_index(self, mock_get_registry_path, temp_registry):
+    def test_get_complex_property_with_index(
+        self, mock_get_registry_path, temp_registry
+    ):
         """Test getting a specific item from a complex property"""
         mock_get_registry_path.return_value = str(temp_registry)
 
@@ -586,7 +610,9 @@ class TestOutputFormats:
             assert '"cli"' in output or "cli" in output
 
     @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
-    def test_get_all_properties_yaml_format(self, mock_get_registry_path, temp_registry):
+    def test_get_all_properties_yaml_format(
+        self, mock_get_registry_path, temp_registry
+    ):
         """Test getting all properties in YAML format"""
         mock_get_registry_path.return_value = str(temp_registry)
 
@@ -599,7 +625,9 @@ class TestOutputFormats:
             assert "title:" in output
 
     @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
-    def test_get_all_properties_json_format(self, mock_get_registry_path, temp_registry):
+    def test_get_all_properties_json_format(
+        self, mock_get_registry_path, temp_registry
+    ):
         """Test getting all properties in JSON format"""
         mock_get_registry_path.return_value = str(temp_registry)
 
@@ -612,7 +640,9 @@ class TestOutputFormats:
             assert '"title"' in output
 
     @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
-    def test_get_scalar_property_raw_format(self, mock_get_registry_path, temp_registry):
+    def test_get_scalar_property_raw_format(
+        self, mock_get_registry_path, temp_registry
+    ):
         """Test that raw format is the default"""
         mock_get_registry_path.return_value = str(temp_registry)
 
@@ -641,7 +671,9 @@ class TestErrorHandling:
             )
 
     @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
-    def test_get_unknown_property_shows_available(self, mock_get_registry_path, temp_registry):
+    def test_get_unknown_property_shows_available(
+        self, mock_get_registry_path, temp_registry
+    ):
         """Test that unknown property error shows available properties"""
         mock_get_registry_path.return_value = str(temp_registry)
 
@@ -702,11 +734,14 @@ class TestErrorHandling:
 
                 assert result == 1
                 assert any(
-                    "Invalid argument" in call[0][0] for call in mock_print.call_args_list
+                    "Invalid argument" in call[0][0]
+                    for call in mock_print.call_args_list
                 )
 
     @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
-    def test_get_complex_property_invalid_key_filter(self, mock_get_registry_path, temp_registry):
+    def test_get_complex_property_invalid_key_filter(
+        self, mock_get_registry_path, temp_registry
+    ):
         """Test getting a complex property with invalid key filter format"""
         mock_get_registry_path.return_value = str(temp_registry)
 
@@ -730,7 +765,9 @@ class TestErrorHandling:
             result = main(["get", "P-002", "repositories", "--key", "name:nonexistent"])
 
             assert result == 1
-            assert any("No items found" in call[0][0] for call in mock_print.call_args_list)
+            assert any(
+                "No items found" in call[0][0] for call in mock_print.call_args_list
+            )
 
     @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
     def test_get_invalid_yaml_file(self, mock_get_registry_path, temp_registry):
@@ -932,7 +969,9 @@ class TestSecurityAndBoundaries:
     """Tests for security and boundary checks"""
 
     @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
-    def test_get_entity_stays_within_registry(self, mock_get_registry_path, temp_registry):
+    def test_get_entity_stays_within_registry(
+        self, mock_get_registry_path, temp_registry
+    ):
         """Test that entity retrieval stays within registry boundaries"""
         mock_get_registry_path.return_value = str(temp_registry)
 
@@ -965,7 +1004,10 @@ class TestUsesGetPropertyOperation:
             # Ensure class attributes are available
             MockOperation.ALL_PROPERTIES = GetPropertyOperation.ALL_PROPERTIES
 
-            with patch("hxc.commands.registry.RegistryCommand.get_registry_path", return_value=str(temp_registry)):
+            with patch(
+                "hxc.commands.registry.RegistryCommand.get_registry_path",
+                return_value=str(temp_registry),
+            ):
                 with patch("builtins.print"):
                     result = main(["get", "P-001", "title"])
 
@@ -985,7 +1027,10 @@ class TestUsesGetPropertyOperation:
             MockOperation.return_value = mock_instance
             MockOperation.ALL_PROPERTIES = GetPropertyOperation.ALL_PROPERTIES
 
-            with patch("hxc.commands.registry.RegistryCommand.get_registry_path", return_value=str(temp_registry)):
+            with patch(
+                "hxc.commands.registry.RegistryCommand.get_registry_path",
+                return_value=str(temp_registry),
+            ):
                 with patch("builtins.print") as mock_print:
                     result = main(["get", "P-001", "invalid_prop"])
 
@@ -1008,9 +1053,24 @@ class TestUsesGetPropertyOperation:
             MockOperation.return_value = mock_instance
             MockOperation.ALL_PROPERTIES = GetPropertyOperation.ALL_PROPERTIES
 
-            with patch("hxc.commands.registry.RegistryCommand.get_registry_path", return_value=str(temp_registry)):
+            with patch(
+                "hxc.commands.registry.RegistryCommand.get_registry_path",
+                return_value=str(temp_registry),
+            ):
                 with patch("builtins.print"):
-                    result = main(["get", "P-002", "repositories", "--type", "project", "--index", "0", "--key", "name:github"])
+                    result = main(
+                        [
+                            "get",
+                            "P-002",
+                            "repositories",
+                            "--type",
+                            "project",
+                            "--index",
+                            "0",
+                            "--key",
+                            "name:github",
+                        ]
+                    )
 
             # Verify get_property was called with all parameters
             mock_instance.get_property.assert_called_once()
@@ -1062,7 +1122,9 @@ class TestBehavioralParityWithMCP:
             assert GetPropertyOperation.get_property_type(prop) == PropertyType.SPECIAL
 
     @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
-    def test_cli_and_operation_produce_same_result(self, mock_get_registry_path, temp_registry):
+    def test_cli_and_operation_produce_same_result(
+        self, mock_get_registry_path, temp_registry
+    ):
         """Test that CLI output matches what operation returns"""
         mock_get_registry_path.return_value = str(temp_registry)
 
@@ -1081,7 +1143,9 @@ class TestBehavioralParityWithMCP:
             mock_print.assert_called_once_with("Test Project 1")
 
     @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
-    def test_unknown_property_error_matches_operation(self, mock_get_registry_path, temp_registry):
+    def test_unknown_property_error_matches_operation(
+        self, mock_get_registry_path, temp_registry
+    ):
         """Test that unknown property error handling matches operation"""
         mock_get_registry_path.return_value = str(temp_registry)
 
@@ -1102,7 +1166,9 @@ class TestBehavioralParityWithMCP:
             assert "Unknown property" in output
 
     @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
-    def test_unset_property_error_matches_operation(self, mock_get_registry_path, temp_registry):
+    def test_unset_property_error_matches_operation(
+        self, mock_get_registry_path, temp_registry
+    ):
         """Test that unset property error handling matches operation"""
         mock_get_registry_path.return_value = str(temp_registry)
 
@@ -1157,7 +1223,9 @@ class TestIntegrationWithSharedOperation:
             assert mock_print.call_count == len(op_result["value"])
 
     @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
-    def test_special_all_property_via_operation(self, mock_get_registry_path, temp_registry):
+    def test_special_all_property_via_operation(
+        self, mock_get_registry_path, temp_registry
+    ):
         """Test getting 'all' special property matches operation result"""
         mock_get_registry_path.return_value = str(temp_registry)
 
@@ -1172,7 +1240,9 @@ class TestIntegrationWithSharedOperation:
             assert op_result["property_type"] == PropertyType.SPECIAL
 
     @patch("hxc.commands.registry.RegistryCommand.get_registry_path")
-    def test_special_path_property_via_operation(self, mock_get_registry_path, temp_registry):
+    def test_special_path_property_via_operation(
+        self, mock_get_registry_path, temp_registry
+    ):
         """Test getting 'path' special property matches operation result"""
         mock_get_registry_path.return_value = str(temp_registry)
 
@@ -1208,7 +1278,9 @@ class TestIntegrationWithSharedOperation:
         mock_get_registry_path.return_value = str(temp_registry)
 
         operation = GetPropertyOperation(str(temp_registry))
-        op_result = operation.get_property("P-002", "repositories", key_filter="name:github")
+        op_result = operation.get_property(
+            "P-002", "repositories", key_filter="name:github"
+        )
 
         with patch("builtins.print") as mock_print:
             cli_result = main(["get", "P-002", "repositories", "--key", "name:github"])

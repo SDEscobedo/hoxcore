@@ -52,9 +52,7 @@ class IndexOutOfRangeError(GetPropertyOperationError):
     def __init__(self, index: int, list_length: int):
         self.index = index
         self.list_length = list_length
-        super().__init__(
-            f"Index {index} out of range (list has {list_length} items)"
-        )
+        super().__init__(f"Index {index} out of range (list has {list_length} items)")
 
 
 class InvalidKeyFilterError(GetPropertyOperationError):
@@ -367,7 +365,9 @@ class GetPropertyOperation:
         if property_type == PropertyType.COMPLEX and isinstance(value, list):
             # Apply key filter first if provided
             if key_filter:
-                value, error = self._apply_key_filter(value, key_filter, normalized_name)
+                value, error = self._apply_key_filter(
+                    value, key_filter, normalized_name
+                )
                 if error:
                     return {
                         "success": False,
@@ -450,7 +450,10 @@ class GetPropertyOperation:
 
         # Parse key:value filter
         if ":" not in key_filter:
-            return None, f"Invalid key filter format '{key_filter}'. Use key:value (e.g., name:github)"
+            return (
+                None,
+                f"Invalid key filter format '{key_filter}'. Use key:value (e.g., name:github)",
+            )
 
         filter_key, filter_value = key_filter.split(":", 1)
 
