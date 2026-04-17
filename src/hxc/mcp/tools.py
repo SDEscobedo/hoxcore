@@ -34,6 +34,10 @@ from hxc.core.operations.edit import (
     InvalidValueError,
     NoChangesError,
 )
+from hxc.core.operations.get import (
+    GetPropertyOperation,
+    GetPropertyOperationError,
+)
 from hxc.core.operations.init import (
     DirectoryNotEmptyError,
     GitOperationError,
@@ -540,16 +544,34 @@ def get_entity_property_tool(
     """
     Get a specific property value from an entity.
 
+    This tool uses the shared GetPropertyOperation to ensure behavioral
+    consistency with the CLI `hxc get` command. Property names are validated
+    against a canonical set before retrieval.
+
+    Property Categories:
+    - SCALAR: type, uid, id, title, description, status, start_date, due_date,
+              completion_date, duration_estimate, category, parent, template
+    - LIST: tags, children, related
+    - COMPLEX: repositories, storage, databases, tools, models, knowledge_bases
+    - SPECIAL: all (returns all properties), path (returns file path)
+
     Args:
         identifier: ID or UID of the entity
-        property_name: Name of the property to retrieve
-        entity_type: Optional entity type to filter
-        index: Optional index for list properties
-        key: Optional key:value filter for complex properties
+        property_name: Name of the property to retrieve (case-insensitive)
+        entity_type: Optional entity type to filter (program, project, mission, action)
+        index: Optional index for list/complex properties (0-based)
+        key: Optional key:value filter for complex properties (e.g., "name:github")
         registry_path: Optional registry path (uses default if not provided)
 
     Returns:
-        Dictionary containing property value and metadata
+        Dictionary containing:
+        - success: bool
+        - property: str (normalized property name)
+        - property_type: str (scalar, list, complex, special) - only on success
+        - value: Any (property value) - only on success
+        - identifier: str
+        - error: str (only if success=False)
+        - available_properties: list (only if unknown property error)
 
     Raises:
         ValueError: If entity or property not found
@@ -566,6 +588,7 @@ def get_entity_property_tool(
                 "identifier": identifier,
             }
 
+        # Convert entity type if provided
         entity_type_enum = None
         if entity_type:
             try:
@@ -579,102 +602,22 @@ def get_entity_property_tool(
                     "identifier": identifier,
                 }
 
-        # Use ShowOperation to get entity
-        operation = ShowOperation(reg_path)
-        result = operation.get_entity(
+        # Use shared GetPropertyOperation for consistent behavior with CLI
+        operation = GetPropertyOperation(reg_path)
+
+        result = operation.get_property(
             identifier=identifier,
+            property_name=property_name,
             entity_type=entity_type_enum,
-            include_raw=False,
+            index=index,
+            key_filter=key,
         )
 
-        if not result["success"]:
-            return {
-                "success": False,
-                "error": result.get("error", f"Entity not found: {identifier}"),
-                "property": property_name,
-                "value": None,
-                "identifier": identifier,
-            }
+        # Return the result from the operation
+        # The operation already provides all the required fields
+        return result
 
-        entity_data = result["entity"]
-        file_path = result["file_path"]
-
-        if property_name == "all":
-            # Return all properties
-            return {
-                "success": True,
-                "property": property_name,
-                "value": entity_data,
-                "identifier": identifier,
-            }
-
-        if property_name == "path":
-            return {
-                "success": True,
-                "property": property_name,
-                "value": file_path,
-                "identifier": identifier,
-            }
-
-        value = entity_data.get(property_name)
-
-        if value is None:
-            return {
-                "success": False,
-                "error": f"Property '{property_name}' not found or not set",
-                "property": property_name,
-                "value": None,
-                "identifier": identifier,
-            }
-
-        if isinstance(value, list) and index is not None:
-            if 0 <= index < len(value):
-                value = value[index]
-            else:
-                return {
-                    "success": False,
-                    "error": f"Index {index} out of range (list has {len(value)} items)",
-                    "property": property_name,
-                    "value": None,
-                    "identifier": identifier,
-                }
-
-        if isinstance(value, list) and key:
-            if ":" not in key:
-                return {
-                    "success": False,
-                    "error": "Invalid key filter format. Use key:value (e.g., name:github)",
-                    "property": property_name,
-                    "value": None,
-                    "identifier": identifier,
-                }
-
-            filter_key, filter_value = key.split(":", 1)
-            filtered = [
-                item
-                for item in value
-                if isinstance(item, dict) and item.get(filter_key) == filter_value
-            ]
-
-            if not filtered:
-                return {
-                    "success": False,
-                    "error": f"No items found with {filter_key}='{filter_value}'",
-                    "property": property_name,
-                    "value": None,
-                    "identifier": identifier,
-                }
-
-            value = filtered[0] if len(filtered) == 1 else filtered
-
-        return {
-            "success": True,
-            "property": property_name,
-            "value": value,
-            "identifier": identifier,
-        }
-
-    except ValueError as e:
+    except GetPropertyOperationError as e:
         return {
             "success": False,
             "error": str(e),

@@ -12,6 +12,7 @@ import pytest
 import yaml
 
 from hxc.core.enums import EntityType
+from hxc.core.operations.get import GetPropertyOperation, PropertyType
 from hxc.core.operations.show import (
     InvalidEntityError,
     ShowOperation,
@@ -534,6 +535,7 @@ class TestGetEntityPropertyTool:
         assert result["success"] is True
         assert result["value"] == "Test Project One"
         assert result["property"] == "title"
+        assert result["property_type"] == PropertyType.SCALAR
 
     def test_get_status_property(self, temp_registry):
         """Test getting status property"""
@@ -543,6 +545,7 @@ class TestGetEntityPropertyTool:
 
         assert result["success"] is True
         assert result["value"] == "active"
+        assert result["property_type"] == PropertyType.SCALAR
 
     def test_get_list_property(self, temp_registry):
         """Test getting a list property"""
@@ -553,6 +556,7 @@ class TestGetEntityPropertyTool:
         assert result["success"] is True
         assert isinstance(result["value"], list)
         assert "test" in result["value"]
+        assert result["property_type"] == PropertyType.LIST
 
     def test_get_list_property_with_index(self, temp_registry):
         """Test getting list property with index"""
@@ -589,6 +593,7 @@ class TestGetEntityPropertyTool:
         assert result["success"] is True
         assert isinstance(result["value"], list)
         assert len(result["value"]) > 0
+        assert result["property_type"] == PropertyType.COMPLEX
 
     def test_get_complex_property_with_key_filter(self, temp_registry):
         """Test getting complex property with key filter"""
@@ -637,6 +642,7 @@ class TestGetEntityPropertyTool:
         assert isinstance(result["value"], dict)
         assert "title" in result["value"]
         assert "status" in result["value"]
+        assert result["property_type"] == PropertyType.SPECIAL
 
     def test_get_path_property(self, temp_registry):
         """Test getting path property"""
@@ -646,15 +652,32 @@ class TestGetEntityPropertyTool:
 
         assert result["success"] is True
         assert "proj-proj-test-001.yml" in result["value"]
+        assert result["property_type"] == PropertyType.SPECIAL
 
-    def test_get_nonexistent_property(self, temp_registry):
-        """Test getting non-existent property"""
+    def test_get_unknown_property(self, temp_registry):
+        """Test getting unknown property returns error with available properties"""
         result = get_entity_property_tool(
             identifier="P-001", property_name="nonexistent", registry_path=temp_registry
         )
 
         assert result["success"] is False
-        assert "not found" in result["error"].lower()
+        assert "unknown property" in result["error"].lower()
+        assert "available_properties" in result
+        assert isinstance(result["available_properties"], list)
+        assert "title" in result["available_properties"]
+
+    def test_get_unset_property(self, temp_registry):
+        """Test getting unset property returns different error than unknown"""
+        result = get_entity_property_tool(
+            identifier="P-001",
+            property_name="completion_date",
+            registry_path=temp_registry,
+        )
+
+        assert result["success"] is False
+        assert "not set" in result["error"].lower()
+        # Should NOT include available_properties for unset (valid) property
+        assert "available_properties" not in result or result.get("available_properties") is None
 
     def test_get_property_from_nonexistent_entity(self, temp_registry):
         """Test getting property from non-existent entity"""
@@ -710,23 +733,36 @@ class TestGetEntityPropertyTool:
         assert result["success"] is False
         assert "not found" in result["error"].lower()
 
+    def test_get_property_case_insensitive(self, temp_registry):
+        """Test that property names are case-insensitive"""
+        result_lower = get_entity_property_tool(
+            identifier="P-001", property_name="title", registry_path=temp_registry
+        )
+        result_upper = get_entity_property_tool(
+            identifier="P-001", property_name="TITLE", registry_path=temp_registry
+        )
+        result_mixed = get_entity_property_tool(
+            identifier="P-001", property_name="TiTlE", registry_path=temp_registry
+        )
 
-class TestGetEntityPropertyToolUsesShowOperation:
-    """Tests to verify get_entity_property_tool uses the shared ShowOperation"""
+        assert result_lower["success"] is True
+        assert result_upper["success"] is True
+        assert result_mixed["success"] is True
+        assert result_lower["value"] == result_upper["value"] == result_mixed["value"]
 
-    def test_get_property_uses_show_operation(self, temp_registry):
-        """Test that get_entity_property_tool uses ShowOperation internally"""
-        with patch("hxc.mcp.tools.ShowOperation") as MockOperation:
+
+class TestGetEntityPropertyToolUsesGetPropertyOperation:
+    """Tests to verify get_entity_property_tool uses the shared GetPropertyOperation"""
+
+    def test_get_property_uses_get_property_operation(self, temp_registry):
+        """Test that get_entity_property_tool uses GetPropertyOperation internally"""
+        with patch("hxc.mcp.tools.GetPropertyOperation") as MockOperation:
             mock_instance = MagicMock()
-            mock_instance.get_entity.return_value = {
+            mock_instance.get_property.return_value = {
                 "success": True,
-                "entity": {
-                    "type": "project",
-                    "uid": "proj-test-001",
-                    "id": "P-001",
-                    "title": "Test Project",
-                },
-                "file_path": "/test/path.yml",
+                "property": "title",
+                "property_type": PropertyType.SCALAR,
+                "value": "Test Project",
                 "identifier": "P-001",
             }
             MockOperation.return_value = mock_instance
@@ -736,17 +772,72 @@ class TestGetEntityPropertyToolUsesShowOperation:
             )
 
         MockOperation.assert_called_once_with(temp_registry)
-        mock_instance.get_entity.assert_called_once()
+        mock_instance.get_property.assert_called_once()
+
+    def test_get_property_passes_all_parameters_to_operation(self, temp_registry):
+        """Test that get_entity_property_tool passes all parameters to GetPropertyOperation"""
+        with patch("hxc.mcp.tools.GetPropertyOperation") as MockOperation:
+            mock_instance = MagicMock()
+            mock_instance.get_property.return_value = {
+                "success": True,
+                "property": "repositories",
+                "property_type": PropertyType.COMPLEX,
+                "value": {"name": "github"},
+                "identifier": "P-001",
+            }
+            MockOperation.return_value = mock_instance
+
+            result = get_entity_property_tool(
+                identifier="P-001",
+                property_name="repositories",
+                entity_type="project",
+                index=0,
+                key="name:github",
+                registry_path=temp_registry,
+            )
+
+        call_kwargs = mock_instance.get_property.call_args[1]
+        assert call_kwargs["identifier"] == "P-001"
+        assert call_kwargs["property_name"] == "repositories"
+        assert call_kwargs["entity_type"] == EntityType.PROJECT
+        assert call_kwargs["index"] == 0
+        assert call_kwargs["key_filter"] == "name:github"
+
+    def test_get_property_handles_unknown_property_error(self, temp_registry):
+        """Test that unknown property errors include available_properties"""
+        with patch("hxc.mcp.tools.GetPropertyOperation") as MockOperation:
+            mock_instance = MagicMock()
+            mock_instance.get_property.return_value = {
+                "success": False,
+                "error": "Unknown property 'foobar'. Available properties: title, status, ...",
+                "property": "foobar",
+                "property_type": None,
+                "value": None,
+                "identifier": "P-001",
+                "available_properties": ["title", "status", "tags"],
+            }
+            MockOperation.return_value = mock_instance
+
+            result = get_entity_property_tool(
+                identifier="P-001",
+                property_name="foobar",
+                registry_path=temp_registry,
+            )
+
+        assert result["success"] is False
+        assert "available_properties" in result
+        assert "title" in result["available_properties"]
 
     def test_get_property_handles_entity_not_found(self, temp_registry):
         """Test that get_entity_property_tool handles entity not found"""
-        with patch("hxc.mcp.tools.ShowOperation") as MockOperation:
+        with patch("hxc.mcp.tools.GetPropertyOperation") as MockOperation:
             mock_instance = MagicMock()
-            mock_instance.get_entity.return_value = {
+            mock_instance.get_property.return_value = {
                 "success": False,
                 "error": "Entity not found: NONEXISTENT",
-                "entity": None,
-                "file_path": None,
+                "property": "title",
+                "property_type": PropertyType.SCALAR,
+                "value": None,
                 "identifier": "NONEXISTENT",
             }
             MockOperation.return_value = mock_instance
@@ -764,9 +855,9 @@ class TestGetEntityPropertyToolUsesShowOperation:
         """Test that PathSecurityError is handled correctly"""
         from hxc.utils.path_security import PathSecurityError
 
-        with patch("hxc.mcp.tools.ShowOperation") as MockOperation:
+        with patch("hxc.mcp.tools.GetPropertyOperation") as MockOperation:
             mock_instance = MagicMock()
-            mock_instance.get_entity.side_effect = PathSecurityError(
+            mock_instance.get_property.side_effect = PathSecurityError(
                 "Path traversal detected"
             )
             MockOperation.return_value = mock_instance
@@ -782,9 +873,9 @@ class TestGetEntityPropertyToolUsesShowOperation:
 
     def test_get_property_handles_unexpected_error(self, temp_registry):
         """Test that unexpected errors are handled gracefully"""
-        with patch("hxc.mcp.tools.ShowOperation") as MockOperation:
+        with patch("hxc.mcp.tools.GetPropertyOperation") as MockOperation:
             mock_instance = MagicMock()
-            mock_instance.get_entity.side_effect = RuntimeError("Unexpected error")
+            mock_instance.get_property.side_effect = RuntimeError("Unexpected error")
             MockOperation.return_value = mock_instance
 
             result = get_entity_property_tool(
@@ -795,6 +886,222 @@ class TestGetEntityPropertyToolUsesShowOperation:
 
         assert result["success"] is False
         assert "Error retrieving property" in result["error"]
+
+
+class TestGetEntityPropertyToolPropertyTypes:
+    """Tests for property type classification in get_entity_property_tool"""
+
+    def test_scalar_property_type(self, temp_registry):
+        """Test that scalar properties return correct type"""
+        scalar_props = ["type", "uid", "id", "title", "description", "status"]
+        for prop in scalar_props:
+            result = get_entity_property_tool(
+                identifier="P-001", property_name=prop, registry_path=temp_registry
+            )
+            if result["success"]:
+                assert result["property_type"] == PropertyType.SCALAR, f"Failed for {prop}"
+
+    def test_list_property_type(self, temp_registry):
+        """Test that list properties return correct type"""
+        result = get_entity_property_tool(
+            identifier="P-001", property_name="tags", registry_path=temp_registry
+        )
+
+        assert result["success"] is True
+        assert result["property_type"] == PropertyType.LIST
+
+    def test_complex_property_type(self, temp_registry):
+        """Test that complex properties return correct type"""
+        result = get_entity_property_tool(
+            identifier="P-001", property_name="repositories", registry_path=temp_registry
+        )
+
+        assert result["success"] is True
+        assert result["property_type"] == PropertyType.COMPLEX
+
+    def test_special_property_type_all(self, temp_registry):
+        """Test that 'all' special property returns correct type"""
+        result = get_entity_property_tool(
+            identifier="P-001", property_name="all", registry_path=temp_registry
+        )
+
+        assert result["success"] is True
+        assert result["property_type"] == PropertyType.SPECIAL
+
+    def test_special_property_type_path(self, temp_registry):
+        """Test that 'path' special property returns correct type"""
+        result = get_entity_property_tool(
+            identifier="P-001", property_name="path", registry_path=temp_registry
+        )
+
+        assert result["success"] is True
+        assert result["property_type"] == PropertyType.SPECIAL
+
+
+class TestGetEntityPropertyToolBehavioralParityWithCLI:
+    """Tests to verify behavioral parity between MCP and CLI for get property"""
+
+    def test_property_validation_matches_cli(self, temp_registry):
+        """Test that property validation works identically"""
+        # Use GetPropertyOperation directly (what CLI uses)
+        operation = GetPropertyOperation(temp_registry)
+        is_valid_op, normalized_op = operation.validate_property_name("title")
+
+        # MCP should use same validation
+        result = get_entity_property_tool(
+            identifier="P-001", property_name="title", registry_path=temp_registry
+        )
+
+        assert is_valid_op is True
+        assert result["success"] is True
+        assert result["property"] == normalized_op
+
+    def test_unknown_property_matches_cli(self, temp_registry):
+        """Test that unknown property handling matches CLI"""
+        # Use GetPropertyOperation directly
+        operation = GetPropertyOperation(temp_registry)
+        op_result = operation.get_property("P-001", "foobar")
+
+        # Use MCP tool
+        mcp_result = get_entity_property_tool(
+            identifier="P-001", property_name="foobar", registry_path=temp_registry
+        )
+
+        assert op_result["success"] is False
+        assert mcp_result["success"] is False
+        assert "unknown property" in op_result["error"].lower()
+        assert "unknown property" in mcp_result["error"].lower()
+        assert "available_properties" in op_result
+        assert "available_properties" in mcp_result
+
+    def test_unset_property_matches_cli(self, temp_registry):
+        """Test that unset property handling matches CLI"""
+        # Use GetPropertyOperation directly
+        operation = GetPropertyOperation(temp_registry)
+        op_result = operation.get_property("P-001", "completion_date")
+
+        # Use MCP tool
+        mcp_result = get_entity_property_tool(
+            identifier="P-001", property_name="completion_date", registry_path=temp_registry
+        )
+
+        assert op_result["success"] is False
+        assert mcp_result["success"] is False
+        assert "not set" in op_result["error"].lower()
+        assert "not set" in mcp_result["error"].lower()
+
+    def test_scalar_property_matches_cli(self, temp_registry):
+        """Test that scalar property retrieval matches CLI"""
+        # Use GetPropertyOperation directly
+        operation = GetPropertyOperation(temp_registry)
+        op_result = operation.get_property("P-001", "title")
+
+        # Use MCP tool
+        mcp_result = get_entity_property_tool(
+            identifier="P-001", property_name="title", registry_path=temp_registry
+        )
+
+        assert op_result["success"] is True
+        assert mcp_result["success"] is True
+        assert op_result["value"] == mcp_result["value"]
+        assert op_result["property_type"] == mcp_result["property_type"]
+
+    def test_list_property_matches_cli(self, temp_registry):
+        """Test that list property retrieval matches CLI"""
+        # Use GetPropertyOperation directly
+        operation = GetPropertyOperation(temp_registry)
+        op_result = operation.get_property("P-001", "tags")
+
+        # Use MCP tool
+        mcp_result = get_entity_property_tool(
+            identifier="P-001", property_name="tags", registry_path=temp_registry
+        )
+
+        assert op_result["success"] is True
+        assert mcp_result["success"] is True
+        assert op_result["value"] == mcp_result["value"]
+        assert op_result["property_type"] == mcp_result["property_type"]
+
+    def test_complex_property_matches_cli(self, temp_registry):
+        """Test that complex property retrieval matches CLI"""
+        # Use GetPropertyOperation directly
+        operation = GetPropertyOperation(temp_registry)
+        op_result = operation.get_property("P-001", "repositories")
+
+        # Use MCP tool
+        mcp_result = get_entity_property_tool(
+            identifier="P-001", property_name="repositories", registry_path=temp_registry
+        )
+
+        assert op_result["success"] is True
+        assert mcp_result["success"] is True
+        assert op_result["value"] == mcp_result["value"]
+        assert op_result["property_type"] == mcp_result["property_type"]
+
+    def test_index_handling_matches_cli(self, temp_registry):
+        """Test that index handling matches CLI"""
+        # Use GetPropertyOperation directly
+        operation = GetPropertyOperation(temp_registry)
+        op_result = operation.get_property("P-001", "tags", index=0)
+
+        # Use MCP tool
+        mcp_result = get_entity_property_tool(
+            identifier="P-001", property_name="tags", index=0, registry_path=temp_registry
+        )
+
+        assert op_result["success"] is True
+        assert mcp_result["success"] is True
+        assert op_result["value"] == mcp_result["value"]
+
+    def test_key_filter_handling_matches_cli(self, temp_registry):
+        """Test that key filter handling matches CLI"""
+        # Use GetPropertyOperation directly
+        operation = GetPropertyOperation(temp_registry)
+        op_result = operation.get_property("P-001", "repositories", key_filter="name:github")
+
+        # Use MCP tool
+        mcp_result = get_entity_property_tool(
+            identifier="P-001",
+            property_name="repositories",
+            key="name:github",
+            registry_path=temp_registry,
+        )
+
+        assert op_result["success"] is True
+        assert mcp_result["success"] is True
+        assert op_result["value"] == mcp_result["value"]
+
+    def test_special_property_all_matches_cli(self, temp_registry):
+        """Test that 'all' special property matches CLI"""
+        # Use GetPropertyOperation directly
+        operation = GetPropertyOperation(temp_registry)
+        op_result = operation.get_property("P-001", "all")
+
+        # Use MCP tool
+        mcp_result = get_entity_property_tool(
+            identifier="P-001", property_name="all", registry_path=temp_registry
+        )
+
+        assert op_result["success"] is True
+        assert mcp_result["success"] is True
+        assert op_result["value"]["title"] == mcp_result["value"]["title"]
+        assert op_result["property_type"] == mcp_result["property_type"]
+
+    def test_special_property_path_matches_cli(self, temp_registry):
+        """Test that 'path' special property matches CLI"""
+        # Use GetPropertyOperation directly
+        operation = GetPropertyOperation(temp_registry)
+        op_result = operation.get_property("P-001", "path")
+
+        # Use MCP tool
+        mcp_result = get_entity_property_tool(
+            identifier="P-001", property_name="path", registry_path=temp_registry
+        )
+
+        assert op_result["success"] is True
+        assert mcp_result["success"] is True
+        assert op_result["value"] == mcp_result["value"]
+        assert op_result["property_type"] == mcp_result["property_type"]
 
 
 class TestGetEntityHierarchyTool:
@@ -1146,19 +1453,30 @@ class TestGetToolsErrorHandling:
         assert result["success"] is False
         assert "error" in result
 
-    def test_get_property_with_none_value(self, temp_registry):
-        """Test getting property with None value"""
-        result = get_entity_property_tool(
+    def test_get_property_unknown_vs_unset(self, temp_registry):
+        """Test distinction between unknown and unset properties"""
+        # Unknown property should include available_properties
+        unknown_result = get_entity_property_tool(
+            identifier="P-001",
+            property_name="foobar",
+            registry_path=temp_registry,
+        )
+
+        assert unknown_result["success"] is False
+        assert "unknown property" in unknown_result["error"].lower()
+        assert "available_properties" in unknown_result
+
+        # Unset property should NOT include available_properties
+        unset_result = get_entity_property_tool(
             identifier="P-001",
             property_name="completion_date",
             registry_path=temp_registry,
         )
 
-        assert result["success"] is False
-        assert (
-            "not found" in result["error"].lower()
-            or "not set" in result["error"].lower()
-        )
+        assert unset_result["success"] is False
+        assert "not set" in unset_result["error"].lower()
+        # Should not have available_properties for valid but unset property
+        assert "available_properties" not in unset_result or unset_result.get("available_properties") is None
 
     def test_get_hierarchy_with_invalid_type(self, temp_registry):
         """Test getting hierarchy with invalid entity type"""
@@ -1185,3 +1503,39 @@ class TestGetToolsErrorHandling:
 
         # Cleanup
         corrupted_file.unlink()
+
+    def test_get_property_index_out_of_range(self, temp_registry):
+        """Test index out of range error"""
+        result = get_entity_property_tool(
+            identifier="P-001",
+            property_name="tags",
+            index=999,
+            registry_path=temp_registry,
+        )
+
+        assert result["success"] is False
+        assert "out of range" in result["error"].lower()
+
+    def test_get_property_invalid_key_filter_format(self, temp_registry):
+        """Test invalid key filter format error"""
+        result = get_entity_property_tool(
+            identifier="P-001",
+            property_name="repositories",
+            key="invalid",
+            registry_path=temp_registry,
+        )
+
+        assert result["success"] is False
+        assert "invalid key filter" in result["error"].lower()
+
+    def test_get_property_key_filter_no_match(self, temp_registry):
+        """Test key filter no match error"""
+        result = get_entity_property_tool(
+            identifier="P-001",
+            property_name="repositories",
+            key="name:nonexistent",
+            registry_path=temp_registry,
+        )
+
+        assert result["success"] is False
+        assert "no items found" in result["error"].lower()
