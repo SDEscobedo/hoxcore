@@ -513,11 +513,27 @@ class MCPServer:
                     },
                     "property": {
                         "type": "string",
-                        "description": "Property name to retrieve",
+                        "description": (
+                            "Property name to retrieve. Validated against known properties. "
+                            "SCALAR: type, uid, id, title, description, status, start_date, due_date, "
+                            "completion_date, duration_estimate, category, parent, template. "
+                            "LIST: tags, children, related. "
+                            "COMPLEX: repositories, storage, databases, tools, models, knowledge_bases. "
+                            "SPECIAL: all (returns all properties), path (returns file path)."
+                        ),
                     },
-                    "entity_type": {"type": "string"},
-                    "index": {"type": "integer"},
-                    "key": {"type": "string"},
+                    "entity_type": {
+                        "type": "string",
+                        "description": "Optional entity type filter (program, project, mission, action)",
+                    },
+                    "index": {
+                        "type": "integer",
+                        "description": "For list/complex properties, get item at specific index (0-based)",
+                    },
+                    "key": {
+                        "type": "string",
+                        "description": "For complex properties, filter by key:value pattern (e.g., 'name:github')",
+                    },
                 },
                 "required": ["identifier", "property"],
             },

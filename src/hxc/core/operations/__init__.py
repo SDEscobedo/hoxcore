@@ -11,6 +11,7 @@ core business logic including:
 - Entity deletion with git integration
 - Entity listing with filtering and sorting
 - Entity retrieval with unified lookup logic
+- Property retrieval with validation and type-aware handling
 - Registry validation and integrity checking
 - ID uniqueness validation
 - Path security enforcement
@@ -36,6 +37,16 @@ from hxc.core.operations.edit import (
     EditOperationError,
     InvalidValueError,
     NoChangesError,
+)
+from hxc.core.operations.get import (
+    GetPropertyOperation,
+    GetPropertyOperationError,
+    IndexOutOfRangeError,
+    InvalidKeyFilterError,
+    KeyFilterNoMatchError,
+    PropertyNotSetError,
+    PropertyType,
+    UnknownPropertyError,
 )
 from hxc.core.operations.init import (
     DirectoryNotEmptyError,
@@ -80,6 +91,15 @@ __all__ = [
     "EditOperationError",
     "InvalidValueError",
     "NoChangesError",
+    # Get property operation
+    "GetPropertyOperation",
+    "GetPropertyOperationError",
+    "UnknownPropertyError",
+    "PropertyNotSetError",
+    "IndexOutOfRangeError",
+    "InvalidKeyFilterError",
+    "KeyFilterNoMatchError",
+    "PropertyType",
     # List operation
     "ListOperation",
     "ListOperationError",

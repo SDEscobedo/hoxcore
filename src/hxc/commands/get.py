@@ -4,18 +4,22 @@ Get command implementation for retrieving entity property values
 
 import argparse
 import json
-import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Set
 
 import yaml
 
 from hxc.commands import register_command
 from hxc.commands.base import BaseCommand
 from hxc.commands.registry import RegistryCommand
-from hxc.core.enums import EntityType, OutputFormat
+from hxc.core.enums import EntityType
+from hxc.core.operations.get import (
+    GetPropertyOperation,
+    GetPropertyOperationError,
+    PropertyType,
+)
 from hxc.utils.helpers import get_project_root
-from hxc.utils.path_security import PathSecurityError, resolve_safe_path
+from hxc.utils.path_security import PathSecurityError
 
 
 @register_command
@@ -25,43 +29,13 @@ class GetCommand(BaseCommand):
     name = "get"
     help = "Get a property value from a program, project, action, or mission"
 
-    # Define all accessible properties
-    SCALAR_PROPERTIES = {
-        "type",
-        "uid",
-        "id",
-        "title",
-        "description",
-        "status",
-        "start_date",
-        "due_date",
-        "completion_date",
-        "duration_estimate",
-        "category",
-        "parent",
-        "template",
-    }
-
-    LIST_PROPERTIES = {"tags", "children", "related"}
-
-    COMPLEX_PROPERTIES = {
-        "repositories",
-        "storage",
-        "databases",
-        "tools",
-        "models",
-        "knowledge_bases",
-    }
-
-    # Special properties for convenience
-    SPECIAL_PROPERTIES = {
-        "all",  # Get all properties
-        "path",  # Get file path
-    }
-
-    ALL_PROPERTIES = (
-        SCALAR_PROPERTIES | LIST_PROPERTIES | COMPLEX_PROPERTIES | SPECIAL_PROPERTIES
-    )
+    # Property classification sets - delegated to GetPropertyOperation for consistency
+    # but exposed here for backwards compatibility and direct access
+    SCALAR_PROPERTIES: Set[str] = GetPropertyOperation.SCALAR_PROPERTIES
+    LIST_PROPERTIES: Set[str] = GetPropertyOperation.LIST_PROPERTIES
+    COMPLEX_PROPERTIES: Set[str] = GetPropertyOperation.COMPLEX_PROPERTIES
+    SPECIAL_PROPERTIES: Set[str] = GetPropertyOperation.SPECIAL_PROPERTIES
+    ALL_PROPERTIES: Set[str] = GetPropertyOperation.ALL_PROPERTIES
 
     @classmethod
     def register_subparser(cls, subparsers):
@@ -114,15 +88,6 @@ class GetCommand(BaseCommand):
                     print(f"❌ Invalid argument: {e}")
                     return 1
 
-            # Validate property name
-            property_name = args.property.lower()
-            if property_name not in cls.ALL_PROPERTIES:
-                print(f"❌ Unknown property '{args.property}'")
-                print(
-                    f"   Available properties: {', '.join(sorted(cls.ALL_PROPERTIES))}"
-                )
-                return 1
-
             # Get registry path
             registry_path = cls._get_registry_path(args.registry)
             if not registry_path:
@@ -131,54 +96,78 @@ class GetCommand(BaseCommand):
                 )
                 return 1
 
-            # Find the entity file
-            file_path = cls._find_entity_file(
-                registry_path, args.identifier, entity_type
+            # Create the operation
+            operation = GetPropertyOperation(registry_path)
+
+            # Validate property name using shared operation
+            property_name = args.property.lower()
+            is_valid, normalized_name = operation.validate_property_name(property_name)
+
+            if not is_valid:
+                print(f"❌ Unknown property '{args.property}'")
+                print(
+                    f"   Available properties: {', '.join(sorted(operation.ALL_PROPERTIES))}"
+                )
+                return 1
+
+            # Use the shared operation to get the property
+            result = operation.get_property(
+                identifier=args.identifier,
+                property_name=normalized_name,
+                entity_type=entity_type,
+                index=args.index,
+                key_filter=args.key,
             )
-            if not file_path:
-                print(f"❌ No entity found with identifier '{args.identifier}'")
-                if entity_type:
-                    print(f"   (search limited to type: {entity_type.value})")
+
+            # Handle errors from the operation
+            if not result["success"]:
+                error_msg = result.get("error", "Unknown error")
+
+                # Check for entity not found
+                if "not found" in error_msg.lower() and "Entity" in error_msg:
+                    print(f"❌ No entity found with identifier '{args.identifier}'")
+                    if entity_type:
+                        print(f"   (search limited to type: {entity_type.value})")
+                    return 1
+
+                # Check for property not set
+                if "not set" in error_msg.lower():
+                    print(f"⚠️  Property '{normalized_name}' is not set")
+                    return 1
+
+                # Check for index out of range
+                if "out of range" in error_msg.lower():
+                    print(f"⚠️  {error_msg}")
+                    return 1
+
+                # Check for invalid key filter format
+                if "invalid key filter" in error_msg.lower():
+                    print(
+                        f"⚠️  Invalid key filter format. Use key:value (e.g., name:github)"
+                    )
+                    return 1
+
+                # Check for key filter no match
+                if "no items found" in error_msg.lower():
+                    print(f"⚠️  {error_msg}")
+                    return 1
+
+                # Generic error
+                print(f"❌ Error: {error_msg}")
                 return 1
 
-            # Load the entity
-            try:
-                secure_file_path = resolve_safe_path(registry_path, file_path)
-                with open(secure_file_path, "r") as f:
-                    entity_data = yaml.safe_load(f)
-            except PathSecurityError as e:
-                print(f"❌ Security error: {e}")
-                return 1
-            except Exception as e:
-                print(f"❌ Error loading entity: {e}")
-                return 1
+            # Get the value from the result
+            value = result["value"]
 
-            if not entity_data or not isinstance(entity_data, dict):
-                print(f"❌ Invalid entity data in {file_path}")
-                return 1
-
-            # Handle special properties
-            if property_name == "path":
-                print(str(secure_file_path))
-                return 0
-
-            if property_name == "all":
-                cls._display_all_properties(entity_data, args.format)
-                return 0
-
-            # Get the property value
-            value = cls._get_property_value(entity_data, property_name, args)
-
-            if value is None:
-                print(f"⚠️  Property '{property_name}' is not set")
-                return 1
-
-            # Display the value
-            cls._display_value(value, args.format, property_name)
+            # Display the value based on format
+            cls._display_value(value, args.format, normalized_name)
             return 0
 
         except PathSecurityError as e:
             print(f"❌ Security error: {e}")
+            return 1
+        except GetPropertyOperationError as e:
+            print(f"❌ Error: {e}")
             return 1
         except Exception as e:
             print(f"❌ Error retrieving property: {e}")
@@ -199,139 +188,6 @@ class GetCommand(BaseCommand):
         return get_project_root()
 
     @classmethod
-    def _find_entity_file(
-        cls,
-        registry_path: str,
-        identifier: str,
-        entity_type: Optional[EntityType] = None,
-    ) -> Optional[Path]:
-        """
-        Find an entity file by ID or UID
-
-        Args:
-            registry_path: Root directory of the registry
-            identifier: ID or UID to search for
-            entity_type: Optional entity type to filter by
-
-        Returns:
-            Path to the entity file if found, None otherwise
-        """
-        types_to_search = [entity_type] if entity_type else list(EntityType)
-
-        for entity_type_enum in types_to_search:
-            folder_name = entity_type_enum.get_folder_name()
-            file_prefix = entity_type_enum.get_file_prefix()
-
-            try:
-                type_dir = resolve_safe_path(registry_path, folder_name)
-            except PathSecurityError:
-                continue
-
-            if not type_dir.exists():
-                continue
-
-            # First, try to match by filename (UID in filename)
-            uid_pattern = f"{file_prefix}-{identifier}.yml"
-            for file_path in type_dir.glob(uid_pattern):
-                try:
-                    secure_file_path = resolve_safe_path(registry_path, file_path)
-                    return secure_file_path
-                except PathSecurityError:
-                    continue
-
-            # If no match, search inside files for ID or UID field
-            for file_path in type_dir.glob(f"{file_prefix}-*.yml"):
-                try:
-                    secure_file_path = resolve_safe_path(registry_path, file_path)
-                    with open(secure_file_path, "r") as f:
-                        data = yaml.safe_load(f)
-                        if data and isinstance(data, dict):
-                            if (
-                                data.get("id") == identifier
-                                or data.get("uid") == identifier
-                            ):
-                                return secure_file_path
-                except PathSecurityError:
-                    continue
-                except Exception:
-                    continue
-
-        return None
-
-    @classmethod
-    def _get_property_value(
-        cls, entity_data: Dict[str, Any], property_name: str, args: argparse.Namespace
-    ) -> Optional[Any]:
-        """
-        Get the value of a property from entity data
-
-        Args:
-            entity_data: Entity data dictionary
-            property_name: Name of the property to retrieve
-            args: Command arguments (for filtering options)
-
-        Returns:
-            Property value or None if not found
-        """
-        value = entity_data.get(property_name)
-
-        if value is None:
-            return None
-
-        # Handle list properties with index
-        if property_name in cls.LIST_PROPERTIES and isinstance(value, list):
-            if args.index is not None:
-                if 0 <= args.index < len(value):
-                    return value[args.index]
-                else:
-                    print(
-                        f"⚠️  Index {args.index} out of range (list has {len(value)} items)"
-                    )
-                    return None
-            return value
-
-        # Handle complex properties with key filter
-        if property_name in cls.COMPLEX_PROPERTIES and isinstance(value, list):
-            if args.key:
-                # Parse key:value filter
-                if ":" not in args.key:
-                    print(
-                        f"⚠️  Invalid key filter format. Use key:value (e.g., name:github)"
-                    )
-                    return None
-
-                filter_key, filter_value = args.key.split(":", 1)
-                filtered = [
-                    item
-                    for item in value
-                    if isinstance(item, dict) and item.get(filter_key) == filter_value
-                ]
-
-                if not filtered:
-                    print(f"⚠️  No items found with {filter_key}='{filter_value}'")
-                    return None
-
-                # If only one item matches, return it directly
-                if len(filtered) == 1:
-                    return filtered[0]
-
-                return filtered
-
-            # Handle index for complex properties
-            if args.index is not None:
-                if 0 <= args.index < len(value):
-                    return value[args.index]
-                else:
-                    print(
-                        f"⚠️  Index {args.index} out of range (list has {len(value)} items)"
-                    )
-                    return None
-
-            return value
-
-        return value
-
-    @classmethod
     def _display_value(cls, value: Any, format_type: str, property_name: str) -> None:
         """
         Display a property value in the specified format
@@ -341,6 +197,11 @@ class GetCommand(BaseCommand):
             format_type: Output format (raw, yaml, json, pretty)
             property_name: Name of the property (for context in pretty format)
         """
+        # Handle 'all' property specially - it returns full entity dict
+        if property_name == "all":
+            cls._display_all_properties(value, format_type)
+            return
+
         if format_type == "raw":
             cls._display_raw(value)
         elif format_type == "yaml":
