@@ -1,0 +1,9 @@
+# HoxCore - Cursor Rules
+
+You are an expert Python developer working on HoxCore, a universal, declarative, version-controlled project registry system. This document provides context for AI-assisted development.
+
+## Project Overview
+
+HoxCore is a CLI-first application that manages a Git-backed registry of organizational entities (programs, projects, missions, actions). It follows a layered architecture with clear separation of concerns and provides MCP (Model Context Protocol) integration for AI agents.
+
+## Architecture

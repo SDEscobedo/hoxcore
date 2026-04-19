@@ -1,28 +1,26 @@
+```markdown
 # HoxCore
 
-<p align="center">
-    <img src="https://raw.githubusercontent.com/SDEscobedo/hoxcore/refs/heads/master/images/hoxcore_logo.jpg" alt="Hoxcore" width="400">
-</p>
+[![PyPI version](https://badge.fury.io/py/hoxcore.svg)](https://badge.fury.io/py/hoxcore)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+**A universal, declarative, version-controlled project registry system.**
 
-## What is HoxCore?
+HoxCore is a foundational, Git-inspired project registry and initialization system designed to manage *any kind of human endeavor*, not only software projects. It provides a **single, authoritative source of truth** for projects and related activities, expressed through immutable, version-controlled metadata and declarative automation.
 
-HoxCore is a **meta-manager** — a low-level tool that centralizes the core metadata of organizational objects into a single, unified registry. Rather than managing execution or visualization directly, HoxCore acts as the foundational layer that independent software can build upon.
+## Overview
 
-### Organizational Object Types
+HoxCore manages four fundamental entity types:
 
-HoxCore handles four categories of objects:
+| Entity Type | Description | Example |
+|-------------|-------------|---------|
+| **Program** | Abstract container grouping related initiatives | "Q1 2024 Initiatives" |
+| **Project** | Object-like effort with concrete outputs | "Website Redesign" |
+| **Mission** | Event-like effort with a clear culmination | "Product Launch Event" |
+| **Action** | Ongoing or recurring activity without defined end | "Weekly Code Reviews" |
 
-| Type | Orientation | Description |
-|---|---|---|
-| **Projects** | Goal-oriented | Has a defined finalization point; decoupled from execution |
-| **Missions** | Event-oriented | Linked to execution; tied to a specific occurrence or execution window |
-| **Activities** | Action-oriented | No definite end; represents indefinite, ongoing progression |
-| **Programs** | Container | Groups and organizes Projects, Missions, and/or Activities |
-
-### Design Philosophy
-
-HoxCore is intentionally minimal and low-level. It owns the metadata — everything else is up to you. Independent tools can be built on top of HoxCore for visualization, reporting, dashboards, or richer management interfaces, all reading from the same single source of truth.
+All entities share a **unified YAML definition**, differing only by metadata fields such as `type`, `category`, and relationships.
 
 ## Installation
 
@@ -32,256 +30,315 @@ HoxCore is intentionally minimal and low-level. It owns the metadata — everyth
 pip install hoxcore
 ```
 
-### For Development
+### From Source
 
 ```bash
-# Clone the repository
-git clone https://github.com/SDEscobedo/hoxcore
+git clone https://github.com/SDEscobedo/hoxcore.git
 cd hoxcore
-
-# Create a virtual environment (optional but recommended)
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install in development mode
 pip install -e .
 ```
 
-## Usage
-
-HoxCore manages your projects using a simple file-based system. It operates on a **Registry** (a directory on your disk) that holds various **Entities** (Programs, Projects, Missions, or Actions) stored as individual files. This mental model allows you to maintain full control over your data while using simple CLI commands to organize your workflow.
-
-### Available Commands
-
-| Command | Description |
-| :--- | :--- |
-| `init` | Initialize a new registry |
-| `create` | Create a new entity (project, program, mission, action) |
-| `list` | List entities with optional filters |
-| `show` | Show full details of a specific entity |
-| `get` | Get a specific property from an entity |
-| `edit` | Edit properties of an entity |
-| `delete` | Delete an entity from the registry |
-| `validate` | Validate registry integrity |
-| `registry` | Manage registry location |
-| `mcp` | Start the MCP server for LLM access |
-
-### Quick Start Guide
-
-#### 1. Initialize a Registry
-
-Set up your first registry to start storing entities.
+### With MCP Support
 
 ```bash
-# Initialize a registry in the current directory
+pip install hoxcore[mcp]
+```
+
+### Development Installation
+
+```bash
+pip install -e ".[dev]"
+```
+
+## Quick Start
+
+### 1. Initialize a Registry
+
+```bash
+# Create a new registry in the current directory
 hxc init
 
-# Initialize in a specific directory
-hxc init ~/my-registry
+# Create a registry at a specific path
+hxc init /path/to/registry
 
-# Initialize without git integration
+# Initialize without git
 hxc init --no-git
 ```
 
-#### 2. Create Entities
-   
-Add projects, programs, missions, or actions to your registry.
+### 2. Create Entities
 
 ```bash
-# Create a basic project
-hxc create project "My First Project"
+# Create a project
+hxc create project "My New Project" --category software.dev/cli-tool
 
-# Create a project with a description, tags, and due date
-hxc create project "API Redesign" --description "Redesign the public API" --tags backend api --due-date 2025-06-01
+# Create a mission with a due date
+hxc create mission "Product Launch" --due-date 2024-06-01
 
-# Create a program (container for projects)
-hxc create program "Q2 Initiatives"
+# Create an action with tags
+hxc create action "Weekly Standup" --tags recurring,team,meeting
 
-# Create a mission (execution-oriented, time-bound)
-hxc create mission "Deploy v2.0"
-
-# Create an action (ongoing, no end date)
-hxc create action "Monitor system health"
+# Create a program to group related projects
+hxc create program "Q1 Initiatives" --description "All Q1 2024 projects"
 ```
-#### 3.  List and Inspect
-   
-View your registry content and drill down into details.
+
+### 3. List and Query Entities
 
 ```bash
-# List all projects
-hxc list project
+# List all entities
+hxc list
 
-# List all entities in the registry
-hxc list all
+# List only projects
+hxc list --type project
 
-# Filter by status or tag
-hxc list project --status active
-hxc list project --tag backend
+# Filter by status
+hxc list --status active
 
-# Show full details of a specific entity
-hxc show <uid>
+# Filter by tags
+hxc list --tags cli,tools
 
-# Get a specific property
-hxc get <uid> status
+# Search by text
+hxc list --query "website"
+
+# Filter by due date
+hxc list --due-before 2024-06-01
 ```
 
-#### 4. Edit and Delete
-   
-Update or remove entities as your tasks progress.
+### 4. View Entity Details
 
 ```bash
-# Change status or add a tag
-hxc edit <uid> --set-status completed
-hxc edit <uid> --add-tag backend
+# Show entity by ID or UID
+hxc show P-001
+hxc show proj-12345678
 
-# Set a new due date
-hxc edit <uid> --set-due-date 2025-06-01
-
-# Delete an entity (prompts for confirmation)
-hxc delete <uid>
-
-# Delete immediately without prompt
-hxc delete <uid> --force
-
-# Prevent automatic commit after deletion
-hxc delete <uid> --no-commit
+# Get specific property
+hxc get P-001 status
+hxc get P-001 tags
+hxc get P-001 repositories
 ```
 
-**Getting Help**
-
-If you need more information about a specific command or general flags:
+### 5. Edit Entities
 
 ```bash
-# General help
-hxc --help
+# Update title
+hxc edit P-001 --set-title "Updated Project Name"
 
-# Command-specific help
-hxc create --help
-hxc list --help
+# Change status
+hxc edit P-001 --set-status completed
+
+# Add tags
+hxc edit P-001 --add-tags important,urgent
+
+# Set parent relationship
+hxc edit P-001 --set-parent PROG-001
 ```
 
----
-
-## MCP Server (Model Context Protocol)
-
-HoxCore includes a built-in MCP server that exposes registry functionality to LLMs through a standardized interface. This allows AI assistants (like Claude) to interact with your HoxCore registries directly.
-
-### Starting the Server
+### 6. Delete Entities
 
 ```bash
-# Start with the default or configured registry
-hxc mcp
+# Delete with confirmation prompt
+hxc delete P-001
 
-# Start with a specific registry path
-hxc mcp --registry /path/to/your/registry
-
-# Specify transport (currently only stdio is supported)
-hxc mcp --transport stdio
-
-# Show server capabilities (tools, resources, prompts) without starting
-hxc mcp --capabilities
-
-# Start in read-only mode — write tools are not exposed to the LLM
-hxc mcp --read-only
-```
-You can also start the server programmatically:
-
-```python
-from hxc.mcp.server import create_server
-
-# Normal mode (all tools)
-server = create_server(registry_path="/path/to/registry")
-server.run_stdio()
-
-# Read-only mode (write tools omitted)
-server = create_server(registry_path="/path/to/registry", read_only=True)
-server.run_stdio()
+# Force delete without confirmation
+hxc delete P-001 --force
 ```
 
-### Connecting to Claude (or other MCP-compatible clients)
+## Entity Model
 
-Add HoxCore to your MCP client configuration. For Claude Desktop, update your `claude_desktop_config.json`:
+Entities are stored as YAML files with the following structure:
+
+```yaml
+type: project
+uid: proj-12345678          # Auto-generated, immutable
+id: P-001                   # Optional, human-defined, editable
+title: "Example Project"
+description: "Project description"
+status: active              # active, completed, on-hold, cancelled, planned
+start_date: 2024-01-01
+due_date: 2024-04-01
+category: software.dev/cli-tool
+tags: [cli, python, tools]
+parent: prog-00000001       # Parent entity UID
+children: []                # Child entity UIDs
+related: []                 # Related entity UIDs
+
+# Integrations
+repositories:
+  - name: github
+    url: https://github.com/user/repo
+
+storage:
+  - name: gdrive
+    provider: google-drive
+    url: https://drive.google.com/...
+
+tools:
+  - name: github-projects
+    provider: github
+    url: https://github.com/user/repo/projects/1
+```
+
+See [docs/ENTITY_MODEL.md](docs/ENTITY_MODEL.md) for the complete specification.
+
+## Registry Structure
+
+```
+my-registry/
+├── .hxc/                   # Registry marker directory
+│   └── index.db            # Query index (gitignored)
+├── config.yml              # Registry configuration
+├── programs/               # Program entities
+│   └── prog-*.yml
+├── projects/               # Project entities
+│   └── proj-*.yml
+├── missions/               # Mission entities
+│   └── miss-*.yml
+├── actions/                # Action entities
+│   └── act-*.yml
+└── .gitignore
+```
+
+## CLI Commands
+
+| Command | Description |
+|---------|-------------|
+| `hxc init` | Initialize a new registry |
+| `hxc create` | Create a new entity |
+| `hxc list` | List entities with filters |
+| `hxc show` | Display entity details |
+| `hxc get` | Get specific property value |
+| `hxc edit` | Modify entity properties |
+| `hxc delete` | Remove an entity |
+| `hxc validate` | Validate registry integrity |
+| `hxc registry` | Manage registry configuration |
+
+See [docs/COMMANDS.md](docs/COMMANDS.md) for complete command reference.
+
+## MCP Integration
+
+HoxCore provides a Model Context Protocol (MCP) server for AI agent integration:
+
+```bash
+# Start MCP server
+hxc-mcp
+
+# Start in read-only mode
+hxc-mcp --read-only
+
+# Specify registry path
+hxc-mcp --registry /path/to/registry
+```
+
+### Available MCP Tools
+
+**Read Operations:**
+- `list_entities` - List and filter entities
+- `get_entity` - Get entity by ID/UID
+- `search_entities` - Search entities
+- `get_entity_property` - Get specific property
+- `validate_registry` - Validate registry integrity
+- `validate_entity` - Validate entity data
+
+**Write Operations:**
+- `init_registry` - Initialize new registry
+- `create_entity` - Create new entity
+- `edit_entity` - Modify entity
+- `delete_entity` - Remove entity
+
+See [docs/MCP_INTEGRATION.md](docs/MCP_INTEGRATION.md) for complete MCP documentation.
+
+## Configuration
+
+### Global Configuration
+
+Located at `~/.hxc/config.json`:
 
 ```json
 {
-  "mcpServers": {
-    "hoxcore": {
-      "command": "hxc",
-      "args": ["mcp", "--registry", "/path/to/your/registry"]
-    }
-  }
-}
-```
-To restrict the assistant to read-only access, add `"--read-only"` to the args list:
-
-```json
-{
-  "mcpServers": {
-    "hoxcore": {
-      "command": "hxc",
-      "args": ["mcp", "--registry", "/path/to/your/registry", "--read-only"]
-    }
-  }
+  "registry_path": "/path/to/default/registry"
 }
 ```
 
-### Available Tools
+### Registry Configuration
 
-The MCP server exposes tools that an LLM can call. By default all seven tools are available; start with `--read-only` to expose only the four read tools.
- 
-| Tool | Type | Description |
-|---|---|---|
-| `list_entities` | Read | List entities in the registry, with optional filters for type, status, tags, category, and parent |
-| `get_entity` | Read | Retrieve a specific entity by its ID or UID |
-| `search_entities` | Read | Full-text search across entity titles and descriptions |
-| `get_entity_property` | Read | Fetch a specific property from an entity, with support for list indexing and key filtering |
-| `create_entity` | Write | Create a new entity (program, project, mission, or action) in the registry |
-| `edit_entity` | Write | Update scalar fields or incrementally add/remove tags on an existing entity |
-| `delete_entity` | Write | Delete an entity; requires a two-step confirmation (`force=false` first, then `force=true`) |
+Located at `<registry>/config.yml`:
 
-### Available Resources
-
-Resources are accessible via `hxc://` URIs:
-
-| URI | Description |
-|---|---|
-| `hxc://entity/{identifier}` | A specific entity by ID or UID (YAML) |
-| `hxc://entities/{type}` | All entities of a given type (JSON) |
-| `hxc://hierarchy/{identifier}` | Entity hierarchy and relationships (JSON) |
-| `hxc://registry/stats` | Registry statistics and overview (JSON) |
-| `hxc://search?q={query}` | Search results for a query (JSON) |
-
-### Extending the Server
-
-You can register custom tools, resources, and prompts at runtime:
-
-```python
-from hxc.mcp.server import create_server
-
-server = create_server()
-
-# Register a custom tool
-def my_tool(registry_path=None, **kwargs):
-    """My custom tool description."""
-    return {"result": "..."}
-
-server.register_tool("my_tool", my_tool)
-
-# Register a custom prompt
-server.register_prompt({
-    "name": "my_prompt",
-    "description": "A helpful prompt template",
-    "arguments": [
-        {"name": "context", "description": "Context for the prompt", "required": True}
-    ]
-})
-
-server.run_stdio()
+```yaml
+version: "1.0"
+name: "My Registry"
+created: 2024-01-01
 ```
 
----
+## Design Principles
 
-## Contributing
+- **Git-like**: Immutable UIDs, version history, minimal magic
+- **Declarative**: No scripts in templates, no hidden behavior
+- **Universal**: Applicable beyond software development
+- **Composable**: Integrates with external tools instead of duplicating them
+- **Scalable**: Designed for thousands of entities with fast queries
+- **LLM-native**: Structured for both human and machine understanding
 
-Contributions are welcome! Please see [CONTRIBUTING](CONTRIBUTING.md) for details on our development workflow, including branch naming and test requirements.
+## Documentation
 
+| Document | Description |
+|----------|-------------|
+| [ARCHITECTURE.md](ARCHITECTURE.md) | System architecture and design |
+| [CONVENTIONS.md](CONVENTIONS.md) | Code conventions and standards |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution guidelines |
+| [docs/API.md](docs/API.md) | Python API reference |
+| [docs/COMMANDS.md](docs/COMMANDS.md) | CLI command reference |
+| [docs/ENTITY_MODEL.md](docs/ENTITY_MODEL.md) | Entity model specification |
+| [docs/MCP_INTEGRATION.md](docs/MCP_INTEGRATION.md) | MCP server documentation |
+
+## For AI Agents
+
+If you're an AI coding agent working with this codebase:
+
+1. **Start with**: [CLAUDE.md](CLAUDE.md) for AI-specific guidance
+2. **Architecture**: [ARCHITECTURE.md](ARCHITECTURE.md) for system design
+3. **Conventions**: [CONVENTIONS.md](CONVENTIONS.md) for coding standards
+4. **API Reference**: [docs/API.md](docs/API.md) for implementation details
+
+Key patterns:
+- Operations are in `src/hxc/core/operations/`
+- Commands are in `src/hxc/commands/`
+- MCP tools wrap operations in `src/hxc/mcp/tools.py`
+- All entity I/O uses path security validation
+
+## Development
+
+### Running Tests
+
+```bash
+pytest
+pytest --cov=src/hxc
+```
+
+### Code Quality
+
+```bash
+black src tests
+isort src tests
+flake8 src tests
+mypy src
+```
+
+### Building
+
+```bash
+python -m build
+```
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details.
+
+## Author
+
+Salvador D. Escobedo ([@SDEscobedo](https://github.com/SDEscobedo))
+
+## Links
+
+- **Repository**: https://github.com/SDEscobedo/hoxcore
+- **PyPI**: https://pypi.org/project/hoxcore/
+- **Issues**: https://github.com/SDEscobedo/hoxcore/issues
+```

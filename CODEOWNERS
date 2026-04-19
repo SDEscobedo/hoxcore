@@ -1,0 +1,106 @@
+# CODEOWNERS - HoxCore Repository
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+#
+# This file defines code owners for the HoxCore project.
+# Code owners are automatically requested for review when someone opens a
+# pull request that modifies code they own.
+#
+# Order matters: later patterns take precedence over earlier ones.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DEFAULT OWNER
+# All files default to the project maintainer
+# ─────────────────────────────────────────────────────────────────────────────
+*                                   @SDEscobedo
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CORE PACKAGE
+# Core business logic and operations
+# ─────────────────────────────────────────────────────────────────────────────
+/src/hxc/                           @SDEscobedo
+/src/hxc/core/                      @SDEscobedo
+/src/hxc/core/operations/           @SDEscobedo
+/src/hxc/core/enums.py              @SDEscobedo
+/src/hxc/core/config.py             @SDEscobedo
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CLI COMMANDS
+# Command-line interface implementation
+# ─────────────────────────────────────────────────────────────────────────────
+/src/hxc/cli.py                     @SDEscobedo
+/src/hxc/commands/                  @SDEscobedo
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MCP INTEGRATION
+# Model Context Protocol server for AI agent integration
+# ─────────────────────────────────────────────────────────────────────────────
+/src/hxc/mcp/                       @SDEscobedo
+/src/hxc/mcp/server.py              @SDEscobedo
+/src/hxc/mcp/tools.py               @SDEscobedo
+/src/hxc/mcp/resources.py           @SDEscobedo
+/src/hxc/mcp/prompts.py             @SDEscobedo
+
+# ─────────────────────────────────────────────────────────────────────────────
+# UTILITIES
+# Helper functions and security modules
+# ─────────────────────────────────────────────────────────────────────────────
+/src/hxc/utils/                     @SDEscobedo
+/src/hxc/utils/path_security.py     @SDEscobedo
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TESTS
+# Test suite and fixtures
+# ─────────────────────────────────────────────────────────────────────────────
+/tests/                             @SDEscobedo
+/tests/conftest.py                  @SDEscobedo
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DOCUMENTATION
+# Project documentation and AI agent context files
+# ─────────────────────────────────────────────────────────────────────────────
+/docs/                              @SDEscobedo
+*.md                                @SDEscobedo
+README.md                           @SDEscobedo
+ARCHITECTURE.md                     @SDEscobedo
+CONTRIBUTING.md                     @SDEscobedo
+CONVENTIONS.md                      @SDEscobedo
+CLAUDE.md                           @SDEscobedo
+
+# ─────────────────────────────────────────────────────────────────────────────
+# AI AGENT CONFIGURATION
+# Configuration files for AI coding assistants
+# ─────────────────────────────────────────────────────────────────────────────
+.cursorrules                        @SDEscobedo
+.windsurfrules                      @SDEscobedo
+/.github/copilot-instructions.md    @SDEscobedo
+
+# ─────────────────────────────────────────────────────────────────────────────
+# BUILD & CONFIGURATION
+# Project configuration and build files
+# ─────────────────────────────────────────────────────────────────────────────
+pyproject.toml                      @SDEscobedo
+setup.py                            @SDEscobedo
+setup.cfg                           @SDEscobedo
+MANIFEST.in                         @SDEscobedo
+requirements*.txt                   @SDEscobedo
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CI/CD & GITHUB
+# GitHub workflows and configuration
+# ─────────────────────────────────────────────────────────────────────────────
+/.github/                           @SDEscobedo
+/.github/workflows/                 @SDEscobedo
+/.github/ISSUE_TEMPLATE/            @SDEscobedo
+/.github/PULL_REQUEST_TEMPLATE/     @SDEscobedo
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STANDARDS & EXAMPLES
+# Reference implementations and examples
+# ─────────────────────────────────────────────────────────────────────────────
+/standards/                         @SDEscobedo
+
+# ─────────────────────────────────────────────────────────────────────────────
+# LICENSE & LEGAL
+# ─────────────────────────────────────────────────────────────────────────────
+LICENSE                             @SDEscobedo
+LICENSE*                            @SDEscobedo

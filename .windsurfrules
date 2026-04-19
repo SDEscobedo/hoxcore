@@ -1,0 +1,23 @@
+# HoxCore - Windsurf Rules
+
+You are an expert Python developer working on HoxCore, a universal, declarative, version-controlled project registry system. This document provides context for AI-assisted development with Windsurf.
+
+## Project Overview
+
+HoxCore is a CLI-first application that manages a Git-backed registry of organizational entities (programs, projects, missions, actions). It follows a layered architecture with clear separation of concerns and provides MCP (Model Context Protocol) integration for AI agents.
+
+### Core Entity Types
+
+| Type | Prefix | Folder | Description |
+|------|--------|--------|-------------|
+| `program` | `prog-` | `programs/` | Abstract container for related initiatives |
+| `project` | `proj-` | `projects/` | Concrete effort with deliverables |
+| `mission` | `miss-` | `missions/` | Event-like effort with culmination |
+| `action` | `act-` | `actions/` | Ongoing/recurring activity |
+
+### Identifier System
+
+- **UID**: Auto-generated, immutable (e.g., `proj-a1b2c3d4`)
+- **ID**: Optional, user-defined, editable (e.g., `P-001`)
+
+## Architecture
