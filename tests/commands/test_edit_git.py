@@ -1,16 +1,17 @@
 """
 Tests for the git commit functionality added to the edit command.
 """
+
 import os
-import subprocess
-import yaml
 import shutil
-import pytest
+import subprocess
 from pathlib import Path
-from unittest.mock import patch, MagicMock, call
+from unittest.mock import MagicMock, call, patch
+
+import pytest
+import yaml
 
 from hxc.commands.edit import EditCommand
-
 
 # ─── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -56,16 +57,28 @@ def temp_registry(tmp_path):
 @pytest.fixture
 def git_registry(temp_registry):
     """Registry that is also a proper git repository."""
-    subprocess.run(["git", "init"], cwd=temp_registry, check=True,
-                   capture_output=True)
-    subprocess.run(["git", "config", "user.email", "test@test.com"],
-                   cwd=temp_registry, check=True, capture_output=True)
-    subprocess.run(["git", "config", "user.name", "Test User"],
-                   cwd=temp_registry, check=True, capture_output=True)
-    subprocess.run(["git", "add", "."], cwd=temp_registry, check=True,
-                   capture_output=True)
-    subprocess.run(["git", "commit", "-m", "initial"],
-                   cwd=temp_registry, check=True, capture_output=True)
+    subprocess.run(["git", "init"], cwd=temp_registry, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "test@test.com"],
+        cwd=temp_registry,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "Test User"],
+        cwd=temp_registry,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "add", "."], cwd=temp_registry, check=True, capture_output=True
+    )
+    subprocess.run(
+        ["git", "commit", "-m", "initial"],
+        cwd=temp_registry,
+        check=True,
+        capture_output=True,
+    )
     return temp_registry
 
 
@@ -108,8 +121,10 @@ class TestGitAvailable:
             assert EditCommand._git_available() is False
 
     def test_returns_false_on_nonzero_exit(self):
-        with patch("hxc.utils.git.subprocess.run",
-                   side_effect=subprocess.CalledProcessError(1, "git")):
+        with patch(
+            "hxc.utils.git.subprocess.run",
+            side_effect=subprocess.CalledProcessError(1, "git"),
+        ):
             assert EditCommand._git_available() is False
 
 
@@ -200,7 +215,9 @@ class TestCommitChangesUnit:
         # Patch git_available to return True without calling subprocess
         # Then patch subprocess.run at the git module level for actual git commands
         with patch("hxc.utils.git.git_available", return_value=True):
-            with patch("hxc.utils.git.subprocess.run", return_value=mock_result) as mock_run:
+            with patch(
+                "hxc.utils.git.subprocess.run", return_value=mock_result
+            ) as mock_run:
                 EditCommand._commit_changes(
                     registry_path=str(git_registry),
                     file_path=file_path,
@@ -219,7 +236,9 @@ class TestCommitChangesUnit:
         mock_result.stderr = ""
 
         with patch("hxc.utils.git.git_available", return_value=True):
-            with patch("hxc.utils.git.subprocess.run", return_value=mock_result) as mock_run:
+            with patch(
+                "hxc.utils.git.subprocess.run", return_value=mock_result
+            ) as mock_run:
                 EditCommand._commit_changes(
                     registry_path=str(git_registry),
                     file_path=file_path,
@@ -246,7 +265,9 @@ class TestCommitChangesUnit:
         mock_result.stderr = ""
 
         with patch("hxc.utils.git.git_available", return_value=True):
-            with patch("hxc.utils.git.subprocess.run", return_value=mock_result) as mock_run:
+            with patch(
+                "hxc.utils.git.subprocess.run", return_value=mock_result
+            ) as mock_run:
                 EditCommand._commit_changes(
                     registry_path=str(git_registry),
                     file_path=file_path,
@@ -291,7 +312,9 @@ class TestCommitChangesUnit:
         mock_add_result.stderr = ""
 
         with patch("hxc.utils.git.git_available", return_value=True):
-            with patch("hxc.utils.git.subprocess.run", side_effect=[mock_add_result, error]):
+            with patch(
+                "hxc.utils.git.subprocess.run", side_effect=[mock_add_result, error]
+            ):
                 EditCommand._commit_changes(
                     registry_path=str(git_registry),
                     file_path=file_path,
@@ -313,7 +336,9 @@ class TestCommitChangesUnit:
         mock_add_result.stderr = ""
 
         with patch("hxc.utils.git.git_available", return_value=True):
-            with patch("hxc.utils.git.subprocess.run", side_effect=[mock_add_result, error]):
+            with patch(
+                "hxc.utils.git.subprocess.run", side_effect=[mock_add_result, error]
+            ):
                 EditCommand._commit_changes(
                     registry_path=str(git_registry),
                     file_path=file_path,
@@ -335,11 +360,14 @@ class TestNoCommitFlag:
     def _run_edit(self, registry_path, extra_args=None):
         """Helper: invoke EditCommand.execute via hxc.cli.main."""
         from hxc.cli import main
+
         args = ["edit", "P-GIT", "--set-title", "Updated Title"]
         if extra_args:
             args.extend(extra_args)
-        with patch("hxc.commands.registry.RegistryCommand.get_registry_path",
-                   return_value=str(registry_path)):
+        with patch(
+            "hxc.commands.registry.RegistryCommand.get_registry_path",
+            return_value=str(registry_path),
+        ):
             return main(args)
 
     def test_no_commit_flag_prevents_git_call(self, git_registry):
@@ -375,11 +403,14 @@ class TestRealGitCommit:
 
     def _run_edit(self, registry_path, args=None):
         from hxc.cli import main
+
         cmd = ["edit", "P-GIT", "--set-title", "Real Commit Title"]
         if args:
             cmd.extend(args)
-        with patch("hxc.commands.registry.RegistryCommand.get_registry_path",
-                   return_value=str(registry_path)):
+        with patch(
+            "hxc.commands.registry.RegistryCommand.get_registry_path",
+            return_value=str(registry_path),
+        ):
             return main(cmd)
 
     def test_commit_is_created_in_git_log(self, git_registry):
@@ -446,8 +477,11 @@ class TestRealGitCommit:
     def test_registry_without_git_edits_successfully(self, temp_registry, capsys):
         """Edit should succeed and warn gracefully when no git repo exists."""
         from hxc.cli import main
-        with patch("hxc.commands.registry.RegistryCommand.get_registry_path",
-                   return_value=str(temp_registry)):
+
+        with patch(
+            "hxc.commands.registry.RegistryCommand.get_registry_path",
+            return_value=str(temp_registry),
+        ):
             result = main(["edit", "P-GIT", "--set-title", "No Git Title"])
 
         assert result == 0
