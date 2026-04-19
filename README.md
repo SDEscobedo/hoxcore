@@ -1,4 +1,3 @@
-```markdown
 # HoxCore
 
 [![PyPI version](https://badge.fury.io/py/hoxcore.svg)](https://badge.fury.io/py/hoxcore)
@@ -341,4 +340,3 @@ Salvador D. Escobedo ([@SDEscobedo](https://github.com/SDEscobedo))
 - **Repository**: https://github.com/SDEscobedo/hoxcore
 - **PyPI**: https://pypi.org/project/hoxcore/
 - **Issues**: https://github.com/SDEscobedo/hoxcore/issues
-```
