@@ -84,7 +84,7 @@ jobs:
           # Update pyproject.toml in-place
           sed -i "s/^version = \"$OLD\"/version = \"$NEW\"/" pyproject.toml
           # Update __init__.py in-place
-           sed -i "s/__version__ = '$OLD'/__version__ = '$NEW'/" src/hxc/__init__.py
+           sed -i -E "s/__version__ = ['\"]$OLD['\"]/__version__ = '$NEW'/" src/hxc/__init__.py
           # Update documentation webpage
           sed -i "s/const HXC_VERSION = '$OLD'/const HXC_VERSION = '$NEW'/" docs/js/version.js
           echo "Bumped $OLD → $NEW"
