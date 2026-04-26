@@ -861,16 +861,98 @@ class TestTemplateParserIntegration:
 
     def test_parse_template_with_multiline_content(self, create_template_file):
         """Test parsing template with multiline file content"""
+        multiline_content = (
+            "# {{title}}\n\n"
+            "## Description\n\n"
+            "{{description}}\n\n"
+            "## Installation\n\n"
+            "bash\npip install {{id}}\n\n"
+        )
         template_data = {
             "name": "multiline-template",
             "version": "1.0",
             "files": [
                 {
                     "path": "README.md",
-                    "content": """# {{title}}
+                    "content": multiline_content,
+                },
+            ],
+        }
+        template_path = create_template_file(template_data)
 
-## Description
+        parser = TemplateParser()
+        result = parser.parse(template_path)
 
-{{description}}
+        assert "{{title}}" in result["files"][0]["content"]
+        assert "{{description}}" in result["files"][0]["content"]
+        assert "pip install {{id}}" in result["files"][0]["content"]
 
-## Installation
+    def test_parse_template_with_special_characters(self, create_template_file):
+        """Test parsing template with special characters in content"""
+        template_data = {
+            "name": "special-chars-template",
+            "version": "1.0",
+            "files": [
+                {
+                    "path": "config.yml",
+                    "content": "# Config\nname: '{{title}}'\nregex: '^[a-z]+$'\n",
+                },
+            ],
+        }
+        template_path = create_template_file(template_data)
+
+        parser = TemplateParser()
+        result = parser.parse(template_path)
+
+        assert "{{title}}" in result["files"][0]["content"]
+        assert "^[a-z]+$" in result["files"][0]["content"]
+
+    def test_parse_template_with_nested_structure(self, create_template_file):
+        """Test parsing template with deeply nested directory structure"""
+        template_data = {
+            "name": "nested-template",
+            "version": "1.0",
+            "structure": [
+                {"type": "directory", "path": "src"},
+                {"type": "directory", "path": "src/{{id}}"},
+                {"type": "directory", "path": "src/{{id}}/submodule"},
+                {"type": "directory", "path": "tests"},
+                {"type": "directory", "path": "tests/unit"},
+                {"type": "directory", "path": "tests/integration"},
+            ],
+        }
+        template_path = create_template_file(template_data)
+
+        parser = TemplateParser()
+        result = parser.parse(template_path)
+
+        assert len(result["structure"]) == 6
+        assert result["structure"][2]["path"] == "src/{{id}}/submodule"
+
+    def test_parse_template_preserves_order(self, create_template_file):
+        """Test that parsing preserves the order of list items"""
+        template_data = {
+            "name": "ordered-template",
+            "version": "1.0",
+            "structure": [
+                {"type": "directory", "path": "first"},
+                {"type": "directory", "path": "second"},
+                {"type": "directory", "path": "third"},
+            ],
+            "files": [
+                {"path": "a.txt", "content": "a"},
+                {"path": "b.txt", "content": "b"},
+                {"path": "c.txt", "content": "c"},
+            ],
+        }
+        template_path = create_template_file(template_data)
+
+        parser = TemplateParser()
+        result = parser.parse(template_path)
+
+        assert result["structure"][0]["path"] == "first"
+        assert result["structure"][1]["path"] == "second"
+        assert result["structure"][2]["path"] == "third"
+        assert result["files"][0]["path"] == "a.txt"
+        assert result["files"][1]["path"] == "b.txt"
+        assert result["files"][2]["path"] == "c.txt"
