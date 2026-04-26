@@ -13,6 +13,7 @@ core business logic including:
 - Entity retrieval with unified lookup logic
 - Property retrieval with validation and type-aware handling
 - Registry validation and integrity checking
+- Template scaffolding with declarative execution
 - ID uniqueness validation
 - Path security enforcement
 - Structured commit message generation
@@ -57,6 +58,18 @@ from hxc.core.operations.init import (
 from hxc.core.operations.list import (
     ListOperation,
     ListOperationError,
+)
+from hxc.core.operations.scaffold import (
+    PromptRequiredError,
+    ScaffoldExecutionError,
+    ScaffoldOperation,
+    ScaffoldOperationError,
+    ScaffoldOperationResult,
+    ScaffoldSecurityError,
+    TemplateNotFoundOperationError,
+    TemplateValidationError,
+    preview_scaffold,
+    scaffold_from_template,
 )
 from hxc.core.operations.show import EntityNotFoundError as ShowEntityNotFoundError
 from hxc.core.operations.show import (
@@ -113,4 +126,15 @@ __all__ = [
     "ValidateOperationError",
     "ValidationResult",
     "EntityValidationResult",
+    # Scaffold operation
+    "ScaffoldOperation",
+    "ScaffoldOperationError",
+    "ScaffoldOperationResult",
+    "TemplateNotFoundOperationError",
+    "TemplateValidationError",
+    "ScaffoldSecurityError",
+    "ScaffoldExecutionError",
+    "PromptRequiredError",
+    "scaffold_from_template",
+    "preview_scaffold",
 ]

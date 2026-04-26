@@ -53,6 +53,15 @@ from hxc.core.operations.registry import (
     RegistryOperation,
     RegistryOperationError,
 )
+from hxc.core.operations.scaffold import (
+    PromptRequiredError,
+    ScaffoldExecutionError,
+    ScaffoldOperation,
+    ScaffoldOperationError,
+    ScaffoldSecurityError,
+    TemplateNotFoundOperationError,
+    TemplateValidationError,
+)
 from hxc.core.operations.show import (
     InvalidEntityError,
     ShowOperation,
@@ -1417,6 +1426,663 @@ def _validate_entity_without_registry(
     return result
 
 
+# ─── TEMPLATE TOOLS ─────────────────────────────────────────────────────────
+
+
+def list_templates_tool(
+    include_registry: bool = True,
+    include_user: bool = True,
+    registry_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    List all available templates.
+
+    Templates are declarative scaffolding definitions that can be used to create
+    folder structures, files, and initialize repositories when creating new entities.
+    Templates are searched in two locations:
+    - Registry-local: `.hxc/templates/` within the registry
+    - User templates: `~/.hxc/templates/`
+
+    Args:
+        include_registry: Include registry-local templates (default: True)
+        include_user: Include user templates from ~/.hxc/templates/ (default: True)
+        registry_path: Optional registry path (uses default if not provided)
+
+    Returns:
+        Dictionary containing:
+        - success: bool
+        - templates: list of template info dictionaries with:
+            - id: str - Template identifier (path-based)
+            - path: str - Full path to template file
+            - source: str - 'registry' or 'user'
+            - name: str or None - Template name (if parseable)
+            - version: str or None - Template version (if parseable)
+            - description: str or None - Template description (if parseable)
+            - author: str or None - Template author (if parseable)
+            - valid: bool - Whether template is valid
+        - count: int - Number of templates found
+
+    Examples:
+        >>> list_templates_tool()
+        {
+            "success": True,
+            "templates": [
+                {
+                    "id": "software.dev/cli-tool/default",
+                    "path": "~/.hxc/templates/software.dev/cli-tool/default.yml",
+                    "source": "user",
+                    "name": "cli-tool-default",
+                    "version": "1.0",
+                    "description": "Standard CLI tool project structure",
+                    "valid": True
+                }
+            ],
+            "count": 1
+        }
+    """
+    try:
+        reg_path = _get_registry_path(registry_path)
+
+        operation = ScaffoldOperation(registry_path=reg_path)
+        templates = operation.list_templates(
+            include_registry=include_registry,
+            include_user=include_user,
+        )
+
+        return {
+            "success": True,
+            "templates": templates,
+            "count": len(templates),
+        }
+
+    except ScaffoldOperationError as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "templates": [],
+            "count": 0,
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Unexpected error: {e}",
+            "templates": [],
+            "count": 0,
+        }
+
+
+def show_template_tool(
+    template_ref: str,
+    registry_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Get detailed information about a template.
+
+    Templates are declarative scaffolding definitions that specify folder
+    structures, files to create, and Git initialization options. This tool
+    retrieves and parses a template to show its full definition.
+
+    Args:
+        template_ref: Template reference (path or identifier).
+                     Can be an explicit path, registry-local reference,
+                     or user template reference.
+        registry_path: Optional registry path (uses default if not provided)
+
+    Returns:
+        Dictionary containing:
+        - success: bool
+        - template: dict with template details (on success):
+            - path: str - Resolved template path
+            - name: str or None - Template name
+            - version: str or None - Template version
+            - description: str or None - Template description
+            - author: str or None - Template author
+            - structure: list - Directories to create
+            - files: list - Files to create
+            - copy: list - Files to copy
+            - git: dict or None - Git configuration
+            - variables: list - Variable definitions
+            - source: str - Template source ('explicit', 'registry', or 'user')
+        - error: str (only if success=False)
+        - searched_paths: list (only if template not found)
+
+    Examples:
+        >>> show_template_tool("software.dev/cli-tool/default")
+        {
+            "success": True,
+            "template": {
+                "path": "~/.hxc/templates/software.dev/cli-tool/default.yml",
+                "name": "cli-tool-default",
+                "version": "1.0",
+                "description": "Standard CLI tool project structure",
+                "author": "hoxcore",
+                "structure": [
+                    {"type": "directory", "path": "src/{{id}}"},
+                    {"type": "directory", "path": "tests"}
+                ],
+                "files": [
+                    {"path": "README.md", "content": "# {{title}}\\n..."}
+                ],
+                "git": {"init": true, "initial_commit": true},
+                "variables": [
+                    {"name": "title", "source": "entity"}
+                ],
+                "source": "user"
+            }
+        }
+    """
+    try:
+        if not template_ref:
+            return {
+                "success": False,
+                "error": "Template reference is required",
+                "template": None,
+            }
+
+        reg_path = _get_registry_path(registry_path)
+
+        operation = ScaffoldOperation(registry_path=reg_path)
+
+        info = operation.get_template_info(template_ref)
+
+        return {
+            "success": True,
+            "template": info,
+        }
+
+    except TemplateNotFoundOperationError as e:
+        return {
+            "success": False,
+            "error": f"Template not found: {e.template_ref}",
+            "template": None,
+            "searched_paths": e.searched_paths,
+        }
+    except TemplateValidationError as e:
+        return {
+            "success": False,
+            "error": f"Invalid template: {e}",
+            "template": None,
+        }
+    except ScaffoldSecurityError as e:
+        return {
+            "success": False,
+            "error": f"Security error: {e}",
+            "template": None,
+        }
+    except ScaffoldOperationError as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "template": None,
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Unexpected error: {e}",
+            "template": None,
+        }
+
+
+def validate_template_tool(
+    template_ref: str,
+    registry_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Validate a template file.
+
+    Validates that a template file exists, is valid YAML, and conforms to
+    the HoxCore template schema. Templates must be declarative only - no
+    script execution or shell commands are allowed.
+
+    Validation checks:
+    - File exists and is readable
+    - Valid YAML syntax
+    - Required fields present (name, version)
+    - Valid structure entries (directories only)
+    - Valid file entries (must have content or template reference)
+    - Valid variable definitions (entity, system, or prompt sources)
+    - No path traversal attempts (../)
+    - No absolute paths
+
+    Args:
+        template_ref: Template reference (path or identifier)
+        registry_path: Optional registry path (uses default if not provided)
+
+    Returns:
+        Dictionary containing:
+        - success: bool
+        - valid: bool - Whether the template is valid
+        - template_ref: str - The template reference
+        - template_path: str - Resolved path (on success)
+        - name: str or None - Template name (on success)
+        - version: str or None - Template version (on success)
+        - error: str (only if validation failed)
+        - searched_paths: list (only if template not found)
+
+    Examples:
+        >>> validate_template_tool("software.dev/cli-tool/default")
+        {
+            "success": True,
+            "valid": True,
+            "template_ref": "software.dev/cli-tool/default",
+            "template_path": "~/.hxc/templates/software.dev/cli-tool/default.yml",
+            "name": "cli-tool-default",
+            "version": "1.0"
+        }
+
+        >>> validate_template_tool("invalid-template")
+        {
+            "success": True,
+            "valid": False,
+            "template_ref": "invalid-template",
+            "error": "Template not found: invalid-template",
+            "searched_paths": [...]
+        }
+    """
+    try:
+        if not template_ref:
+            return {
+                "success": True,
+                "valid": False,
+                "template_ref": "",
+                "error": "Template reference is required",
+            }
+
+        reg_path = _get_registry_path(registry_path)
+
+        operation = ScaffoldOperation(registry_path=reg_path)
+
+        # Resolve and parse template (validation happens during parse)
+        template_path = operation.resolve_template(template_ref)
+        template_data = operation.parse_template(template_path)
+
+        return {
+            "success": True,
+            "valid": True,
+            "template_ref": template_ref,
+            "template_path": str(template_path),
+            "name": template_data.get("name"),
+            "version": template_data.get("version"),
+        }
+
+    except TemplateNotFoundOperationError as e:
+        return {
+            "success": True,
+            "valid": False,
+            "template_ref": template_ref,
+            "error": f"Template not found: {e.template_ref}",
+            "searched_paths": e.searched_paths,
+        }
+    except TemplateValidationError as e:
+        return {
+            "success": True,
+            "valid": False,
+            "template_ref": template_ref,
+            "error": f"Template validation failed: {e}",
+        }
+    except ScaffoldSecurityError as e:
+        return {
+            "success": True,
+            "valid": False,
+            "template_ref": template_ref,
+            "error": f"Security error: {e}",
+        }
+    except ScaffoldOperationError as e:
+        return {
+            "success": False,
+            "valid": False,
+            "template_ref": template_ref,
+            "error": str(e),
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "valid": False,
+            "template_ref": template_ref,
+            "error": f"Unexpected error: {e}",
+        }
+
+
+def preview_scaffold_tool(
+    template_ref: str,
+    output_path: str,
+    entity_data: Optional[Dict[str, Any]] = None,
+    prompt_values: Optional[Dict[str, Any]] = None,
+    registry_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Preview scaffolding without making changes (dry-run).
+
+    This tool shows what would be created by scaffolding operation without
+    actually creating any files or directories. Useful for verifying template
+    behavior before committing to changes.
+
+    Args:
+        template_ref: Template reference (path or identifier)
+        output_path: Path where scaffolding would be performed
+        entity_data: Optional entity data for variable substitution.
+                    Typically includes title, id, uid, description, etc.
+        prompt_values: Optional user-provided values for prompt variables
+        registry_path: Optional registry path (uses default if not provided)
+
+    Returns:
+        Dictionary containing:
+        - success: bool
+        - dry_run: bool - Always True for preview
+        - template_name: str or None - Template name
+        - template_version: str or None - Template version
+        - output_path: str - Resolved output path
+        - directories_created: list - Directories that would be created
+        - files_created: list - Files that would be created
+        - files_copied: list - Files that would be copied
+        - git_initialized: bool - Whether Git would be initialized
+        - git_committed: bool - Whether initial commit would be created
+        - total_items: int - Total items that would be created
+        - pending_prompts: list - Prompt variables that need values
+        - error: str (only if success=False)
+        - searched_paths: list (only if template not found)
+
+    Examples:
+        >>> preview_scaffold_tool(
+        ...     "software.dev/cli-tool/default",
+        ...     "./my-project",
+        ...     {"title": "My Project", "id": "my-proj"}
+        ... )
+        {
+            "success": True,
+            "dry_run": True,
+            "template_name": "cli-tool-default",
+            "output_path": "/home/user/my-project",
+            "directories_created": ["src/my-proj", "tests", "docs"],
+            "files_created": ["README.md", "src/my-proj/__init__.py"],
+            "files_copied": ["LICENSE"],
+            "git_initialized": True,
+            "git_committed": True,
+            "total_items": 6,
+            "pending_prompts": []
+        }
+    """
+    try:
+        if not template_ref:
+            return {
+                "success": False,
+                "error": "Template reference is required",
+                "dry_run": True,
+            }
+
+        if not output_path:
+            return {
+                "success": False,
+                "error": "Output path is required",
+                "dry_run": True,
+            }
+
+        reg_path = _get_registry_path(registry_path)
+
+        operation = ScaffoldOperation(registry_path=reg_path)
+
+        result = operation.preview(
+            template_ref=template_ref,
+            output_path=output_path,
+            entity_data=entity_data or {},
+            prompt_values=prompt_values,
+        )
+
+        return result.to_dict()
+
+    except TemplateNotFoundOperationError as e:
+        return {
+            "success": False,
+            "error": f"Template not found: {e.template_ref}",
+            "dry_run": True,
+            "searched_paths": e.searched_paths,
+        }
+    except TemplateValidationError as e:
+        return {
+            "success": False,
+            "error": f"Invalid template: {e}",
+            "dry_run": True,
+        }
+    except ScaffoldSecurityError as e:
+        return {
+            "success": False,
+            "error": f"Security error: {e}",
+            "dry_run": True,
+        }
+    except ScaffoldExecutionError as e:
+        return {
+            "success": False,
+            "error": f"Preview failed: {e}",
+            "dry_run": True,
+        }
+    except ScaffoldOperationError as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "dry_run": True,
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Unexpected error: {e}",
+            "dry_run": True,
+        }
+
+
+def scaffold_tool(
+    template_ref: str,
+    output_path: str,
+    entity_data: Optional[Dict[str, Any]] = None,
+    prompt_values: Optional[Dict[str, Any]] = None,
+    allow_non_empty: bool = False,
+    registry_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Execute scaffolding from a template.
+
+    Creates folder structures, files with content injection, copies template
+    assets, and optionally initializes a Git repository based on the template
+    definition. This is a write operation that creates files and directories.
+
+    Templates are declarative only with these security restrictions:
+    - No shell command execution
+    - No script execution
+    - No network access
+    - No arbitrary file reading
+    - No path traversal (../)
+    - Only read from designated template directories
+
+    Note: This tool is only available in read-write mode.
+
+    Args:
+        template_ref: Template reference (path or identifier)
+        output_path: Path where scaffolding should be performed.
+                    Must not exist or be empty (unless allow_non_empty=True)
+        entity_data: Optional entity data for variable substitution.
+                    Typically includes title, id, uid, description, etc.
+        prompt_values: Optional user-provided values for prompt variables.
+                      Required if template has prompt variables without defaults.
+        allow_non_empty: Allow scaffolding in non-empty directories (default: False)
+        registry_path: Optional registry path (uses default if not provided)
+
+    Returns:
+        Dictionary containing:
+        - success: bool
+        - dry_run: bool - Always False for actual scaffolding
+        - template_name: str or None - Template name
+        - template_version: str or None - Template version
+        - output_path: str - Resolved output path
+        - directories_created: list - Directories created
+        - files_created: list - Files created
+        - files_copied: list - Files copied
+        - git_initialized: bool - Whether Git was initialized
+        - git_committed: bool - Whether initial commit was created
+        - total_items: int - Total items created
+        - warnings: list - Any warnings during scaffolding
+        - error: str (only if success=False)
+        - searched_paths: list (only if template not found)
+        - pending_prompts: list (only if prompts required but not provided)
+
+    Examples:
+        >>> scaffold_tool(
+        ...     "software.dev/cli-tool/default",
+        ...     "./my-project",
+        ...     {"title": "My Project", "id": "my-proj"}
+        ... )
+        {
+            "success": True,
+            "dry_run": False,
+            "template_name": "cli-tool-default",
+            "output_path": "/home/user/my-project",
+            "directories_created": ["src/my-proj", "tests", "docs"],
+            "files_created": ["README.md", "src/my-proj/__init__.py"],
+            "files_copied": ["LICENSE"],
+            "git_initialized": True,
+            "git_committed": True,
+            "total_items": 6
+        }
+    """
+    try:
+        if not template_ref:
+            return {
+                "success": False,
+                "error": "Template reference is required",
+                "dry_run": False,
+            }
+
+        if not output_path:
+            return {
+                "success": False,
+                "error": "Output path is required",
+                "dry_run": False,
+            }
+
+        reg_path = _get_registry_path(registry_path)
+
+        operation = ScaffoldOperation(registry_path=reg_path)
+
+        result = operation.scaffold(
+            template_ref=template_ref,
+            output_path=output_path,
+            entity_data=entity_data or {},
+            prompt_values=prompt_values,
+            dry_run=False,
+            allow_non_empty=allow_non_empty,
+            require_all_prompts=True,
+        )
+
+        return result.to_dict()
+
+    except TemplateNotFoundOperationError as e:
+        return {
+            "success": False,
+            "error": f"Template not found: {e.template_ref}",
+            "dry_run": False,
+            "searched_paths": e.searched_paths,
+        }
+    except TemplateValidationError as e:
+        return {
+            "success": False,
+            "error": f"Invalid template: {e}",
+            "dry_run": False,
+        }
+    except ScaffoldSecurityError as e:
+        return {
+            "success": False,
+            "error": f"Security error: {e}",
+            "dry_run": False,
+        }
+    except PromptRequiredError as e:
+        return {
+            "success": False,
+            "error": f"Prompt values required: {e}",
+            "dry_run": False,
+            "pending_prompts": e.required_prompts,
+        }
+    except ScaffoldExecutionError as e:
+        return {
+            "success": False,
+            "error": f"Scaffolding failed: {e}",
+            "dry_run": False,
+        }
+    except ScaffoldOperationError as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "dry_run": False,
+        }
+    except PathSecurityError as e:
+        return {
+            "success": False,
+            "error": f"Security error: {e}",
+            "dry_run": False,
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Unexpected error: {e}",
+            "dry_run": False,
+        }
+
+
+def init_template_directories_tool(
+    registry_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Initialize template directories.
+
+    Creates the user templates directory (~/.hxc/templates/) and optionally
+    the registry templates directory (.hxc/templates/) if a registry is
+    configured.
+
+    Note: This tool is only available in read-write mode.
+
+    Args:
+        registry_path: Optional registry path (uses default if not provided)
+
+    Returns:
+        Dictionary containing:
+        - success: bool
+        - user_path: str or None - Created user templates directory
+        - registry_path: str or None - Created registry templates directory
+        - error: str (only if success=False)
+
+    Examples:
+        >>> init_template_directories_tool()
+        {
+            "success": True,
+            "user_path": "/home/user/.hxc/templates",
+            "registry_path": "/path/to/registry/.hxc/templates"
+        }
+    """
+    try:
+        reg_path = _get_registry_path(registry_path)
+
+        operation = ScaffoldOperation(registry_path=reg_path)
+        result = operation.ensure_template_directories()
+
+        return {
+            "success": True,
+            "user_path": str(result["user"]) if result.get("user") else None,
+            "registry_path": str(result["registry"]) if result.get("registry") else None,
+        }
+
+    except ScaffoldOperationError as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "user_path": None,
+            "registry_path": None,
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Unexpected error: {e}",
+            "user_path": None,
+            "registry_path": None,
+        }
+
+
 # ─── WRITE TOOLS ────────────────────────────────────────────────────────────
 
 
@@ -1431,6 +2097,9 @@ def create_entity_tool(
     parent: Optional[str] = None,
     start_date: Optional[str] = None,
     due_date: Optional[str] = None,
+    template: Optional[str] = None,
+    scaffold: bool = False,
+    scaffold_output: Optional[str] = None,
     use_git: bool = True,
     registry_path: Optional[str] = None,
 ) -> Dict[str, Any]:
@@ -1440,6 +2109,9 @@ def create_entity_tool(
     This tool performs git-aware creation by default, staging and committing the
     new entity file with a structured commit message. ID uniqueness is validated
     before creation to ensure data integrity.
+
+    Optionally, can scaffold a project structure from a template when creating
+    the entity. Use the scaffold parameter to trigger scaffolding.
 
     Args:
         type: Entity type — one of program | project | mission | action
@@ -1452,12 +2124,49 @@ def create_entity_tool(
         parent: Optional parent entity UID or ID
         start_date: Optional start date in YYYY-MM-DD format (default: today)
         due_date: Optional due date in YYYY-MM-DD format
+        template: Optional template reference to store in entity and/or use for scaffolding
+        scaffold: If True and template is provided, scaffold project structure (default: False)
+        scaffold_output: Output directory for scaffolding (default: current directory with entity ID)
         use_git: Whether to commit the change to git (default: True)
         registry_path: Optional registry path (uses default if not provided)
 
     Returns:
-        Dictionary with uid, id, file_path, entity, and git_committed on success;
+        Dictionary with uid, id, file_path, entity, and git_committed on success.
+        If scaffold=True, also includes scaffold_result with scaffolding details.
         error message on failure.
+
+    Examples:
+        >>> create_entity_tool("project", "My CLI Tool", template="software.dev/cli-tool/default")
+        {
+            "success": True,
+            "uid": "abc12345",
+            "id": "my_cli_tool",
+            "file_path": "/registry/projects/proj-abc12345.yml",
+            "entity": {...},
+            "git_committed": True
+        }
+
+        >>> create_entity_tool(
+        ...     "project",
+        ...     "My CLI Tool",
+        ...     template="software.dev/cli-tool/default",
+        ...     scaffold=True,
+        ...     scaffold_output="./my-cli-tool"
+        ... )
+        {
+            "success": True,
+            "uid": "abc12345",
+            "id": "my_cli_tool",
+            "file_path": "/registry/projects/proj-abc12345.yml",
+            "entity": {...},
+            "git_committed": True,
+            "scaffold_result": {
+                "success": True,
+                "directories_created": ["src/my_cli_tool", "tests"],
+                "files_created": ["README.md"],
+                ...
+            }
+        }
     """
     try:
         entity_type = EntityType.from_string(type)
@@ -1473,6 +2182,24 @@ def create_entity_tool(
     if not reg_path:
         return {"success": False, "error": "No registry found"}
 
+    # Validate scaffolding options
+    if scaffold and not template:
+        # Check if category has a variant that can be used as template
+        if category:
+            try:
+                scaffold_op = ScaffoldOperation(registry_path=reg_path)
+                parsed = scaffold_op.parse_category_variant(category)
+                if parsed.has_variant:
+                    template = parsed.template_path
+            except Exception:
+                pass
+
+        if not template:
+            return {
+                "success": False,
+                "error": "scaffold=True requires a template or a category with variant notation",
+            }
+
     operation = CreateOperation(reg_path)
 
     try:
@@ -1487,10 +2214,11 @@ def create_entity_tool(
             category=category,
             tags=tags,
             parent=parent,
+            template=template,
             use_git=use_git,
         )
 
-        return {
+        response = {
             "success": True,
             "uid": result["uid"],
             "id": result["id"],
@@ -1498,6 +2226,24 @@ def create_entity_tool(
             "entity": result["entity"],
             "git_committed": result.get("git_committed", False),
         }
+
+        # Execute scaffolding if requested
+        if scaffold and template:
+            scaffold_result = _execute_scaffolding_for_create(
+                template_ref=template,
+                entity_data=result["entity"],
+                output_path=scaffold_output,
+                registry_path=reg_path,
+            )
+            response["scaffold_result"] = scaffold_result
+
+            # If scaffolding failed, note it but don't fail the whole operation
+            if not scaffold_result.get("success"):
+                response["scaffold_warning"] = (
+                    f"Entity created but scaffolding failed: {scaffold_result.get('error')}"
+                )
+
+        return response
 
     except DuplicateIdError as e:
         return {"success": False, "error": str(e)}
@@ -1509,6 +2255,80 @@ def create_entity_tool(
         return {"success": False, "error": f"Invalid entity type: {e}"}
     except Exception as e:
         return {"success": False, "error": f"Unexpected error: {e}"}
+
+
+def _execute_scaffolding_for_create(
+    template_ref: str,
+    entity_data: Dict[str, Any],
+    output_path: Optional[str],
+    registry_path: str,
+) -> Dict[str, Any]:
+    """
+    Execute scaffolding as part of entity creation.
+
+    Args:
+        template_ref: Template reference (path or identifier)
+        entity_data: Entity data for variable substitution
+        output_path: Output directory (defaults to current directory with entity ID)
+        registry_path: Registry path for template resolution
+
+    Returns:
+        Dictionary with scaffolding result
+    """
+    # Determine output path
+    if output_path:
+        scaffold_path = Path(output_path).resolve()
+    else:
+        # Default to current directory with entity ID as subdirectory
+        entity_id = entity_data.get("id", entity_data.get("uid", "project"))
+        scaffold_path = Path.cwd() / entity_id
+
+    try:
+        operation = ScaffoldOperation(registry_path=registry_path)
+
+        result = operation.scaffold(
+            template_ref=template_ref,
+            output_path=scaffold_path,
+            entity_data=entity_data,
+            dry_run=False,
+            allow_non_empty=False,
+            require_all_prompts=False,
+        )
+
+        return result.to_dict()
+
+    except TemplateNotFoundOperationError as e:
+        return {
+            "success": False,
+            "error": f"Template not found: {e.template_ref}",
+            "searched_paths": e.searched_paths,
+        }
+    except TemplateValidationError as e:
+        return {
+            "success": False,
+            "error": f"Invalid template: {e}",
+        }
+    except ScaffoldSecurityError as e:
+        return {
+            "success": False,
+            "error": f"Security error: {e}",
+        }
+    except PromptRequiredError as e:
+        return {
+            "success": False,
+            "error": f"Prompt values required for scaffolding",
+            "pending_prompts": e.required_prompts,
+        }
+    except ScaffoldExecutionError as e:
+        return {
+            "success": False,
+            "error": f"Scaffolding failed: {e}",
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Scaffolding error: {e}",
+        }
 
 
 def edit_entity_tool(
