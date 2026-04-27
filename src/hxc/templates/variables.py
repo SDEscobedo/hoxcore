@@ -259,14 +259,15 @@ class TemplateVariables:
                 variable_name=name,
             )
 
-    def add_prompt_variables(self, prompt_values: Dict[str, Any]) -> None:
+    def add_prompt_variables(self, prompt_values: Optional[Dict[str, Any]]) -> None:
         """
         Add user-provided prompt variables.
 
         Args:
             prompt_values: Dictionary of prompt variable names to values
         """
-        self._variables.update(prompt_values)
+        if prompt_values:
+            self._variables.update(prompt_values)
 
     def register_prompt_definition(
         self,
@@ -294,10 +295,8 @@ class TemplateVariables:
             "default": default,
         }
         self._prompt_definitions.append(definition)
-
-        # If there's a default and the variable isn't already set, use it
-        if default is not None and name not in self._variables:
-            self._variables[name] = default
+        # NOTE: We don't auto-add default to _variables here.
+        # The caller (resolve_from_template_definition) handles defaults separately.
 
     def get_pending_prompts(self) -> List[Dict[str, Any]]:
         """
@@ -365,6 +364,9 @@ class TemplateVariables:
             elif source == "prompt":
                 # Register for prompting
                 self.register_prompt_definition(name, source, default)
+                # If there's a default value, use it as the resolved value
+                if default is not None:
+                    self._variables[name] = default
 
         # Also add entity variables for common fields
         self.add_entity_variables(entity_data)
