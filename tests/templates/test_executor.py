@@ -493,20 +493,48 @@ class TestTemplateExecutorCreateFiles:
 
         assert (tmp_path / "deep" / "nested" / "path" / "file.txt").exists()
 
-    def test_create_file_with_template_reference(self, template_with_file_references):
+    def test_create_file_with_template_reference(self, tmp_path):
         """Test creating file with template reference"""
-        template_path = template_with_file_references / "template.yml"
-        with open(template_path) as f:
-            template_data = yaml.safe_load(f)
-
-        template_data["_source_path"] = str(template_path)
+        # Create template directory structure
+        template_dir = tmp_path / "template"
+        template_dir.mkdir()
+        
+        # Create gitignore directory and template file
+        gitignore_dir = template_dir / "gitignore"
+        gitignore_dir.mkdir()
+        (gitignore_dir / "python.txt").write_text(
+            "__pycache__/\n*.py[cod]\n*.egg-info/\ndist/\nbuild/\n.venv/\n"
+        )
+        
+        # Create readme template file
+        (template_dir / "readme.txt").write_text(
+            "# {{title}}\n\n{{description}}\n\n## Usage\n\nTODO\n"
+        )
+        
+        # Create template definition
+        template_data = {
+            "name": "template-with-refs",
+            "version": "1.0",
+            "_source_path": str(template_dir / "template.yml"),
+            "variables": [
+                {"name": "title", "source": "entity"},
+                {"name": "description", "source": "entity"},
+            ],
+            "structure": [
+                {"type": "directory", "path": "src"},
+            ],
+            "files": [
+                {"path": ".gitignore", "template": "gitignore/python.txt"},
+                {"path": "README.md", "template": "readme.txt"},
+            ],
+        }
 
         variables = TemplateVariables()
         variables.add_variable("title", "My Project")
         variables.add_variable("description", "A test project")
         executor = TemplateExecutor(template_data, variables)
 
-        output_path = template_with_file_references.parent / "output"
+        output_path = tmp_path / "output"
         output_path.mkdir()
 
         result = ScaffoldResult(output_path=str(output_path))
@@ -1311,32 +1339,32 @@ class TestTemplateExecutorGetRequiredPrompts:
 class TestTemplateExecutorFromTemplateFile:
     """Tests for from_template_file factory method"""
 
-    def test_from_template_file_creates_executor(self, template_file, sample_entity_data):
+    def test_from_template_file_creates_executor(self, cli_tool_template_file, sample_entity_data):
         """Test that from_template_file creates an executor"""
         executor = TemplateExecutor.from_template_file(
-            template_file, sample_entity_data
+            cli_tool_template_file, sample_entity_data
         )
 
         assert isinstance(executor, TemplateExecutor)
-        assert executor.template["name"] == "full-template"
+        assert executor.template["name"] == "cli-tool-default"
 
     def test_from_template_file_with_prompt_values(
-        self, template_file, sample_entity_data, prompt_values
+        self, cli_tool_template_file, sample_entity_data, prompt_values
     ):
         """Test from_template_file with prompt values"""
         executor = TemplateExecutor.from_template_file(
-            template_file, sample_entity_data, prompt_values=prompt_values
+            cli_tool_template_file, sample_entity_data, prompt_values=prompt_values
         )
 
         assert executor.variables.get_variable("author_name") == "Test Author"
 
-    def test_from_template_file_sets_base_path(self, template_file, sample_entity_data):
+    def test_from_template_file_sets_base_path(self, cli_tool_template_file, sample_entity_data):
         """Test that from_template_file sets template_base_path"""
         executor = TemplateExecutor.from_template_file(
-            template_file, sample_entity_data
+            cli_tool_template_file, sample_entity_data
         )
 
-        assert executor.template_base_path == template_file.parent.resolve()
+        assert executor.template_base_path == cli_tool_template_file.parent.resolve()
 
 
 class TestTemplateExecutorValidateOutputPath:
@@ -1413,10 +1441,10 @@ class TestTemplateExecutorValidateOutputPath:
 class TestTemplateExecutorGetTemplateInfo:
     """Tests for get_template_info method"""
 
-    def test_get_template_info_returns_metadata(self, full_template_data):
+    def test_get_template_info_returns_metadata(self, full_template_data_no_copy):
         """Test that get_template_info returns template metadata"""
         variables = TemplateVariables()
-        executor = TemplateExecutor(full_template_data, variables)
+        executor = TemplateExecutor(full_template_data_no_copy, variables)
 
         info = executor.get_template_info()
 
@@ -1425,10 +1453,10 @@ class TestTemplateExecutorGetTemplateInfo:
         assert info["description"] == "A complete template for testing"
         assert info["author"] == "test-author"
 
-    def test_get_template_info_includes_counts(self, full_template_data):
+    def test_get_template_info_includes_counts(self, full_template_data_no_copy):
         """Test that get_template_info includes counts"""
         variables = TemplateVariables()
-        executor = TemplateExecutor(full_template_data, variables)
+        executor = TemplateExecutor(full_template_data_no_copy, variables)
 
         info = executor.get_template_info()
 
@@ -1436,10 +1464,10 @@ class TestTemplateExecutorGetTemplateInfo:
         assert "files_count" in info
         assert "copy_count" in info
 
-    def test_get_template_info_includes_git_flags(self, full_template_data):
+    def test_get_template_info_includes_git_flags(self, full_template_data_no_copy):
         """Test that get_template_info includes git flags"""
         variables = TemplateVariables()
-        executor = TemplateExecutor(full_template_data, variables)
+        executor = TemplateExecutor(full_template_data_no_copy, variables)
 
         info = executor.get_template_info()
 
@@ -1644,14 +1672,15 @@ class TestExceptionClasses:
 class TestExecuteTemplateFunction:
     """Tests for execute_template module-level function"""
 
-    def test_execute_template_basic(self, template_file, sample_entity_data, tmp_path):
+    def test_execute_template_basic(self, cli_tool_template_file, sample_entity_data, tmp_path):
         """Test execute_template function"""
         output_path = tmp_path / "output"
 
         result = execute_template(
-            template_path=template_file,
+            template_path=cli_tool_template_file,
             output_path=output_path,
             entity_data=sample_entity_data,
+            prompt_values={"author_name": "Test Author"},
             dry_run=False,
         )
 
@@ -1659,29 +1688,30 @@ class TestExecuteTemplateFunction:
         assert result.success is True
 
     def test_execute_template_dry_run(
-        self, template_file, sample_entity_data, tmp_path
+        self, cli_tool_template_file, sample_entity_data, tmp_path
     ):
         """Test execute_template in dry run mode"""
         output_path = tmp_path / "output"
         output_path.mkdir()
 
         result = execute_template(
-            template_path=template_file,
+            template_path=cli_tool_template_file,
             output_path=output_path,
             entity_data=sample_entity_data,
+            prompt_values={"author_name": "Test Author"},
             dry_run=True,
         )
 
         assert result.dry_run is True
 
     def test_execute_template_with_prompt_values(
-        self, template_file, sample_entity_data, tmp_path, prompt_values
+        self, cli_tool_template_file, sample_entity_data, tmp_path, prompt_values
     ):
         """Test execute_template with prompt values"""
         output_path = tmp_path / "output"
 
         result = execute_template(
-            template_path=template_file,
+            template_path=cli_tool_template_file,
             output_path=output_path,
             entity_data=sample_entity_data,
             prompt_values=prompt_values,
@@ -1695,23 +1725,24 @@ class TestPreviewTemplateFunction:
     """Tests for preview_template module-level function"""
 
     def test_preview_template_basic(
-        self, template_file, sample_entity_data, tmp_path
+        self, cli_tool_template_file, sample_entity_data, tmp_path
     ):
         """Test preview_template function"""
         output_path = tmp_path / "output"
         output_path.mkdir()
 
         result = preview_template(
-            template_path=template_file,
+            template_path=cli_tool_template_file,
             output_path=output_path,
             entity_data=sample_entity_data,
+            prompt_values={"author_name": "Test Author"},
         )
 
         assert isinstance(result, ScaffoldResult)
         assert result.dry_run is True
 
     def test_preview_template_does_not_modify_filesystem(
-        self, template_file, sample_entity_data, tmp_path
+        self, cli_tool_template_file, sample_entity_data, tmp_path
     ):
         """Test that preview_template does not modify filesystem"""
         output_path = tmp_path / "output"
@@ -1720,9 +1751,10 @@ class TestPreviewTemplateFunction:
         initial_contents = list(output_path.iterdir())
 
         result = preview_template(
-            template_path=template_file,
+            template_path=cli_tool_template_file,
             output_path=output_path,
             entity_data=sample_entity_data,
+            prompt_values={"author_name": "Test Author"},
         )
 
         final_contents = list(output_path.iterdir())

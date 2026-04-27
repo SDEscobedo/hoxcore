@@ -38,6 +38,13 @@ class TemplateResolutionError(TemplateResolverError):
         super().__init__(message)
 
 
+# Common hierarchy segments that are part of category paths, not author names
+_COMMON_HIERARCHY_SEGMENTS = frozenset({
+    'dev', 'org', 'com', 'net', 'io', 'co', 'gov', 'edu', 'api', 'app',
+    'web', 'cli', 'lib', 'pkg', 'src', 'doc', 'docs', 'test', 'tests'
+})
+
+
 @dataclass
 class CategoryVariant:
     """
@@ -76,12 +83,15 @@ class CategoryVariant:
             return None
 
         # Convert category to path format
-        # e.g., "software.dev/cli-tool" -> "software.dev/cli-tool"
-        category_path = self.category.replace(".", "/").replace("//", "/")
+        # e.g., "software.dev/cli-tool" -> "software/dev/cli-tool"
+        category_path = self.category.replace(".", "/")
+        # Clean up any double slashes
+        while "//" in category_path:
+            category_path = category_path.replace("//", "/")
 
         # Combine with variant
-        # e.g., "software.dev/cli-tool" + "johndoe/latex-v2"
-        #    -> "software.dev/cli-tool/johndoe/latex-v2"
+        # e.g., "software/dev/cli-tool" + "johndoe/latex-v2"
+        #    -> "software/dev/cli-tool/johndoe/latex-v2"
         return f"{category_path}/{self.variant}"
 
     @classmethod
@@ -91,13 +101,12 @@ class CategoryVariant:
 
         The format is: `category-path.variant` where:
         - category-path can contain dots and slashes for hierarchy
-        - variant is separated by the LAST dot that is followed by
-          either an alphanumeric char or a path-like structure (author/name)
+        - variant is separated by a dot and can be:
+          - A simple identifier (e.g., "default")
+          - An author/variant pattern (e.g., "johndoe/latex-v2")
 
-        Rules:
-        - A dot followed by a path containing `/` indicates a variant
-        - A single word after the last dot is treated as a variant
-        - Dots within the category hierarchy are preserved
+        The key distinction is that common hierarchy segments (like "dev", "org")
+        followed by a slash are part of the category, not an author/variant.
 
         Examples:
             "software.dev/cli-tool" -> category="software.dev/cli-tool", variant=None
@@ -116,64 +125,49 @@ class CategoryVariant:
 
         category_string = category_string.strip()
 
-        # Pattern to detect variant:
-        # Look for the last dot that is followed by what looks like a variant
-        # A variant is either:
-        # 1. A simple identifier (alphanumeric + hyphens/underscores)
-        # 2. An author/name pattern (contains a slash)
+        if not category_string:
+            return cls(category="", variant=None)
 
-        # Find potential split points (dots not inside a path segment)
-        # We want to find the last dot that separates category from variant
+        # Find all dot positions
+        dot_positions = [i for i, c in enumerate(category_string) if c == '.']
 
-        # Strategy: work backwards from the end to find the variant split point
-        # The variant starts after a dot and either:
-        # - Contains a slash (author/name pattern)
-        # - Is a single identifier at the end
+        if not dot_positions:
+            # No dots, entire string is category
+            return cls(category=category_string, variant=None)
 
-        # Find all dots that could be variant separators
-        last_slash_idx = category_string.rfind("/")
+        # Check from right to left for valid variant patterns
+        for dot_idx in reversed(dot_positions):
+            after_dot = category_string[dot_idx + 1:]
+            before_dot = category_string[:dot_idx]
 
-        # If there's a slash, we need to check if there's a dot before it
-        # that could indicate a variant like "category.author/variant"
-        if last_slash_idx > 0:
-            # Check for pattern like "something.author/variant"
-            # Find the last dot before this potential author/variant section
-            before_slash = category_string[:last_slash_idx]
-            dot_idx = before_slash.rfind(".")
+            # Skip if either part would be empty
+            if not after_dot or not before_dot:
+                continue
 
-            if dot_idx > 0:
-                potential_category = category_string[:dot_idx]
-                potential_variant = category_string[dot_idx + 1 :]
+            # Case 1: Simple identifier (no slash) - e.g., "default"
+            if '/' not in after_dot:
+                # Must be a valid identifier at the end
+                if re.match(r'^[a-zA-Z0-9][a-zA-Z0-9_-]*$', after_dot):
+                    return cls(category=before_dot, variant=after_dot)
 
-                # Validate that what comes after the dot looks like a variant
-                # (starts with alphanumeric, contains a slash)
-                if (
-                    potential_variant
-                    and potential_variant[0].isalnum()
-                    and "/" in potential_variant
-                ):
-                    return cls(category=potential_category, variant=potential_variant)
+            # Case 2: Author/variant pattern (contains slash) - e.g., "johndoe/latex-v2"
+            else:
+                # Split on the first slash to get author and variant name
+                slash_idx = after_dot.find('/')
+                author_part = after_dot[:slash_idx]
+                variant_name = after_dot[slash_idx + 1:]
 
-        # No author/variant pattern found, check for simple variant (last segment after dot)
-        # But only if the last segment doesn't contain a slash (which would be part of category)
-        last_dot_idx = category_string.rfind(".")
+                # Validate both parts are valid identifiers
+                if (author_part and variant_name and
+                    re.match(r'^[a-zA-Z][a-zA-Z0-9_-]*$', author_part) and
+                    re.match(r'^[a-zA-Z0-9][a-zA-Z0-9_-]*$', variant_name)):
 
-        if last_dot_idx > 0:
-            after_last_dot = category_string[last_dot_idx + 1 :]
+                    # Check if author_part looks like an author name (not a common segment)
+                    # Common segments like "dev", "org" are part of category hierarchy
+                    if author_part.lower() not in _COMMON_HIERARCHY_SEGMENTS:
+                        return cls(category=before_dot, variant=after_dot)
 
-            # If the part after the last dot doesn't contain a slash,
-            # it might be a simple variant like "category.default"
-            if "/" not in after_last_dot and after_last_dot:
-                # Check if this looks like a variant (alphanumeric identifier)
-                if re.match(r"^[a-zA-Z0-9][a-zA-Z0-9_-]*$", after_last_dot):
-                    potential_category = category_string[:last_dot_idx]
-                    # Make sure the category part is substantial
-                    if potential_category:
-                        return cls(
-                            category=potential_category, variant=after_last_dot
-                        )
-
-        # No variant detected, entire string is the category
+        # No valid variant found, entire string is category
         return cls(category=category_string, variant=None)
 
     def __str__(self) -> str:

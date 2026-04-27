@@ -153,6 +153,8 @@ def full_template_data() -> Dict[str, Any]:
     Return a complete template definition with all supported fields.
 
     Useful for testing full template parsing and validation.
+    Note: This template includes a 'copy' entry. When used with template_file
+    fixture, assets will be created alongside the template.
     """
     return {
         "name": "full-template",
@@ -184,6 +186,49 @@ def full_template_data() -> Dict[str, Any]:
         ],
         "copy": [
             {"source": "assets/LICENSE", "destination": "LICENSE"},
+        ],
+        "git": {
+            "init": True,
+            "initial_commit": True,
+            "commit_message": "Initial commit from template: {{title}}",
+        },
+    }
+
+
+@pytest.fixture
+def full_template_data_no_copy() -> Dict[str, Any]:
+    """
+    Return a complete template definition without copy operations.
+
+    Useful for testing template parsing without requiring asset files.
+    """
+    return {
+        "name": "full-template",
+        "version": "1.0",
+        "description": "A complete template for testing",
+        "author": "test-author",
+        "variables": [
+            {"name": "title", "source": "entity"},
+            {"name": "id", "source": "entity"},
+            {"name": "description", "source": "entity"},
+            {"name": "year", "source": "system", "format": "%Y"},
+            {"name": "date", "source": "system"},
+            {"name": "author_name", "source": "prompt", "default": "Unknown Author"},
+        ],
+        "structure": [
+            {"type": "directory", "path": "src/{{id}}"},
+            {"type": "directory", "path": "tests"},
+            {"type": "directory", "path": "docs"},
+        ],
+        "files": [
+            {
+                "path": "README.md",
+                "content": "# {{title}}\n\nCreated: {{year}}\nAuthor: {{author_name}}\n\n{{description}}",
+            },
+            {
+                "path": "src/{{id}}/__init__.py",
+                "content": '"""{{title}} - Main module"""\n__version__ = "0.1.0"',
+            },
         ],
         "git": {
             "init": True,
@@ -358,19 +403,28 @@ def invalid_template_absolute_path() -> Dict[str, Any]:
 @pytest.fixture
 def template_file(tmp_path, full_template_data) -> Generator[Path, None, None]:
     """
-    Create a temporary template YAML file.
+    Create a temporary template YAML file with required assets.
 
     Returns the path to a valid template file.
+    Assets referenced in the template are also created.
     """
-    template_path = tmp_path / "template.yml"
+    template_dir = tmp_path / "template_dir"
+    template_dir.mkdir(parents=True)
+
+    # Create assets directory and files referenced in full_template_data
+    assets_dir = template_dir / "assets"
+    assets_dir.mkdir()
+    (assets_dir / "LICENSE").write_text("MIT License\n\nCopyright (c) 2024\n")
+
+    template_path = template_dir / "template.yml"
     with open(template_path, "w") as f:
         yaml.dump(full_template_data, f, default_flow_style=False)
 
     yield template_path
 
     # Clean up
-    if template_path.exists():
-        template_path.unlink()
+    if template_dir.exists():
+        shutil.rmtree(template_dir)
 
 
 @pytest.fixture
@@ -432,7 +486,7 @@ def registry_with_templates(temp_registry, cli_tool_template_data) -> Path:
 
 
 @pytest.fixture
-def user_templates_with_content(user_templates_dir, full_template_data) -> Path:
+def user_templates_with_content(user_templates_dir, full_template_data_no_copy) -> Path:
     """
     Create a user templates directory with template files.
 
@@ -440,11 +494,11 @@ def user_templates_with_content(user_templates_dir, full_template_data) -> Path:
     - custom/my-template.yml
     - academic/paper/latex.yml
     """
-    # Create custom template
+    # Create custom template (using template without copy to avoid asset issues)
     (user_templates_dir / "custom").mkdir(parents=True)
     custom_path = user_templates_dir / "custom" / "my-template.yml"
     with open(custom_path, "w") as f:
-        yaml.dump(full_template_data, f, default_flow_style=False)
+        yaml.dump(full_template_data_no_copy, f, default_flow_style=False)
 
     # Create academic paper template
     (user_templates_dir / "academic" / "paper").mkdir(parents=True)
@@ -527,14 +581,16 @@ def template_with_file_references(tmp_path) -> Generator[Path, None, None]:
     template_dir.mkdir(parents=True)
 
     # Create template content files
-    (template_dir / "gitignore" / "python.txt").mkdir(parents=True, exist_ok=False)
-    # Correct the path - gitignore directory then file
+    # First create the gitignore directory
     gitignore_dir = template_dir / "gitignore"
     gitignore_dir.mkdir(parents=True, exist_ok=True)
+
+    # Now create the python.txt file inside the gitignore directory
     (gitignore_dir / "python.txt").write_text(
         "__pycache__/\n*.py[cod]\n*.egg-info/\ndist/\nbuild/\n.venv/\n"
     )
 
+    # Create readme template file
     (template_dir / "readme.txt").write_text(
         "# {{title}}\n\n{{description}}\n\n## Usage\n\nTODO\n"
     )
