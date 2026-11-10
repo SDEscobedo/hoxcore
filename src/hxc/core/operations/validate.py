@@ -227,6 +227,34 @@ class ValidateOperation:
 
         return result
 
+    def validate_entities(self, entities: List[Dict[str, Any]]) -> ValidationResult:
+        """Validate already parsed entities with the same domain rules as the CLI.
+
+        No filesystem, Git or native index access. Callers may supply internal
+        ``_file`` metadata for directory/type checks, as the filesystem loader does.
+        """
+        result = ValidationResult(entities_checked=len(entities))
+        for entity in entities:
+            kind = entity.get("type", "unknown")
+            result.entities_by_type[kind] = result.entities_by_type.get(kind, 0) + 1
+        for check in (
+            self._validate_required_fields,
+            self._validate_uids,
+            self._validate_ids,
+            self._validate_status,
+            self._validate_types,
+        ):
+            result.errors.extend(check(entities))
+        errors, warnings = self._validate_relationships(entities)
+        result.errors.extend(errors)
+        result.warnings.extend(warnings)
+        for entity in entities:
+            item = self.validate_entity(entity, check_relationships=False)
+            for message in item.errors:
+                if message not in result.errors:
+                    result.errors.append(message)
+        return result
+
     def validate_entity(
         self,
         entity_data: Dict[str, Any],

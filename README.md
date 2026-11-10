@@ -285,3 +285,27 @@ server.run_stdio()
 
 Contributions are welcome! Please see [CONTRIBUTING](CONTRIBUTING.md) for details on our development workflow, including branch naming and test requirements.
 
+
+## Deterministic snapshot indexing
+
+`from hxc.indexing import build_index` extracts a complete mapping of relative
+canonical file names to bytes without filesystem, Git, SQLite or SaaS database
+access. Use `build_index(files, index_model_version=1, format_version=1)`. The
+returned `IndexSnapshot` exposes normalized entities/relationships, explicit
+versions, bounded structured diagnostics and `valid`; `to_dict()` is JSON-compatible.
+Identical bytes/versions give identical output independent of mapping order.
+Invalid snapshots have no partial entity/relationship result. Version mismatches
+are explicit diagnostic failures, never an implicit model fallback.
+
+Limits: 128 files, 128 KiB/file, 1 MiB total, YAML depth 16 / 10,000 events per
+file, no aliases or duplicate/non-string keys, JSON-compatible values only.
+Diagnostics are capped at 100 entries with 256-character messages. `index.db` is
+not canonical content and is rejected. Diagnostics can contain domain values;
+applications must not log them as sanitized telemetry. Returned dictionaries are
+detached from the input, but callers should treat the result as a snapshot.
+
+This API reuses `ValidateOperation.validate_entities` domain rules. Core preserves
+its warning behavior for unresolved related links; closed references, reciprocal
+hierarchy, organization permissions and current-actor checks remain application
+policy. Native CLI initialization/operations retain their isolated SQLite behavior;
+this additive API does not remove or disable an index used by existing commands.
