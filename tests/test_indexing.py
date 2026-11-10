@@ -95,3 +95,18 @@ def test_native_operations_keep_isolated_sqlite(tmp_path):
     }
     (tmp_path / "index.db").unlink()
     assert build_index(snapshot).valid
+
+
+@pytest.mark.parametrize(
+    "raw", [b"[" * 17 + b"0" + b"]" * 17, b"[" + b"0," * 11000 + b"0]"]
+)
+def test_yaml_complexity_bounds(raw):
+    result = build_index(dict(fixture(), **{"config.yml": raw}))
+    assert not result.valid and result.diagnostics[0].code == "invalid_yaml"
+
+
+def test_file_count_bound():
+    files = fixture()
+    files.update({"actions/act-%08x.yml" % i: b"[]" for i in range(127)})
+    result = build_index(files)
+    assert not result.valid and result.diagnostics[0].code == "resource_limit"
