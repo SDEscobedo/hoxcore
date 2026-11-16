@@ -299,7 +299,9 @@ are explicit diagnostic failures, never an implicit model fallback.
 
 Limits: 128 files, 128 KiB/file, 1 MiB total, YAML depth 16 / 10,000 events per
 file, no aliases or duplicate/non-string keys, JSON-compatible values only.
-Diagnostics are capped at 100 entries with 256-character messages. `index.db` is
+Diagnostics are capped at 100 entries with 256-character messages. The native
+`.gitignore` entry accepts either LF or CRLF line endings; additional ignore rules
+remain unsupported. `index.db` is
 not canonical content and is rejected. Diagnostics can contain domain values;
 applications must not log them as sanitized telemetry. Returned dictionaries are
 detached from the input, but callers should treat the result as a snapshot.
