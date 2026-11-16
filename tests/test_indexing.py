@@ -110,3 +110,31 @@ def test_file_count_bound():
     files.update({"actions/act-%08x.yml" % i: b"[]" for i in range(127)})
     result = build_index(files)
     assert not result.valid and result.diagnostics[0].code == "resource_limit"
+
+
+@pytest.mark.parametrize("newline", [b"\n", b"\r\n"])
+def test_native_line_endings_have_identical_index(newline):
+    canonical = fixture()
+    source = {path: raw.replace(b"\n", newline) for path, raw in canonical.items()}
+    before = copy.deepcopy(source)
+    result = build_index(source)
+    assert result.valid
+    assert result.to_dict() == build_index(canonical).to_dict()
+    assert source == before
+
+
+@pytest.mark.parametrize(
+    "ignore",
+    [
+        b"index.db",
+        b"index.db\r",
+        b"index.db\n*\n",
+        b"index.db\r\n*\r\n",
+        b" index.db\n",
+    ],
+)
+def test_ignore_line_endings_do_not_allow_additional_rules(ignore):
+    source = dict(fixture(), **{".gitignore": ignore})
+    result = build_index(source)
+    assert not result.valid
+    assert result.diagnostics[0].code == "invalid_ignore"

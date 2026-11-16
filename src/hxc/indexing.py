@@ -154,7 +154,9 @@ def build_index(
             fail("resource_limit", "File byte limit", path)
             continue
         if path == ".gitignore":
-            if raw != b"index.db\n":
+            # Native text-mode initialization writes CRLF on Windows. Accept
+            # only the two exact native forms, not arbitrary whitespace/rules.
+            if raw not in (b"index.db\n", b"index.db\r\n"):
                 fail("invalid_ignore", "Unsupported ignore rules", path)
             continue
         try:
